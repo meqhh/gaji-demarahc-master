@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { AppContext } from "../context/AppContext";
 
 function Karyawan() {
-  const { karyawanData = [], setKaryawanData, addKaryawan, updateKaryawan, deleteKaryawan } = useContext(AppContext);
+  const { karyawanData = [], setKaryawanData, addKaryawan, updateKaryawan, deleteKaryawan, absensiData = [] } = useContext(AppContext);
   
   const [showTambah, setShowTambah] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -30,6 +30,100 @@ function Karyawan() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Initialize karyawan data from absensi
+  useEffect(() => {
+    if (!absensiData || absensiData.length === 0) return;
+
+    // Check if initialization already done
+    const initKey = 'karyawanDataFromAbsensiInitialized';
+    if (localStorage.getItem(initKey) === 'true') return;
+
+    // Get unique karyawan from absensi with their positions
+    const karyawanFromAbsensi = [];
+    const seen = new Set();
+
+    absensiData.forEach((a) => {
+      if (a?.nama && !seen.has(a.nama)) {
+        seen.add(a.nama);
+        karyawanFromAbsensi.push({
+          nama: a.nama,
+          posisi: a.posisi || 'Staff'
+        });
+      }
+    });
+
+    if (karyawanFromAbsensi.length === 0) return;
+
+    // Get existing karyawan names
+    const existingKaryawan = (karyawanData || []).map((k) => k.nama);
+    
+    // Generate email and phone based on name
+    const generateEmail = (nama) => {
+      const nameLower = nama.toLowerCase().replace(/\s+/g, '.');
+      return `${nameLower}@demara.com`;
+    };
+
+    const generatePhone = (index) => {
+      const base = 81200000000;
+      return `0${base + index}`;
+    };
+
+    // Cities for random assignment
+    const cities = ['Jakarta', 'Bandung', 'Surabaya', 'Medan', 'Yogyakarta', 'Semarang', 'Makassar', 'Palembang', 'Bali', 'Malang'];
+    const birthPlaces = ['Jakarta', 'Bandung', 'Surabaya', 'Medan', 'Yogyakarta', 'Semarang', 'Makassar', 'Palembang', 'Bali', 'Malang'];
+
+    // Create karyawan data for those not in existing data
+    const newKaryawanData = [];
+    let idCounter = 1;
+
+    karyawanFromAbsensi.forEach((karyawan, index) => {
+      if (existingKaryawan.includes(karyawan.nama)) return;
+
+      // Generate birth date (between 25-45 years old)
+      const birthYear = 1980 + (index % 20);
+      const birthMonth = (index % 12) + 1;
+      const birthDay = (index % 28) + 1;
+      const tanggalLahir = `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
+
+      // Generate join date (1-3 years ago)
+      const joinDate = new Date();
+      joinDate.setFullYear(joinDate.getFullYear() - (1 + (index % 3)));
+      const tglMasuk = joinDate.toISOString().split('T')[0];
+
+      // Contract date (1 year from join date)
+      const contractDate = new Date(joinDate);
+      contractDate.setFullYear(contractDate.getFullYear() + 1);
+      const tglKontrak = contractDate.toISOString().split('T')[0];
+
+      newKaryawanData.push({
+        id: String(idCounter++).padStart(3, '0'),
+        nama: karyawan.nama,
+        posisi: karyawan.posisi,
+        nohp: generatePhone(index),
+        email: generateEmail(karyawan.nama),
+        alamat: cities[index % cities.length],
+        tempatLahir: birthPlaces[index % birthPlaces.length],
+        tanggalLahir: tanggalLahir,
+        tglMasuk: tglMasuk,
+        tglKontrak: tglKontrak,
+        lamaKontrak: '12 bulan',
+        foto: null
+      });
+    });
+
+    // Add new karyawan data if any
+    if (newKaryawanData.length > 0) {
+      setKaryawanData((prev) => {
+        const updated = Array.isArray(prev) ? [...prev, ...newKaryawanData] : newKaryawanData;
+        localStorage.setItem(initKey, 'true');
+        return updated;
+      });
+    } else {
+      localStorage.setItem(initKey, 'true');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [absensiData]);
 
   // persistence handled by AppContext
 

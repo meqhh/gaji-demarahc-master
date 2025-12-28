@@ -8,11 +8,83 @@ function SlipGaji() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteData, setDeleteData] = useState(null);
 
+  // Helper function to generate sample transaction details
+  const generateTransactionDetails = (nama) => {
+    return [
+      { tanggal: "01/11/2024", namaPasien: "karintha", klinik: "klinik", tindakan: "laktasi", harga: 250000, feePercent: 10, feeTransport: 20000 },
+      { tanggal: "02/11/2024", namaPasien: "yeni", klinik: "bumi sakinah", tindakan: "pijit bayi", harga: 155000, feePercent: 10, feeTransport: 15000 },
+      { tanggal: "04/11/2024", namaPasien: "vhytta", klinik: "cipta asri", tindakan: "baby spa", harga: 165000, feePercent: 10, feeTransport: 0 },
+      { tanggal: "05/11/2024", namaPasien: "dewi", klinik: "royal vasa", tindakan: "pijit anak", harga: 280000, feePercent: 10, feeTransport: 20000 },
+      { tanggal: "06/11/2024", namaPasien: "titania", klinik: "ruko marbella", tindakan: "laktasi + oksitosin", harga: 350000, feePercent: 10, feeTransport: 0 },
+      { tanggal: "07/11/2024", namaPasien: "suci reski amalia", klinik: "golden prima", tindakan: "pijit hamil", harga: 150000, feePercent: 10, feeTransport: 15000 },
+    ];
+  };
+
+  // Helper function to generate fee paket
+  const generateFeePaket = (nama) => {
+    return [
+      { namaPaket: "RISNIKHO", fee: 100000 },
+      { namaPaket: "EVY", fee: 100000 },
+      { namaPaket: "SURI LIM", fee: 200000 },
+      { namaPaket: "IWENSARI", fee: 100000 },
+      { namaPaket: "KHOSFYANTI", fee: 200000 },
+      { namaPaket: "KOMEINA", fee: 100000 },
+    ];
+  };
+
   const defaultDataGaji = [
-    { id: 1, nama: "Syardatul Maula", posisi: "Bidan", total: 6759250, status: "Dikirim", gajiPokok: 2000000, tunjangan: 1500000, bonus: 500000, potongan: 241750 },
-    { id: 2, nama: "Firda", posisi: "Bidan", total: 8456850, status: "Belum Dikirim", gajiPokok: 2000000, tunjangan: 1800000, bonus: 800000, potongan: 143150 },
-    { id: 3, nama: "Filga Tri Adhab", posisi: "Bidan", total: 7321250, status: "Belum Dikirim", gajiPokok: 2000000, tunjangan: 1700000, bonus: 700000, potongan: 178750 },
-    { id: 4, nama: "Yuyun Puspitayani H", posisi: "Bidan", total: 5365250, status: "Dikirim", gajiPokok: 2000000, tunjangan: 1300000, bonus: 400000, potongan: 334750 },
+    { 
+      id: 1, 
+      nama: "Syardatul Maula", 
+      posisi: "Bidan", 
+      total: 5970000, 
+      status: "Dikirim", 
+      gajiPokok: 1500000, 
+      uangTransport: 460000,
+      feePaket: generateFeePaket("Syardatul Maula"),
+      feeTindakan: 3210000,
+      potonganBPJS: 50000,
+      transactionDetails: generateTransactionDetails("Syardatul Maula")
+    },
+    { 
+      id: 2, 
+      nama: "Firda", 
+      posisi: "Bidan", 
+      total: 8456850, 
+      status: "Belum Dikirim", 
+      gajiPokok: 2000000, 
+      uangTransport: 500000,
+      feePaket: generateFeePaket("Firda"),
+      feeTindakan: 4000000,
+      potonganBPJS: 43150,
+      transactionDetails: generateTransactionDetails("Firda")
+    },
+    { 
+      id: 3, 
+      nama: "Filga Tri Adhab", 
+      posisi: "Bidan", 
+      total: 7321250, 
+      status: "Belum Dikirim", 
+      gajiPokok: 2000000, 
+      uangTransport: 450000,
+      feePaket: generateFeePaket("Filga Tri Adhab"),
+      feeTindakan: 3500000,
+      potonganBPJS: 182750,
+      transactionDetails: generateTransactionDetails("Filga Tri Adhab")
+    },
+    { 
+      id: 4, 
+      nama: "Yuyun Puspitayani H", 
+      posisi: "Bidan", 
+      total: 5365250, 
+      status: "Dikirim", 
+      gajiPokok: 1500000, 
+      uangTransport: 400000,
+      feePaket: generateFeePaket("Yuyun Puspitayani H"),
+      feeTindakan: 2500000,
+      potonganBPJS: 334750,
+      transactionDetails: generateTransactionDetails("Yuyun Puspitayani H")
+    },
   ];
 
   const sampleNames = [
@@ -66,47 +138,224 @@ function SlipGaji() {
   };
 
   const handleCetak = (item) => {
-    // Buat window baru untuk print dengan HTML yang sederhana dan aman
-    const printWindow = window.open('', '', 'height=700,width=900');
+    const printWindow = window.open('', '', 'height=700,width=1200');
+    const totalFeeTindakan = item.transactionDetails?.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0) || 0;
+    const totalFeeTransport = item.transactionDetails?.reduce((sum, t) => sum + (t.feeTransport || 0), 0) || 0;
+    const totalGajiSebelumPotongan = (item.gajiPokok || 0) + (item.uangTransport || 0) + 
+      (item.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) + (item.feeTindakan || 0);
+    
     const content = `<!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8" />
           <title>Slip Gaji - ${item.nama}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; color: #222; }
-            .container { max-width: 700px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .logo { font-size: 18px; font-weight: bold; color: #6b21a8; }
-            .company { font-size: 12px; color: #666; }
-            .row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
-            .label { font-weight:600; color:#333; }
-            .value { color:#111; }
-            .total { font-weight:700; font-size:18px; margin-top:12px; }
-            @media print { body { margin:0; } }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              padding: 20px;
+              color: #222;
+              font-size: 11px;
+            }
+            .container { 
+              max-width: 1000px; 
+              margin: 0 auto;
+              background: white;
+            }
+            .header { 
+              text-align: center; 
+              margin-bottom: 20px;
+              padding-bottom: 15px;
+              border-bottom: 2px solid #333;
+            }
+            .header h1 {
+              font-size: 20px;
+              font-weight: bold;
+              color: #1a1a1a;
+              margin-bottom: 5px;
+            }
+            .header .subtitle {
+              font-size: 12px;
+              color: #666;
+            }
+            .employee-info {
+              margin: 15px 0;
+              padding: 10px;
+              background: #f9f9f9;
+              border-left: 3px solid #333;
+              font-size: 11px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 15px 0;
+              font-size: 10px;
+            }
+            thead {
+              background: #333;
+              color: white;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 8px 6px;
+              text-align: left;
+            }
+            th {
+              font-weight: 600;
+              font-size: 9px;
+            }
+            tbody tr:nth-child(even) {
+              background: #f9f9f9;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .total-row {
+              background: #e8e8e8;
+              font-weight: 600;
+            }
+            .summary-section {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 20px;
+              margin: 20px 0;
+            }
+            .summary-box {
+              border: 1px solid #ddd;
+              padding: 15px;
+              background: #fafafa;
+            }
+            .summary-box h3 {
+              font-size: 11px;
+              font-weight: 700;
+              margin-bottom: 10px;
+              padding-bottom: 8px;
+              border-bottom: 2px solid #333;
+            }
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 6px 0;
+              border-bottom: 1px solid #eee;
+              font-size: 11px;
+            }
+            .summary-row.total {
+              background: #f0f0f0;
+              padding: 8px 5px;
+              margin-top: 8px;
+              font-weight: 700;
+              border-top: 2px solid #333;
+              border-bottom: 2px solid #333;
+            }
+            @media print {
+              body { margin: 0; padding: 10mm; }
+              .container { max-width: 100%; }
+            }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <div class="logo">DEMARA HEALTH CARE</div>
-              <div class="company">Happy Mommy Healthy Baby</div>
-              <h3>SLIP GAJI - ${bulan}</h3>
+              <h1>DEMARA HEALTH CARE</h1>
+              <div class="subtitle">HAPPY MOMMY HEALTHY BABY</div>
+              <div class="subtitle">SLIP GAJI - ${bulan}</div>
             </div>
-            <div class="row"><div class="label">Nama Karyawan</div><div class="value">${item.nama}</div></div>
-            <div class="row"><div class="label">Posisi</div><div class="value">${item.posisi}</div></div>
-            <div class="row"><div class="label">Periode</div><div class="value">${bulan}</div></div>
-            <div class="row"><div class="label">Status</div><div class="value">${item.status}</div></div>
-            <h4 style="margin-top:16px;">Komponen Gaji</h4>
-            <div class="row"><div class="label">Gaji Pokok</div><div class="value">${formatRupiah(item.gajiPokok)}</div></div>
-            <div class="row"><div class="label">Tunjangan</div><div class="value">${formatRupiah(item.tunjangan)}</div></div>
-            <div class="row"><div class="label">Bonus</div><div class="value">${formatRupiah(item.bonus)}</div></div>
-            <h4 style="margin-top:16px;">Potongan</h4>
-            <div class="row"><div class="label">Total Potongan</div><div class="value">${formatRupiah(item.potongan)}</div></div>
-            <div class="total">TOTAL GAJI BERSIH: ${formatRupiah(item.total)}</div>
-            <div style="margin-top:20px;font-size:12px;color:#777">Dicetak pada: ${new Date().toLocaleDateString('id-ID')}</div>
+            
+            <div class="employee-info">
+              <strong>Nama:</strong> ${item.nama} | <strong>Posisi:</strong> ${item.posisi} | <strong>Periode:</strong> ${bulan}
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Nama Pasien</th>
+                  <th>Klinik/Home Service</th>
+                  <th>Tindakan</th>
+                  <th class="text-right">Harga</th>
+                  <th class="text-right">FEE</th>
+                  <th class="text-right">TOTAL</th>
+                  <th class="text-right">FEE TRANSPORT</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${item.transactionDetails && item.transactionDetails.length > 0 ? 
+                  item.transactionDetails.map(trans => {
+                    const totalFee = (trans.harga * trans.feePercent) / 100;
+                    return `
+                      <tr>
+                        <td>${trans.tanggal}</td>
+                        <td>${trans.namaPasien}</td>
+                        <td>${trans.klinik}</td>
+                        <td>${trans.tindakan}</td>
+                        <td class="text-right">${formatRupiah(trans.harga)}</td>
+                        <td class="text-right">${trans.feePercent}%</td>
+                        <td class="text-right">${formatRupiah(totalFee)}</td>
+                        <td class="text-right">${trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
+                      </tr>
+                    `;
+                  }).join('') + `
+                      <tr class="total-row">
+                        <td colspan="4" class="text-right"><strong>TOTAL</strong></td>
+                        <td class="text-right">-</td>
+                        <td class="text-right">-</td>
+                        <td class="text-right"><strong>${formatRupiah(totalFeeTindakan)}</strong></td>
+                        <td class="text-right"><strong>${formatRupiah(totalFeeTransport)}</strong></td>
+                      </tr>
+                    `
+                  : '<tr><td colspan="8" style="text-align:center;padding:15px;">Tidak ada data transaksi</td></tr>'
+                }
+              </tbody>
+            </table>
+
+            <div class="summary-section">
+              <div class="summary-box">
+                <h3>RINCIAN GAJI</h3>
+                <div class="summary-row">
+                  <span>GAJI POKOK</span>
+                  <span>${formatRupiah(item.gajiPokok || 0)}</span>
+                </div>
+                <div class="summary-row">
+                  <span>UANG TRANSPORT</span>
+                  <span>${formatRupiah(item.uangTransport || 0)}</span>
+                </div>
+                ${item.feePaket && item.feePaket.length > 0 ? 
+                  item.feePaket.map(p => `
+                    <div class="summary-row">
+                      <span>FEE PAKET ${p.namaPaket}</span>
+                      <span>${formatRupiah(p.fee)}</span>
+                    </div>
+                  `).join('') : ''
+                }
+                <div class="summary-row">
+                  <span>FEE TINDAKAN</span>
+                  <span>${formatRupiah(item.feeTindakan || 0)}</span>
+                </div>
+                <div class="summary-row total">
+                  <span>TOTAL GAJI ${bulan.split(' ')[0].toUpperCase()}</span>
+                  <span>${formatRupiah(totalGajiSebelumPotongan)}</span>
+                </div>
+              </div>
+
+              <div class="summary-box">
+                <h3>POTONGAN</h3>
+                <div class="summary-row">
+                  <span>POTONG BPJS TK</span>
+                  <span>${formatRupiah(item.potonganBPJS || 0)}</span>
+                </div>
+                <div class="summary-row total">
+                  <span>TOTAL GAJI</span>
+                  <span>${formatRupiah(item.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;font-size:10px;color:#777;text-align:center;border-top:1px solid #ddd;padding-top:10px">
+              Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })} 
+              pukul ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
-          <script>window.print();</script>
+          <script>setTimeout(() => window.print(), 250);</script>
         </body>
       </html>`;
     printWindow.document.write(content);
@@ -257,11 +506,11 @@ function SlipGaji() {
       {/* === Modal Detail Slip Gaji === */}
       {showDetail && selectedData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-8 animate-slide-up max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl p-8 animate-slide-up max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-2xl font-semibold text-gray-900">Detail Slip Gaji</h2>
+                <h2 className="text-2xl font-semibold text-gray-900">Detail Slip Gaji - {selectedData.nama}</h2>
                 <button
                   onClick={() => setShowDetail(false)}
                   className="text-gray-400 hover:text-gray-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
@@ -269,84 +518,121 @@ function SlipGaji() {
                   ✕
                 </button>
               </div>
-              <p className="text-sm text-gray-500">Informasi lengkap slip gaji {selectedData.nama}</p>
+              <p className="text-sm text-gray-500">Periode: {bulan}</p>
             </div>
 
             {/* Content */}
             <div className="space-y-6">
-              {/* Data Karyawan */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Karyawan</label>
-                  <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg">
-                    <p className="text-gray-900 font-medium">{selectedData.nama}</p>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Posisi</label>
-                  <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg">
-                    <p className="text-gray-900 font-medium">{selectedData.posisi}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Periode & Status */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Periode</label>
-                  <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg">
-                    <p className="text-gray-900 font-medium">{bulan}</p>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
-                  <div className="bg-gray-50 border border-gray-200 px-4 py-3 rounded-lg">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold inline-block ${
-                        selectedData.status === "Dikirim"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {selectedData.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Komponen Gaji */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Komponen Gaji</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-700">Gaji Pokok</span>
-                    <span className="font-semibold text-gray-900">{formatRupiah(selectedData.gajiPokok)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-700">Tunjangan</span>
-                    <span className="font-semibold text-gray-900">{formatRupiah(selectedData.tunjangan)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-3 border-b border-gray-100">
-                    <span className="text-gray-700">Bonus</span>
-                    <span className="font-semibold text-gray-900">{formatRupiah(selectedData.bonus)}</span>
-                  </div>
+              {/* Tabel Detail Transaksi */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Detail Transaksi</h3>
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tanggal</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Nama Pasien</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Klinik/Home Service</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tindakan</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">Harga</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">TOTAL</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE TRANSPORT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedData.transactionDetails && selectedData.transactionDetails.length > 0 ? (
+                        selectedData.transactionDetails.map((trans, idx) => {
+                          const totalFee = (trans.harga * trans.feePercent) / 100;
+                          return (
+                            <tr key={idx} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-2 text-gray-700">{trans.tanggal}</td>
+                              <td className="px-4 py-2 text-gray-700">{trans.namaPasien}</td>
+                              <td className="px-4 py-2 text-gray-700">{trans.klinik}</td>
+                              <td className="px-4 py-2 text-gray-700">{trans.tindakan}</td>
+                              <td className="px-4 py-2 text-right text-gray-700">{formatRupiah(trans.harga)}</td>
+                              <td className="px-4 py-2 text-right text-gray-700">{trans.feePercent}%</td>
+                              <td className="px-4 py-2 text-right font-semibold text-gray-900">{formatRupiah(totalFee)}</td>
+                              <td className="px-4 py-2 text-right text-gray-700">{trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-8 text-center text-gray-400">Tidak ada data transaksi</td>
+                        </tr>
+                      )}
+                      {selectedData.transactionDetails && selectedData.transactionDetails.length > 0 && (
+                        <tr className="bg-gray-100 font-semibold">
+                          <td colSpan={4} className="px-4 py-3 text-right text-gray-900">TOTAL</td>
+                          <td className="px-4 py-3 text-right text-gray-700">-</td>
+                          <td className="px-4 py-3 text-right text-gray-700">-</td>
+                          <td className="px-4 py-3 text-right text-gray-900">
+                            {formatRupiah(selectedData.transactionDetails.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0))}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-900">
+                            {formatRupiah(selectedData.transactionDetails.reduce((sum, t) => sum + (t.feeTransport || 0), 0))}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* Potongan */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Potongan</h3>
-                <div className="flex justify-between items-center py-3">
-                  <span className="text-gray-700">Total Potongan</span>
-                  <span className="font-semibold text-gray-900">{formatRupiah(selectedData.potongan)}</span>
+              {/* Summary Gaji */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Rincian Gaji</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">GAJI POKOK</span>
+                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.gajiPokok || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">UANG TRANSPORT</span>
+                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.uangTransport || 0)}</span>
+                    </div>
+                    {selectedData.feePaket && selectedData.feePaket.length > 0 && (
+                      <>
+                        {selectedData.feePaket.map((paket, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span className="text-gray-700">FEE PAKET {paket.namaPaket}</span>
+                            <span className="font-semibold text-gray-900">{formatRupiah(paket.fee)}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">FEE TINDAKAN</span>
+                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.feeTindakan || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
+                      <span className="text-gray-900">TOTAL GAJI {bulan.split(' ')[0].toUpperCase()}</span>
+                      <span className="text-gray-900">
+                        {formatRupiah(
+                          (selectedData.gajiPokok || 0) +
+                          (selectedData.uangTransport || 0) +
+                          (selectedData.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) +
+                          (selectedData.feeTindakan || 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Total Gaji Bersih */}
-              <div className="bg-gray-900 text-white p-6 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold">TOTAL GAJI BERSIH</span>
-                  <span className="text-2xl font-bold">{formatRupiah(selectedData.total)}</span>
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Potongan</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">POTONG BPJS TK</span>
+                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.potonganBPJS || 0)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
+                      <span className="text-gray-900">TOTAL GAJI</span>
+                      <span className="text-gray-900">{formatRupiah(selectedData.total)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

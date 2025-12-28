@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 // QR removed: using professional check-in ID instead of QR codes
 
 export default function AbsensiKaryawan() {
+	const navigate = useNavigate();
 	const { userProfile, addAbsensi } = useContext(AppContext);
 
 	const defaultAbsensi = [
@@ -28,6 +30,8 @@ export default function AbsensiKaryawan() {
 
 	const [selected, setSelected] = useState(null);
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+	const [showAbsensiModal, setShowAbsensiModal] = useState(false);
+	const [todayAbsensi, setTodayAbsensi] = useState(null);
 
 	const openDetail = (item) => {
 		setSelected(item);
@@ -73,16 +77,27 @@ export default function AbsensiKaryawan() {
 	};
 
 	const handleCheckIn = () => {
-		// ensure user logged in today and hasn't checked in yet
-		if (!didLoginToday()) {
-			alert('Absen hanya tersedia setelah Anda login hari ini. Silakan login kembali untuk melakukan absen.');
+		// Allow manual check-in - removed login restriction for manual attendance
+		if (hasCheckedInToday()) {
+			// Show today's attendance info
+			const today = new Date();
+			const todayItem = absensi.find(a => {
+				try {
+					const aDate = new Date(a.tanggal);
+					return aDate.getFullYear() === today.getFullYear() && 
+						   aDate.getMonth() === today.getMonth() && 
+						   aDate.getDate() === today.getDate();
+				} catch (e) {
+					return a.tanggal && a.tanggal.includes(String(today.getDate()));
+				}
+			});
+			if (todayItem) {
+				setTodayAbsensi(todayItem);
+				setShowAbsensiModal(true);
+			}
 			return;
 		}
 		const now = new Date();
-		if (hasCheckedInToday()) {
-			alert('Anda sudah melakukan absen untuk hari ini.');
-			return;
-		}
 		const checkInId = `CI-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
 		const newItem = {
 			id: Date.now(),
@@ -91,18 +106,23 @@ export default function AbsensiKaryawan() {
 			tanggal: formatDate(now),
 			jamMasuk: formatTime(now),
 			checkInId,
-			note: userProfile?.name ? `Absen oleh ${userProfile.name}` : 'Absen karyawan'
+			note: userProfile?.name ? `Absen manual oleh ${userProfile.name}` : 'Absen manual karyawan'
 		};
 		setAbsensi(prev => [newItem, ...prev]);
 		// Also add to global absensi (visible in admin panel)
-		addAbsensi({
-			...newItem,
-			nama: userProfile?.name || userProfile?.email || 'Karyawan',
-			email: userProfile?.email || 'guest'
-		});
-		// Open professional receipt (detail) after check-in
-		setSelected(newItem);
-		setIsDetailModalOpen(true);
+		if (addAbsensi) {
+			addAbsensi({
+				...newItem,
+				nama: userProfile?.name || userProfile?.email || 'Karyawan',
+				email: userProfile?.email || 'guest',
+				posisi: userProfile?.position || userProfile?.role || 'Staff',
+				date: now.toISOString().slice(0, 10),
+				jamKeluar: ''
+			});
+		}
+		// Show attendance modal (same as dashboard)
+		setTodayAbsensi(newItem);
+		setShowAbsensiModal(true);
 	};
 
 	const getStatusColor = (status) => {
@@ -116,6 +136,10 @@ export default function AbsensiKaryawan() {
 
 	return (
 		<div className="min-h-screen bg-white p-8">
+			<style>{`
+				@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+				.animate-slide-up { animation: slideUp 0.6s ease-out forwards; opacity: 0; }
+			`}</style>
 			<div className="max-w-5xl mx-auto">
 				{/* Header */}
 				<div className="mb-8">
@@ -125,20 +149,80 @@ export default function AbsensiKaryawan() {
 
 				{/* Check-in Button */}
 				<div className="mb-8">
-					<button 
-						onClick={handleCheckIn} 
-						disabled={hasCheckedInToday() || !didLoginToday()}
-						className={`font-medium text-sm px-6 py-3 rounded-md transition ${
-							hasCheckedInToday() || !didLoginToday()
-								? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-								: 'bg-gray-700 text-white hover:bg-gray-800'
-						}`}
-					>
-						{hasCheckedInToday() ? 'Sudah Absen Hari Ini' : (!didLoginToday() ? 'Absen hanya setelah login' : 'Absen Masuk')}
-					</button>
+					<div className="flex items-center gap-4">
+						<button 
+							onClick={handleCheckIn} 
+							disabled={hasCheckedInToday()}
+							className={`font-medium text-sm px-6 py-3 rounded-md transition ${
+								hasCheckedInToday()
+									? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+									: 'bg-gray-700 text-white hover:bg-gray-800'
+							}`}
+						>
+							{hasCheckedInToday() ? 'Sudah Absen Hari Ini' : 'Absen Masuk'}
+						</button>
+
+						{/* Tambah/Edit/Hapus dinonaktifkan pada portal karyawan; hanya Check-in manual */}
+					</div>
 				</div>
 
-				{/* Detail Modal */}
+				{/* Attendance Modal (same as dashboard) */}
+				{showAbsensiModal && (
+					<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+						<div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowAbsensiModal(false)}></div>
+						<div className="bg-white rounded-xl shadow-2xl z-10 max-w-md w-full p-8 border border-gray-200 animate-slide-up">
+							<div className="text-center mb-6">
+								<div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+									<svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+									</svg>
+								</div>
+								<h3 className="text-2xl font-bold text-gray-900 mb-2">
+									{todayAbsensi ? 'Absensi Hari Ini' : 'Absen Berhasil'}
+								</h3>
+								<p className="text-sm text-gray-600">Informasi kehadiran Anda</p>
+							</div>
+
+							{todayAbsensi && (
+								<div className="space-y-4 mb-6">
+									<div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+										<div className="flex items-center justify-between mb-3">
+											<span className="text-xs font-semibold text-gray-600 uppercase">Tanggal</span>
+											<span className="text-gray-900 font-semibold">{todayAbsensi.tanggal}</span>
+										</div>
+										<div className="flex items-center justify-between mb-3">
+											<span className="text-xs font-semibold text-gray-600 uppercase">Jam Masuk</span>
+											<span className="text-green-700 font-bold text-lg">{todayAbsensi.jamMasuk}</span>
+										</div>
+										<div className="flex items-center justify-between mb-3">
+											<span className="text-xs font-semibold text-gray-600 uppercase">Status</span>
+											<span className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-xs font-semibold">
+												{todayAbsensi.status}
+											</span>
+										</div>
+										{todayAbsensi.checkInId && (
+											<div className="flex items-center justify-between pt-3 border-t border-gray-200">
+												<span className="text-xs font-semibold text-gray-600 uppercase">ID Check-in</span>
+												<span className="text-gray-700 font-mono text-xs">{todayAbsensi.checkInId}</span>
+											</div>
+										)}
+									</div>
+								</div>
+							)}
+
+							<div className="flex gap-3">
+								<button
+									onClick={() => setShowAbsensiModal(false)}
+									className="flex-1 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-4 py-3 rounded-lg transition"
+								>
+									Tutup
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Detail Modal (for viewing past attendance) */}
 				{isDetailModalOpen && selected && (
 					<div className="fixed inset-0 z-50 flex items-center justify-center">
 						<div className="absolute inset-0 bg-black opacity-50" onClick={closeDetailModal}></div>
@@ -168,30 +252,34 @@ export default function AbsensiKaryawan() {
 									</div>
 								)}
 							</div>
-											<div className="mt-6 flex gap-2">
-												<button 
-													onClick={() => {
-													if (selected?.checkInId && navigator?.clipboard) {
-														navigator.clipboard.writeText(selected.checkInId);
-														alert('ID check-in disalin ke clipboard');
-													} else {
-														setIsDetailModalOpen(false);
-													}
-												}} 
-													className="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-medium text-sm px-4 py-2 rounded-md transition"
-												>
-													Salin ID
-												</button>
-												<button 
-													onClick={closeDetailModal} 
-													className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium text-sm px-4 py-2 rounded-md transition"
-												>
-													Tutup
-												</button>
-											</div>
+							<div className="mt-6 flex gap-2">
+								<button 
+									onClick={() => {
+										if (selected?.checkInId && navigator?.clipboard) {
+											navigator.clipboard.writeText(selected.checkInId);
+											alert('ID check-in disalin ke clipboard');
+										} else {
+											setIsDetailModalOpen(false);
+										}
+									}} 
+									className="flex-1 bg-gray-700 hover:bg-gray-800 text-white font-medium text-sm px-4 py-2 rounded-md transition"
+								>
+									Salin ID
+								</button>
+								<button 
+									onClick={closeDetailModal} 
+									className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium text-sm px-4 py-2 rounded-md transition"
+								>
+									Tutup
+								</button>
+							</div>
 						</div>
 					</div>
 				)}
+
+				{/* Modal form and CRUD UI removed for karyawan portal; only manual check-in allowed */}
+
+				{/* Delete confirmation UI removed for karyawan portal */}
 
 				{/* QR Modal */}
 				{/* QR modal removed - replaced by professional receipt in detail modal */}
@@ -213,25 +301,19 @@ export default function AbsensiKaryawan() {
 								{absensi.length > 0 ? (
 									absensi.map((item, index) => (
 										<tr key={item.id} className="hover:bg-gray-50 transition">
-											<td className="px-6 py-4 text-sm text-gray-700 font-medium">{index + 1}</td>
-											<td className="px-6 py-4 text-sm text-gray-700">{item.tanggal}</td>
-											<td className="px-6 py-4 text-sm text-gray-700">{item.jamMasuk}</td>
-											<td className="px-6 py-4 text-sm">
-												<span className={`px-3 py-1 rounded-md text-xs font-semibold ${getStatusColor(item.status)}`}>
-													{item.status}
-												</span>
-											</td>
-											<td className="px-6 py-4 text-sm">
-												<div className="flex gap-2">
-													<button 
-														onClick={() => openDetail(item)} 
-														className="text-gray-700 hover:text-gray-900 font-medium text-sm transition"
-													>
-														Detail
-													</button>
-													{/* QR button removed */}
-												</div>
-											</td>
+												<td className="px-6 py-4 text-sm text-gray-700 font-medium">{index + 1}</td>
+												<td className="px-6 py-4 text-sm text-gray-700">{item.tanggal}</td>
+												<td className="px-6 py-4 text-sm text-gray-700">{item.jamMasuk}</td>
+												<td className="px-6 py-4 text-sm">
+													<span className={`px-3 py-1 rounded-md text-xs font-semibold ${getStatusColor(item.status)}`}>
+														{item.status}
+													</span>
+												</td>
+												<td className="px-6 py-4 text-sm">
+													<div className="flex gap-2">
+														<button onClick={() => openDetail(item)} className="text-gray-700 hover:text-gray-900 font-medium text-sm transition">Detail</button>
+													</div>
+												</td>
 										</tr>
 									))
 								) : (

@@ -6,30 +6,34 @@ export default function SlipgajiKaryawan() {
 	const slips = [
 		{
 			id: 1,
-			month: "Desember 2025",
-			date: "2025-12-15",
-			amount: "Rp 8.000.000",
+			month: "Juli 2025",
+			date: "2025-07-31",
+			amount: "Rp 5.920.000",
 			employee: {
-				name: "Budi Santoso",
+				name: "Syardatul Maula",
 				id: "EMP-2020-001",
-				position: "Senior Developer",
-				department: "IT"
+				position: "Bidan",
+				department: "Klinik"
 			},
-			earnings: [
-				{ label: 'Gaji Pokok', value: 'Rp 6.000.000' },
-				{ label: 'Tunjangan Kesehatan', value: 'Rp 500.000' },
-				{ label: 'Tunjangan Transportasi', value: 'Rp 500.000' },
-				{ label: 'Bonus Kinerja', value: 'Rp 1.000.000' }
+			gajiPokok: 1500000,
+			uangTransport: 460000,
+			feePaket: [
+				{ namaPaket: "RISNIKHO", fee: 100000 },
+				{ namaPaket: "EVY", fee: 100000 },
+				{ namaPaket: "SURI LIM", fee: 200000 },
+				{ namaPaket: "IWENSARI", fee: 100000 },
+				{ namaPaket: "KHOSFYANTI", fee: 200000 },
+				{ namaPaket: "KOMEINA", fee: 100000 },
 			],
-			deductions: [
-				{ label: 'Pajak Penghasilan (PPh 21)', value: 'Rp 1.200.000' },
-				{ label: 'Iuran BPJS Kesehatan', value: 'Rp 200.000' },
-				{ label: 'Iuran BPJS Ketenagakerjaan', value: 'Rp 100.000' }
-			],
-			breakdown: [
-				{ label: 'Gaji Pokok', value: 'Rp 6.000.000' },
-				{ label: 'Tunjangan', value: 'Rp 2.000.000' },
-				{ label: 'Potongan', value: 'Rp 1.500.000' }
+			feeTindakan: 3210000,
+			potonganBPJS: 50000,
+			transactionDetails: [
+				{ tanggal: "18/11/2024", namaPasien: "sylvia", klinik: "seraya", tindakan: "laktasi", harga: 250000, feePercent: 10, feeTransport: 20000 },
+				{ tanggal: "20/11/2024", namaPasien: "selvia", klinik: "fave hotel", tindakan: "laktasi + oksitosin", harga: 350000, feePercent: 10, feeTransport: 0 },
+				{ tanggal: "21/11/2024", namaPasien: "charisma", klinik: "lucky garden", tindakan: "pijit bayi", harga: 155000, feePercent: 10, feeTransport: 15000 },
+				{ tanggal: "23/11/2024", namaPasien: "khosfyanti", klinik: "bt batam", tindakan: "mandi (23des-22 Jan)", harga: 1200000, feePercent: 100, feeTransport: 0 },
+				{ tanggal: "25/11/2024", namaPasien: "rizka", klinik: "klinik", tindakan: "baby spa", harga: 165000, feePercent: 10, feeTransport: 0 },
+				{ tanggal: "26/11/2024", namaPasien: "ica ceya", klinik: "villa panbil", tindakan: "pijit hamil", harga: 150000, feePercent: 10, feeTransport: 15000 },
 			]
 		},
 		{
@@ -38,25 +42,22 @@ export default function SlipgajiKaryawan() {
 			date: "2025-11-15",
 			amount: "Rp 7.500.000",
 			employee: {
-				name: "Budi Santoso",
+				name: "Syardatul Maula",
 				id: "EMP-2020-001",
-				position: "Senior Developer",
-				department: "IT"
+				position: "Bidan",
+				department: "Klinik"
 			},
-			earnings: [
-				{ label: 'Gaji Pokok', value: 'Rp 6.000.000' },
-				{ label: 'Tunjangan Kesehatan', value: 'Rp 500.000' },
-				{ label: 'Tunjangan Transportasi', value: 'Rp 500.000' }
+			gajiPokok: 2000000,
+			uangTransport: 500000,
+			feePaket: [
+				{ namaPaket: "RISNIKHO", fee: 100000 },
+				{ namaPaket: "EVY", fee: 100000 },
 			],
-			deductions: [
-				{ label: 'Pajak Penghasilan (PPh 21)', value: 'Rp 1.000.000' },
-				{ label: 'Iuran BPJS Kesehatan', value: 'Rp 200.000' },
-				{ label: 'Iuran BPJS Ketenagakerjaan', value: 'Rp 100.000' }
-			],
-			breakdown: [
-				{ label: 'Gaji Pokok', value: 'Rp 6.000.000' },
-				{ label: 'Tunjangan', value: 'Rp 1.000.000' },
-				{ label: 'Potongan', value: 'Rp 1.300.000' }
+			feeTindakan: 4000000,
+			potonganBPJS: 100000,
+			transactionDetails: [
+				{ tanggal: "01/11/2024", namaPasien: "karintha", klinik: "klinik", tindakan: "laktasi", harga: 250000, feePercent: 10, feeTransport: 20000 },
+				{ tanggal: "02/11/2024", namaPasien: "yeni", klinik: "bumi sakinah", tindakan: "pijit bayi", harga: 155000, feePercent: 10, feeTransport: 15000 },
 			]
 		},
 	];
@@ -70,17 +71,11 @@ export default function SlipgajiKaryawan() {
 	}
 
 	function generatePrintableSlip(slip) {
-		const totalEarnings = slip.earnings.reduce((sum, item) => {
-			const value = parseInt(item.value.replace(/[^0-9]/g, ''));
-			return sum + value;
-		}, 0);
-
-		const totalDeductions = slip.deductions.reduce((sum, item) => {
-			const value = parseInt(item.value.replace(/[^0-9]/g, ''));
-			return sum + value;
-		}, 0);
-
-		const netSalary = totalEarnings - totalDeductions;
+		const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+		const totalFeeTindakan = slip.transactionDetails?.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0) || 0;
+		const totalFeeTransport = slip.transactionDetails?.reduce((sum, t) => sum + (t.feeTransport || 0), 0) || 0;
+		const totalGajiSebelumPotongan = (slip.gajiPokok || 0) + (slip.uangTransport || 0) + 
+			(slip.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) + (slip.feeTindakan || 0);
 
 		return `
 <!DOCTYPE html>
@@ -329,26 +324,38 @@ export default function SlipgajiKaryawan() {
 					<th style="width: 15%;">Klinik / Home Service</th>
 					<th style="width: 15%;">Tindakan</th>
 					<th style="width: 10%;" class="text-right">Harga</th>
-					<th style="width: 7%;" class="text-right">FEE %</th>
-					<th style="width: 12%;" class="text-right">Rp</th>
+					<th style="width: 7%;" class="text-right">FEE</th>
 					<th style="width: 12%;" class="text-right">TOTAL</th>
 					<th style="width: 12%;" class="text-right">FEE TRANSPORT</th>
 				</tr>
 			</thead>
 			<tbody>
-				<tr>
-					<td colspan="9" style="text-align: center; padding: 15px; color: #999; font-style: italic;">
-						Lihat detail transaksi di sistem
-					</td>
-				</tr>
-				<tr class="total-row">
-					<td colspan="4" style="text-align: right; padding-right: 10px;">TOTAL</td>
-					<td class="text-right">-</td>
-					<td class="text-right">-</td>
-					<td class="text-right">Rp -</td>
-					<td class="text-right"><strong>Rp ${(totalEarnings).toLocaleString('id-ID')}</strong></td>
-					<td class="text-right">-</td>
-				</tr>
+				${slip.transactionDetails && slip.transactionDetails.length > 0 ? 
+					slip.transactionDetails.map(trans => {
+						const totalFee = (trans.harga * trans.feePercent) / 100;
+						return `
+							<tr>
+								<td>${trans.tanggal}</td>
+								<td>${trans.namaPasien}</td>
+								<td>${trans.klinik}</td>
+								<td>${trans.tindakan}</td>
+								<td class="text-right">${formatRupiah(trans.harga)}</td>
+								<td class="text-right">${trans.feePercent}%</td>
+								<td class="text-right">${formatRupiah(totalFee)}</td>
+								<td class="text-right">${trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
+							</tr>
+						`;
+					}).join('') + `
+						<tr class="total-row">
+							<td colspan="4" style="text-align: right; padding-right: 10px;"><strong>TOTAL</strong></td>
+							<td class="text-right">-</td>
+							<td class="text-right">-</td>
+							<td class="text-right"><strong>${formatRupiah(totalFeeTindakan)}</strong></td>
+							<td class="text-right"><strong>${formatRupiah(totalFeeTransport)}</strong></td>
+						</tr>
+					`
+					: '<tr><td colspan="8" style="text-align: center; padding: 15px; color: #999;">Tidak ada data transaksi</td></tr>'
+				}
 			</tbody>
 		</table>
 
@@ -356,44 +363,43 @@ export default function SlipgajiKaryawan() {
 		<div class="summary-section">
 			<!-- Left Box -->
 			<div class="summary-box">
-				<h3>RINCIAN PENGHASILAN</h3>
-				${slip.earnings.map(e => `
-					<div class="summary-row">
-						<span class="summary-label">${e.label}</span>
-						<span class="summary-value">${e.value}</span>
-					</div>
-				`).join('')}
+				<h3>RINCIAN GAJI</h3>
+				<div class="summary-row">
+					<span class="summary-label">GAJI POKOK</span>
+					<span class="summary-value">${formatRupiah(slip.gajiPokok || 0)}</span>
+				</div>
+				<div class="summary-row">
+					<span class="summary-label">UANG TRANSPORT</span>
+					<span class="summary-value">${formatRupiah(slip.uangTransport || 0)}</span>
+				</div>
+				${slip.feePaket && slip.feePaket.length > 0 ? 
+					slip.feePaket.map(p => `
+						<div class="summary-row">
+							<span class="summary-label">FEE PAKET ${p.namaPaket}</span>
+							<span class="summary-value">${formatRupiah(p.fee)}</span>
+						</div>
+					`).join('') : ''
+				}
+				<div class="summary-row">
+					<span class="summary-label">FEE TINDAKAN</span>
+					<span class="summary-value">${formatRupiah(slip.feeTindakan || 0)}</span>
+				</div>
 				<div class="summary-row total">
-					<span class="summary-label">TOTAL PENGHASILAN</span>
-					<span class="summary-value">Rp ${(totalEarnings).toLocaleString('id-ID')}</span>
+					<span class="summary-label">TOTAL GAJI ${slip.month.split(' ')[0].toUpperCase()}</span>
+					<span class="summary-value">${formatRupiah(totalGajiSebelumPotongan)}</span>
 				</div>
 			</div>
 
 			<!-- Right Box -->
 			<div class="summary-box">
-				<h3>RINCIAN POTONGAN</h3>
-				${slip.deductions.map(d => `
-					<div class="summary-row">
-						<span class="summary-label">${d.label}</span>
-						<span class="summary-value">${d.value}</span>
-					</div>
-				`).join('')}
+				<h3>POTONGAN</h3>
+				<div class="summary-row">
+					<span class="summary-label">POTONG BPJS TK</span>
+					<span class="summary-value">${formatRupiah(slip.potonganBPJS || 0)}</span>
+				</div>
 				<div class="summary-row total">
-					<span class="summary-label">TOTAL POTONGAN</span>
-					<span class="summary-value">Rp ${(totalDeductions).toLocaleString('id-ID')}</span>
-				</div>
-			</div>
-		</div>
-
-		<!-- Net Salary Box -->
-		<div style="background: linear-gradient(135deg, #e8f4f8 0%, #f0f8fc 100%); border: 2px solid #007bff; padding: 15px; margin: 15px 0; border-radius: 4px;">
-			<div style="display: flex; justify-content: space-between; align-items: center;">
-				<div>
-					<div style="font-size: 10px; color: #666; font-weight: 600; margin-bottom: 5px;">GAJI BERSIH YANG DITERIMA</div>
-					<div style="font-size: 10px; color: #999;">Total Penghasilan - Total Potongan</div>
-				</div>
-				<div style="font-size: 20px; font-weight: 700; color: #007bff; text-align: right;">
-					${slip.amount}
+					<span class="summary-label">TOTAL GAJI</span>
+					<span class="summary-value">${slip.amount}</span>
 				</div>
 			</div>
 		</div>
@@ -515,11 +521,11 @@ export default function SlipgajiKaryawan() {
 			{/* Modal Detail */}
 			{selected && (
 				<div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-					<div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+					<div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
 						{/* Modal Header */}
 						<div className="sticky top-0 bg-gray-900 text-white px-8 py-6 flex justify-between items-center">
 							<div>
-								<h3 className="text-2xl font-bold">Detail Slip Gaji</h3>
+								<h3 className="text-2xl font-bold">Detail Slip Gaji - {selected.employee.name}</h3>
 								<p className="text-gray-400 text-sm mt-1">{selected.month}</p>
 							</div>
 							<button 
@@ -531,81 +537,150 @@ export default function SlipgajiKaryawan() {
 						</div>
 
 						{/* Modal Content */}
-						<div className="p-8 space-y-8">
-							{/* Employee Info */}
-							<div className="border-b border-gray-200 pb-6">
-								<h4 className="text-base font-semibold text-gray-900 mb-4">Data Karyawan</h4>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-									<div>
-										<div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Nama</div>
-										<div className="text-base font-medium text-gray-900">{selected.employee.name}</div>
-									</div>
-									<div>
-										<div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">ID Karyawan</div>
-										<div className="text-base font-medium text-gray-900">{selected.employee.id}</div>
-									</div>
-									<div>
-										<div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Jabatan</div>
-										<div className="text-base font-medium text-gray-900">{selected.employee.position}</div>
-									</div>
-									<div>
-										<div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Departemen</div>
-										<div className="text-base font-medium text-gray-900">{selected.employee.department}</div>
-									</div>
+						<div className="p-8 space-y-6">
+							{/* Tabel Detail Transaksi */}
+							<div>
+								<h4 className="text-lg font-semibold text-gray-900 mb-4">Detail Transaksi</h4>
+								<div className="overflow-x-auto border border-gray-200 rounded-lg">
+									<table className="w-full text-sm">
+										<thead className="bg-gray-100">
+											<tr>
+												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tanggal</th>
+												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Nama Pasien</th>
+												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Klinik/Home Service</th>
+												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tindakan</th>
+												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">Harga</th>
+												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE</th>
+												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">TOTAL</th>
+												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE TRANSPORT</th>
+											</tr>
+										</thead>
+										<tbody>
+											{selected.transactionDetails && selected.transactionDetails.length > 0 ? (
+												selected.transactionDetails.map((trans, idx) => {
+													const totalFee = (trans.harga * trans.feePercent) / 100;
+													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													return (
+														<tr key={idx} className="border-b hover:bg-gray-50">
+															<td className="px-4 py-2 text-gray-700">{trans.tanggal}</td>
+															<td className="px-4 py-2 text-gray-700">{trans.namaPasien}</td>
+															<td className="px-4 py-2 text-gray-700">{trans.klinik}</td>
+															<td className="px-4 py-2 text-gray-700">{trans.tindakan}</td>
+															<td className="px-4 py-2 text-right text-gray-700">{formatRupiah(trans.harga)}</td>
+															<td className="px-4 py-2 text-right text-gray-700">{trans.feePercent}%</td>
+															<td className="px-4 py-2 text-right font-semibold text-gray-900">{formatRupiah(totalFee)}</td>
+															<td className="px-4 py-2 text-right text-gray-700">{trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
+														</tr>
+													);
+												})
+											) : (
+												<tr>
+													<td colSpan={8} className="px-4 py-8 text-center text-gray-400">Tidak ada data transaksi</td>
+												</tr>
+											)}
+											{selected.transactionDetails && selected.transactionDetails.length > 0 && (
+												<tr className="bg-gray-100 font-semibold">
+													<td colSpan={4} className="px-4 py-3 text-right text-gray-900">TOTAL</td>
+													<td className="px-4 py-3 text-right text-gray-700">-</td>
+													<td className="px-4 py-3 text-right text-gray-700">-</td>
+													<td className="px-4 py-3 text-right text-gray-900">
+														{(() => {
+															const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+															const total = selected.transactionDetails.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0);
+															return formatRupiah(total);
+														})()}
+													</td>
+													<td className="px-4 py-3 text-right text-gray-900">
+														{(() => {
+															const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+															const total = selected.transactionDetails.reduce((sum, t) => sum + (t.feeTransport || 0), 0);
+															return formatRupiah(total);
+														})()}
+													</td>
+												</tr>
+											)}
+										</tbody>
+									</table>
 								</div>
 							</div>
 
-							{/* Earnings */}
-							<div>
-								<h4 className="text-base font-semibold text-gray-900 mb-4">Rincian Penghasilan</h4>
-								<table className="w-full text-sm">
-									<tbody className="divide-y divide-gray-200">
-										{selected.earnings.map((e, i) => (
-											<tr key={i} className="hover:bg-gray-50">
-												<td className="py-3 text-gray-700">{e.label}</td>
-												<td className="py-3 text-right font-medium text-gray-900">{e.value}</td>
-											</tr>
-										))}
-										<tr className="bg-gray-50 font-semibold">
-											<td className="py-3 text-gray-900">Total Penghasilan</td>
-											<td className="py-3 text-right text-gray-900">
-												Rp {selected.earnings.reduce((sum, e) => sum + parseInt(e.value.replace(/[^0-9]/g, '')), 0).toLocaleString('id-ID')}
-											</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
-
-							{/* Deductions */}
-							<div>
-								<h4 className="text-base font-semibold text-gray-900 mb-4">Rincian Potongan</h4>
-								<table className="w-full text-sm">
-									<tbody className="divide-y divide-gray-200">
-										{selected.deductions.map((d, i) => (
-											<tr key={i} className="hover:bg-gray-50">
-												<td className="py-3 text-gray-700">{d.label}</td>
-												<td className="py-3 text-right font-medium text-gray-900">{d.value}</td>
-											</tr>
-										))}
-										<tr className="bg-gray-50 font-semibold">
-											<td className="py-3 text-gray-900">Total Potongan</td>
-											<td className="py-3 text-right text-gray-900">
-												Rp {selected.deductions.reduce((sum, d) => sum + parseInt(d.value.replace(/[^0-9]/g, '')), 0).toLocaleString('id-ID')}
-											</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
-
-							{/* Net Salary */}
-							<div className="bg-gray-100 p-6 rounded-lg border border-gray-300">
-								<div className="flex justify-between items-center">
-									<div>
-										<div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Gaji Bersih Yang Diterima</div>
-										<div className="text-xs text-gray-500 mt-1">Total Penghasilan - Total Potongan</div>
+							{/* Summary Gaji */}
+							<div className="grid grid-cols-2 gap-6">
+								<div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+									<h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Rincian Gaji</h3>
+									<div className="space-y-2">
+										<div className="flex justify-between text-sm">
+											<span className="text-gray-700">GAJI POKOK</span>
+											<span className="font-semibold text-gray-900">
+												{(() => {
+													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													return formatRupiah(selected.gajiPokok || 0);
+												})()}
+											</span>
+										</div>
+										<div className="flex justify-between text-sm">
+											<span className="text-gray-700">UANG TRANSPORT</span>
+											<span className="font-semibold text-gray-900">
+												{(() => {
+													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													return formatRupiah(selected.uangTransport || 0);
+												})()}
+											</span>
+										</div>
+										{selected.feePaket && selected.feePaket.length > 0 && (
+											<>
+												{selected.feePaket.map((paket, idx) => (
+													<div key={idx} className="flex justify-between text-sm">
+														<span className="text-gray-700">FEE PAKET {paket.namaPaket}</span>
+														<span className="font-semibold text-gray-900">
+															{(() => {
+																const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+																return formatRupiah(paket.fee);
+															})()}
+														</span>
+													</div>
+												))}
+											</>
+										)}
+										<div className="flex justify-between text-sm">
+											<span className="text-gray-700">FEE TINDAKAN</span>
+											<span className="font-semibold text-gray-900">
+												{(() => {
+													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													return formatRupiah(selected.feeTindakan || 0);
+												})()}
+											</span>
+										</div>
+										<div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
+											<span className="text-gray-900">TOTAL GAJI {selected.month.split(' ')[0].toUpperCase()}</span>
+											<span className="text-gray-900">
+												{(() => {
+													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													const total = (selected.gajiPokok || 0) + (selected.uangTransport || 0) + 
+														(selected.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) + (selected.feeTindakan || 0);
+													return formatRupiah(total);
+												})()}
+											</span>
+										</div>
 									</div>
-									<div className="text-right">
-										<div className="text-3xl font-bold text-gray-900">{selected.amount}</div>
+								</div>
+
+								<div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+									<h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Potongan</h3>
+									<div className="space-y-2">
+										<div className="flex justify-between text-sm">
+											<span className="text-gray-700">POTONG BPJS TK</span>
+											<span className="font-semibold text-gray-900">
+												{(() => {
+													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													return formatRupiah(selected.potonganBPJS || 0);
+												})()}
+											</span>
+										</div>
+										<div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
+											<span className="text-gray-900">TOTAL GAJI</span>
+											<span className="text-gray-900">{selected.amount}</span>
+										</div>
 									</div>
 								</div>
 							</div>

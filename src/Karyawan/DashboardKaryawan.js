@@ -1,20 +1,126 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function DashboardKaryawan() {
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [absensiData, setAbsensiData] = useState([]);
   const chartRef = useRef(null);
+  const [showAbsensiModal, setShowAbsensiModal] = useState(false);
+  const [todayAbsensi, setTodayAbsensi] = useState(null);
+
+  const { userProfile, addAbsensi } = useContext(require('../context/AppContext').AppContext);
+
+  const storageKey = userProfile?.email ? `absensi_${userProfile.email}` : 'absensi_guest';
+
+  const getTodayKey = () => new Date().toISOString().slice(0,10);
+
+  const didLoginToday = () => {
+    const lastLogin = localStorage.getItem('karyawanLastLogin');
+    return lastLogin === getTodayKey();
+  };
+
+  const hasCheckedInToday = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const today = new Date();
+      return saved.some(a => {
+        try {
+          const aDate = new Date(a.tanggal);
+          return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
+        } catch (e) {
+          return a.tanggal && a.tanggal.includes(String(today.getDate()));
+        }
+      });
+    } catch (e) {
+      return false;
+    }
+  };
+
+  const formatDate = (d) => d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formatTime = (d) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const getMonthLabel = (d) => d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+  const handleCheckIn = () => {
+    // Allow manual check-in - removed login restriction
+    if (hasCheckedInToday()) {
+      // Show today's attendance info
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const today = new Date();
+      const todayItem = saved.find(a => {
+        try {
+          const aDate = new Date(a.tanggal);
+          return aDate.getFullYear() === today.getFullYear() && 
+                 aDate.getMonth() === today.getMonth() && 
+                 aDate.getDate() === today.getDate();
+        } catch (e) {
+          return a.tanggal && a.tanggal.includes(String(today.getDate()));
+        }
+      });
+      if (todayItem) {
+        setTodayAbsensi(todayItem);
+        setShowAbsensiModal(true);
+      }
+      return;
+    }
+    const now = new Date();
+    const checkInId = `CI-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    const newItem = {
+      id: Date.now(),
+      bulan: getMonthLabel(now),
+      status: 'Hadir',
+      tanggal: formatDate(now),
+      jamMasuk: formatTime(now),
+      checkInId,
+      note: userProfile?.name ? `Absen manual oleh ${userProfile.name}` : 'Absen manual karyawan'
+    };
+
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    localStorage.setItem(storageKey, JSON.stringify([newItem, ...saved]));
+
+    if (addAbsensi) {
+      addAbsensi({ 
+        ...newItem, 
+        nama: userProfile?.name || userProfile?.email || 'Karyawan', 
+        email: userProfile?.email || 'guest',
+        posisi: userProfile?.position || userProfile?.role || 'Staff',
+        date: now.toISOString().slice(0, 10),
+        jamKeluar: ''
+      });
+    }
+
+    // Show attendance modal instead of navigating
+    setTodayAbsensi(newItem);
+    setShowAbsensiModal(true);
+  };
 
   useEffect(() => {
     // Load absensi data from localStorage
     const data = JSON.parse(localStorage.getItem("absensiData") || "[]");
     setAbsensiData(data);
-  }, []);
+    
+    // Load today's attendance if exists
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const today = new Date();
+    const todayItem = saved.find(a => {
+      try {
+        const aDate = new Date(a.tanggal);
+        return aDate.getFullYear() === today.getFullYear() && 
+               aDate.getMonth() === today.getMonth() && 
+               aDate.getDate() === today.getDate();
+      } catch (e) {
+        return a.tanggal && a.tanggal.includes(String(today.getDate()));
+      }
+    });
+    if (todayItem) {
+      setTodayAbsensi(todayItem);
+    }
+  }, [storageKey]);
 
   // Get today's date
   const today = new Date();
@@ -135,33 +241,41 @@ export default function DashboardKaryawan() {
 
       {/* Status Bars Comparison */}
       <div className="bg-gray-100 rounded-lg p-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-        {/* Masuk Bar */}
+        {/* Masuk Bar (clickable: performs check-in and shows attendance modal) */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-700 font-semibold">Masuk</span>
           </div>
           <div className="w-full bg-gray-300 rounded-lg h-12 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-green-400 to-emerald-400 h-full flex items-center justify-center text-gray-700 font-semibold"
-              style={{ width: '45%' }}
-            >
-              Masuk
-            </div>
+            <button onClick={handleCheckIn} className="w-full h-full flex items-center justify-start" aria-label="Absen Masuk">
+              <div
+                className={`bg-gradient-to-r from-green-400 to-emerald-400 h-full flex items-center text-gray-700 font-semibold pl-4 ${hasCheckedInToday() ? 'opacity-60' : 'cursor-pointer hover:from-green-500 hover:to-emerald-500'}`}
+                style={{ width: '45%' }}
+              >
+                {hasCheckedInToday() ? 'Sudah Masuk' : 'Masuk'}
+              </div>
+            </button>
           </div>
         </div>
 
-        {/* Absensi Bar */}
+        {/* Absensi Bar (clickable) */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-700 font-semibold">Absensi</span>
           </div>
           <div className="w-full bg-gray-300 rounded-lg h-12 overflow-hidden">
-            <div 
-              className="bg-gradient-to-r from-green-400 to-emerald-400 h-full flex items-center justify-center text-gray-700 font-semibold"
-              style={{ width: '95%' }}
+            <button
+              onClick={handleCheckIn}
+              className="w-full h-full flex items-center justify-start"
+              aria-label="Absen Masuk"
             >
-              Absensi
-            </div>
+              <div
+                className={`bg-gradient-to-r from-green-400 to-emerald-400 h-full flex items-center text-gray-700 font-semibold pl-4 ${hasCheckedInToday() ? 'opacity-60' : 'cursor-pointer hover:from-green-500 hover:to-emerald-500'}`}
+                style={{ width: '95%' }}
+              >
+                {hasCheckedInToday() ? 'Sudah Absen' : 'Absensi'}
+              </div>
+            </button>
           </div>
         </div>
       </div>
@@ -201,6 +315,71 @@ export default function DashboardKaryawan() {
           "Have a great day at work, stay positive and productive!"
         </p>
       </div>
+
+      {/* Attendance Modal */}
+      {showAbsensiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowAbsensiModal(false)}></div>
+          <div className="bg-white rounded-xl shadow-2xl z-10 max-w-md w-full p-8 border border-gray-200 animate-slide-up">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                {todayAbsensi ? 'Absensi Hari Ini' : 'Absen Berhasil'}
+              </h3>
+              <p className="text-sm text-gray-600">Informasi kehadiran Anda</p>
+            </div>
+
+            {todayAbsensi && (
+              <div className="space-y-4 mb-6">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold text-gray-600 uppercase">Tanggal</span>
+                    <span className="text-gray-900 font-semibold">{todayAbsensi.tanggal}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold text-gray-600 uppercase">Jam Masuk</span>
+                    <span className="text-green-700 font-bold text-lg">{todayAbsensi.jamMasuk}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold text-gray-600 uppercase">Status</span>
+                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-xs font-semibold">
+                      {todayAbsensi.status}
+                    </span>
+                  </div>
+                  {todayAbsensi.checkInId && (
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                      <span className="text-xs font-semibold text-gray-600 uppercase">ID Check-in</span>
+                      <span className="text-gray-700 font-mono text-xs">{todayAbsensi.checkInId}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAbsensiModal(false);
+                  navigate('/karyawan/absensi');
+                }}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-4 py-3 rounded-lg transition"
+              >
+                Lihat Riwayat
+              </button>
+              <button
+                onClick={() => setShowAbsensiModal(false)}
+                className="flex-1 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-4 py-3 rounded-lg transition"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
