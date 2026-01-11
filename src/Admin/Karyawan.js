@@ -14,116 +14,29 @@ function Karyawan() {
   const [preview, setPreview] = useState(null);
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({});
-  const [showSampleModal, setShowSampleModal] = useState(false);
 
-  // Initialize data on mount
+  // Initialize data on mount - only load from localStorage, no default data
   useEffect(() => {
     try {
-      // If context is empty, initialize from localStorage
+      // Only load from localStorage if exists, otherwise keep empty
       const stored = JSON.parse(localStorage.getItem("karyawanData")) || [];
-      if ((!karyawanData || karyawanData.length === 0) && stored.length > 0) {
+      if (stored.length > 0) {
         setKaryawanData(stored);
+      } else {
+        // Ensure empty array if no data in localStorage
+        setKaryawanData([]);
       }
     } catch (err) {
       console.error("Gagal load data dari localStorage", err);
-      if ((!karyawanData || karyawanData.length === 0)) setKaryawanData([]);
+      setKaryawanData([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Initialize karyawan data from absensi
-  useEffect(() => {
-    if (!absensiData || absensiData.length === 0) return;
-
-    // Check if initialization already done
-    const initKey = 'karyawanDataFromAbsensiInitialized';
-    if (localStorage.getItem(initKey) === 'true') return;
-
-    // Get unique karyawan from absensi with their positions
-    const karyawanFromAbsensi = [];
-    const seen = new Set();
-
-    absensiData.forEach((a) => {
-      if (a?.nama && !seen.has(a.nama)) {
-        seen.add(a.nama);
-        karyawanFromAbsensi.push({
-          nama: a.nama,
-          posisi: a.posisi || 'Staff'
-        });
-      }
-    });
-
-    if (karyawanFromAbsensi.length === 0) return;
-
-    // Get existing karyawan names
-    const existingKaryawan = (karyawanData || []).map((k) => k.nama);
-    
-    // Generate email and phone based on name
-    const generateEmail = (nama) => {
-      const nameLower = nama.toLowerCase().replace(/\s+/g, '.');
-      return `${nameLower}@demara.com`;
-    };
-
-    const generatePhone = (index) => {
-      const base = 81200000000;
-      return `0${base + index}`;
-    };
-
-    // Cities for random assignment
-    const cities = ['Jakarta', 'Bandung', 'Surabaya', 'Medan', 'Yogyakarta', 'Semarang', 'Makassar', 'Palembang', 'Bali', 'Malang'];
-    const birthPlaces = ['Jakarta', 'Bandung', 'Surabaya', 'Medan', 'Yogyakarta', 'Semarang', 'Makassar', 'Palembang', 'Bali', 'Malang'];
-
-    // Create karyawan data for those not in existing data
-    const newKaryawanData = [];
-    let idCounter = 1;
-
-    karyawanFromAbsensi.forEach((karyawan, index) => {
-      if (existingKaryawan.includes(karyawan.nama)) return;
-
-      // Generate birth date (between 25-45 years old)
-      const birthYear = 1980 + (index % 20);
-      const birthMonth = (index % 12) + 1;
-      const birthDay = (index % 28) + 1;
-      const tanggalLahir = `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
-
-      // Generate join date (1-3 years ago)
-      const joinDate = new Date();
-      joinDate.setFullYear(joinDate.getFullYear() - (1 + (index % 3)));
-      const tglMasuk = joinDate.toISOString().split('T')[0];
-
-      // Contract date (1 year from join date)
-      const contractDate = new Date(joinDate);
-      contractDate.setFullYear(contractDate.getFullYear() + 1);
-      const tglKontrak = contractDate.toISOString().split('T')[0];
-
-      newKaryawanData.push({
-        id: String(idCounter++).padStart(3, '0'),
-        nama: karyawan.nama,
-        posisi: karyawan.posisi,
-        nohp: generatePhone(index),
-        email: generateEmail(karyawan.nama),
-        alamat: cities[index % cities.length],
-        tempatLahir: birthPlaces[index % birthPlaces.length],
-        tanggalLahir: tanggalLahir,
-        tglMasuk: tglMasuk,
-        tglKontrak: tglKontrak,
-        lamaKontrak: '12 bulan',
-        foto: null
-      });
-    });
-
-    // Add new karyawan data if any
-    if (newKaryawanData.length > 0) {
-      setKaryawanData((prev) => {
-        const updated = Array.isArray(prev) ? [...prev, ...newKaryawanData] : newKaryawanData;
-        localStorage.setItem(initKey, 'true');
-        return updated;
-      });
-    } else {
-      localStorage.setItem(initKey, 'true');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [absensiData]);
+  // Initialize karyawan data from absensi - DISABLED: No auto-initialization
+  // useEffect(() => {
+  //   // Disabled - no automatic initialization from absensi
+  // }, [absensiData]);
 
   // persistence handled by AppContext
 
@@ -182,32 +95,6 @@ function Karyawan() {
     return String(lastId + 1).padStart(3, "0");
   };
 
-  // Sample data (reusable)
-  const sampleList = [
-    { nama: 'Syardatul Maula', posisi: 'Bidan', nohp: '081234567890', email: 'syardatul@example.com', alamat: 'Jakarta', tempatLahir: 'Jakarta', tanggalLahir: '1990-03-12', tglMasuk: '2023-01-10', tglKontrak: '2024-01-10', lamaKontrak: '12 bulan' },
-    { nama: 'Ridwan', posisi: 'Driver', nohp: '082345678901', email: 'ridwan@example.com', alamat: 'Bandung', tempatLahir: 'Bandung', tanggalLahir: '1992-07-22', tglMasuk: '2022-05-02', tglKontrak: '2023-05-02', lamaKontrak: '12 bulan' },
-    { nama: 'Firda', posisi: 'Bidan', nohp: '083456789012', email: 'firda@example.com', alamat: 'Surabaya', tempatLahir: 'Surabaya', tanggalLahir: '1988-11-30', tglMasuk: '2021-09-15', tglKontrak: '2022-09-15', lamaKontrak: '12 bulan' },
-    { nama: 'Mela Anjasari', posisi: 'Bidan', nohp: '084567890123', email: 'mela@example.com', alamat: 'Medan', tempatLahir: 'Medan', tanggalLahir: '1991-05-10', tglMasuk: '2022-11-20', tglKontrak: '2023-11-20', lamaKontrak: '12 bulan' },
-    { nama: 'Yuyun Puspitayani H', posisi: 'Admin', nohp: '085678901234', email: 'yuyun@example.com', alamat: 'Yogyakarta', tempatLahir: 'Yogyakarta', tanggalLahir: '1993-02-28', tglMasuk: '2023-06-01', tglKontrak: '2024-06-01', lamaKontrak: '12 bulan' },
-    { nama: 'Filga Tri Adab', posisi: 'Bidan', nohp: '086789012345', email: 'filga@example.com', alamat: 'Semarang', tempatLahir: 'Semarang', tanggalLahir: '1989-09-14', tglMasuk: '2021-03-08', tglKontrak: '2022-03-08', lamaKontrak: '12 bulan' },
-    { nama: 'Ahmad Fikri', posisi: 'Staff', nohp: '087890123456', email: 'ahmad@example.com', alamat: 'Makassar', tempatLahir: 'Makassar', tanggalLahir: '1994-12-01', tglMasuk: '2023-04-10', tglKontrak: '2024-04-10', lamaKontrak: '12 bulan' },
-    { nama: 'Siti Hapsari', posisi: 'Staff', nohp: '088901234567', email: 'siti@example.com', alamat: 'Palembang', tempatLahir: 'Palembang', tanggalLahir: '1991-01-15', tglMasuk: '2022-08-22', tglKontrak: '2023-08-22', lamaKontrak: '12 bulan' },
-    { nama: 'Budi Santoso', posisi: 'Staff', nohp: '089012345678', email: 'budi@example.com', alamat: 'Bandung', tempatLahir: 'Bandung', tanggalLahir: '1990-06-20', tglMasuk: '2023-02-14', tglKontrak: '2024-02-14', lamaKontrak: '12 bulan' },
-    { nama: 'Dewi Lestari', posisi: 'Staff', nohp: '081122334455', email: 'dewi@example.com', alamat: 'Surabaya', tempatLahir: 'Surabaya', tanggalLahir: '1992-03-08', tglMasuk: '2022-10-05', tglKontrak: '2023-10-05', lamaKontrak: '12 bulan' }
-  ];
-
-  const addSampleItem = (s) => {
-    const newK = { ...s, id: getNextId(), foto: null };
-    if (typeof addKaryawan === 'function') addKaryawan(newK);
-    else if (typeof setKaryawanData === 'function') {
-      setKaryawanData((prev) => Array.isArray(prev) ? [...prev, newK] : [newK]);
-    }
-  };
-
-  const addAllSamples = () => {
-    sampleList.forEach((s) => addSampleItem(s));
-    setShowSampleModal(false);
-  };
 
   // Upload file + preview
   const handleFileChange = async (e) => {
@@ -370,12 +257,6 @@ function Karyawan() {
             >
               <span>+</span> Tambah Data
             </button>
-            <button
-              onClick={() => setShowSampleModal(true)}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm transition-colors"
-            >
-              Isi Contoh
-            </button>
           </div>
         </div>
 
@@ -536,47 +417,6 @@ function Karyawan() {
           </div>
         )}
 
-        {/* === Modal Sample (Isi Contoh) === */}
-        {showSampleModal && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down"
-            onClick={() => setShowSampleModal(false)}
-          >
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 animate-slide-up" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Isi Contoh Karyawan</h3>
-                  <p className="text-sm text-gray-500">Pilih data contoh untuk ditambahkan ke daftar karyawan.</p>
-                </div>
-                <button className="text-gray-400 hover:text-gray-600" onClick={() => setShowSampleModal(false)}>✕</button>
-              </div>
-
-              <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">
-                {sampleList.map((s, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{s.nama}</div>
-                      <div className="text-xs text-gray-500">{s.posisi} • {s.nohp}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => addSampleItem(s)}
-                        className="px-3 py-1 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700 transition-colors"
-                      >
-                        Tambah
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <button onClick={() => setShowSampleModal(false)} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg">Tutup</button>
-                <button onClick={addAllSamples} className="px-4 py-2 bg-gray-800 text-white rounded-lg">Tambah Semua</button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* === Modal Detail === */}
         {showDetail && detailData && (

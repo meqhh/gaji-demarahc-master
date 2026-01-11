@@ -50,6 +50,12 @@ export const AppContextProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Cuti Data
+  const [cutiData, setCutiData] = useState(() => {
+    const saved = localStorage.getItem('cutiData');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Simpan user profile ke localStorage
   useEffect(() => {
     localStorage.setItem('userProfile', JSON.stringify(userProfile));
@@ -79,6 +85,11 @@ export const AppContextProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('slipGajiData', JSON.stringify(slipGajiData));
   }, [slipGajiData]);
+
+  // Simpan cuti data ke localStorage
+  useEffect(() => {
+    localStorage.setItem('cutiData', JSON.stringify(cutiData));
+  }, [cutiData]);
 
   const value = {
     // User Profile
@@ -125,6 +136,14 @@ export const AppContextProvider = ({ children }) => {
     updateSlipGaji: (id, updates) => setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === id ? { ...s, ...updates } : s) : []),
     deleteSlipGaji: (id) => setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => s.id !== id) : []),
     getSlipGajiByKaryawan: (nama) => Array.isArray(slipGajiData) ? slipGajiData.filter(s => s.nama === nama) : [],
+
+    // Cuti
+    cutiData,
+    setCutiData,
+    addCuti: (cuti) => setCutiData(prev => Array.isArray(prev) ? [...prev, { ...cuti, id: cuti.id || String(Date.now()) }] : [{ ...cuti, id: cuti.id || String(Date.now()) }]),
+    updateCuti: (id, updates) => setCutiData(prev => Array.isArray(prev) ? prev.map(c => c.id === id ? { ...c, ...updates } : c) : []),
+    deleteCuti: (id) => setCutiData(prev => Array.isArray(prev) ? prev.filter(c => c.id !== id) : []),
+    getCutiByKaryawan: (nama) => Array.isArray(cutiData) ? cutiData.filter(c => c.nama === nama) : [],
   };
 
   return (

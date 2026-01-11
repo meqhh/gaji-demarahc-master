@@ -1,66 +1,114 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import Logo from "../Images/demaralogo.png";
+import { AppContext } from "../context/AppContext";
 
 export default function SlipgajiKaryawan() {
+	const { slipGajiData = [], userProfile, karyawanData = [] } = useContext(AppContext);
 	const [selected, setSelected] = useState(null);
-	const slips = [
-		{
-			id: 1,
-			month: "Juli 2025",
-			date: "2025-07-31",
-			amount: "Rp 5.920.000",
-			employee: {
-				name: "Syardatul Maula",
-				id: "EMP-2020-001",
-				position: "Bidan",
-				department: "Klinik"
-			},
-			gajiPokok: 1500000,
-			uangTransport: 460000,
-			feePaket: [
-				{ namaPaket: "RISNIKHO", fee: 100000 },
-				{ namaPaket: "EVY", fee: 100000 },
-				{ namaPaket: "SURI LIM", fee: 200000 },
-				{ namaPaket: "IWENSARI", fee: 100000 },
-				{ namaPaket: "KHOSFYANTI", fee: 200000 },
-				{ namaPaket: "KOMEINA", fee: 100000 },
-			],
-			feeTindakan: 3210000,
-			potonganBPJS: 50000,
-			transactionDetails: [
-				{ tanggal: "18/11/2024", namaPasien: "sylvia", klinik: "seraya", tindakan: "laktasi", harga: 250000, feePercent: 10, feeTransport: 20000 },
-				{ tanggal: "20/11/2024", namaPasien: "selvia", klinik: "fave hotel", tindakan: "laktasi + oksitosin", harga: 350000, feePercent: 10, feeTransport: 0 },
-				{ tanggal: "21/11/2024", namaPasien: "charisma", klinik: "lucky garden", tindakan: "pijit bayi", harga: 155000, feePercent: 10, feeTransport: 15000 },
-				{ tanggal: "23/11/2024", namaPasien: "khosfyanti", klinik: "bt batam", tindakan: "mandi (23des-22 Jan)", harga: 1200000, feePercent: 100, feeTransport: 0 },
-				{ tanggal: "25/11/2024", namaPasien: "rizka", klinik: "klinik", tindakan: "baby spa", harga: 165000, feePercent: 10, feeTransport: 0 },
-				{ tanggal: "26/11/2024", namaPasien: "ica ceya", klinik: "villa panbil", tindakan: "pijit hamil", harga: 150000, feePercent: 10, feeTransport: 15000 },
-			]
-		},
-		{
-			id: 2,
-			month: "November 2025",
-			date: "2025-11-15",
-			amount: "Rp 7.500.000",
-			employee: {
-				name: "Syardatul Maula",
-				id: "EMP-2020-001",
-				position: "Bidan",
-				department: "Klinik"
-			},
-			gajiPokok: 2000000,
-			uangTransport: 500000,
-			feePaket: [
-				{ namaPaket: "RISNIKHO", fee: 100000 },
-				{ namaPaket: "EVY", fee: 100000 },
-			],
-			feeTindakan: 4000000,
-			potonganBPJS: 100000,
-			transactionDetails: [
-				{ tanggal: "01/11/2024", namaPasien: "karintha", klinik: "klinik", tindakan: "laktasi", harga: 250000, feePercent: 10, feeTransport: 20000 },
-				{ tanggal: "02/11/2024", namaPasien: "yeni", klinik: "bumi sakinah", tindakan: "pijit bayi", harga: 155000, feePercent: 10, feeTransport: 15000 },
-			]
-		},
-	];
+
+	// Format Rupiah helper
+	const formatRupiah = (num) => {
+		if (typeof num === 'string') {
+			// Jika sudah format string, return as is
+			if (num.includes('Rp')) return num;
+			// Jika string angka, convert ke number
+			num = parseInt(num.replace(/[^0-9]/g, '')) || 0;
+		}
+		return `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+	};
+
+	// Convert transaction details from admin format to karyawan format
+	const convertTransactionDetails = (adminDetails) => {
+		if (!adminDetails || !Array.isArray(adminDetails)) return [];
+		return adminDetails.map(td => ({
+			tanggal: td.tanggal || "",
+			namaPasien: td.namaPasien || "",
+			klinikHomeService: td.klinik || td.klinikHomeService || "",
+			tindakan: td.tindakan || "",
+			harga: typeof td.harga === 'number' ? td.harga : parseInt(String(td.harga).replace(/[^0-9]/g, '')) || 0,
+			feePersen: td.feePercent || td.feePersen || 0,
+			totalFee: typeof td.totalFee === 'number' ? td.totalFee : (td.harga * (td.feePercent || 0) / 100),
+			feeTransport: typeof td.feeTransport === 'number' ? td.feeTransport : parseInt(String(td.feeTransport || 0).replace(/[^0-9]/g, '')) || 0
+		}));
+	};
+
+	// Convert fee paket from admin format to karyawan format
+	const convertFeePaket = (adminFeePaket) => {
+		if (!adminFeePaket || !Array.isArray(adminFeePaket)) return [];
+		return adminFeePaket.map(fp => ({
+			nama: fp.namaPaket || fp.nama || "",
+			jumlah: typeof fp.fee === 'number' ? fp.fee : parseInt(String(fp.fee || fp.jumlah).replace(/[^0-9]/g, '')) || 0
+		}));
+	};
+
+	// Get karyawan info from karyawanData
+	const getKaryawanInfo = (nama) => {
+		const karyawan = Array.isArray(karyawanData) ? karyawanData.find(k => k.nama === nama) : null;
+		return {
+			name: nama,
+			id: karyawan?.id || `EMP-${nama.substring(0, 3).toUpperCase()}-001`,
+			position: karyawan?.posisi || "Staff",
+			department: karyawan?.departemen || "Klinik"
+		};
+	};
+
+	// Convert admin slip gaji data to karyawan format
+	const convertSlipGajiData = (adminData) => {
+		if (!adminData || !Array.isArray(adminData)) return [];
+
+		return adminData.map((slip, index) => {
+			// Get month from date or use current month
+			const dateObj = slip.date ? new Date(slip.date) : new Date();
+			const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+				"Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+			const month = `${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+			// Calculate totals
+			const totalPenghasilan = (slip.gajiPokok || 0) + 
+				(slip.uangTransport || 0) + 
+				(slip.feePaket?.reduce((sum, p) => sum + (p.fee || p.jumlah || 0), 0) || 0) + 
+				(slip.feeTindakan || 0);
+			const totalPotongan = slip.potongBpjsTk || slip.potonganBPJS || 0;
+			const total = totalPenghasilan - totalPotongan;
+
+			return {
+				id: slip.id || index + 1,
+				month: month,
+				date: slip.date || dateObj.toISOString().slice(0, 10),
+				amount: formatRupiah(total),
+				employee: getKaryawanInfo(slip.nama),
+				gajiPokok: formatRupiah(slip.gajiPokok || 0),
+				uangTransport: formatRupiah(slip.uangTransport || 0),
+				feePaket: convertFeePaket(slip.feePaket),
+				feeTindakan: formatRupiah(slip.feeTindakan || 0),
+				potongBpjsTk: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
+				totalPenghasilan: formatRupiah(totalPenghasilan),
+				totalPotongan: formatRupiah(totalPotongan),
+				transactionDetails: convertTransactionDetails(slip.transactionDetails)
+			};
+		});
+	};
+
+	// Filter slip gaji berdasarkan karyawan yang login
+	const slips = useMemo(() => {
+		if (!userProfile || !userProfile.name) {
+			// Jika tidak ada userProfile, return empty array
+			return [];
+		}
+
+		// Filter slip gaji berdasarkan nama karyawan
+		const filteredSlips = Array.isArray(slipGajiData) 
+			? slipGajiData.filter(slip => {
+				// Match berdasarkan nama (case insensitive)
+				const slipNama = (slip.nama || "").toLowerCase().trim();
+				const userNama = (userProfile.name || "").toLowerCase().trim();
+				return slipNama === userNama;
+			})
+			: [];
+
+		// Convert to karyawan format
+		return convertSlipGajiData(filteredSlips);
+	}, [slipGajiData, userProfile, karyawanData]);
 
 	function openSlip(slip) {
 		setSelected(slip);
@@ -70,12 +118,41 @@ export default function SlipgajiKaryawan() {
 		setSelected(null);
 	}
 
+	// Helper to parse Rupiah string to number
+	const parseRupiah = (str) => {
+		if (typeof str === 'number') return str;
+		if (typeof str === 'string') {
+			return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+		}
+		return 0;
+	};
+
 	function generatePrintableSlip(slip) {
-		const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-		const totalFeeTindakan = slip.transactionDetails?.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0) || 0;
-		const totalFeeTransport = slip.transactionDetails?.reduce((sum, t) => sum + (t.feeTransport || 0), 0) || 0;
-		const totalGajiSebelumPotongan = (slip.gajiPokok || 0) + (slip.uangTransport || 0) + 
-			(slip.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) + (slip.feeTindakan || 0);
+		const formatRupiah = (num) => {
+			if (typeof num === 'string' && num.includes('Rp')) return num;
+			const n = typeof num === 'number' ? num : parseRupiah(num);
+			return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+		};
+		
+		// Parse values from formatted strings
+		const gajiPokokNum = parseRupiah(slip.gajiPokok);
+		const uangTransportNum = parseRupiah(slip.uangTransport);
+		const feeTindakanNum = parseRupiah(slip.feeTindakan);
+		const potongBpjsNum = parseRupiah(slip.potongBpjsTk);
+		
+		// Calculate totals from transaction details
+		const totalFeeTindakan = slip.transactionDetails?.reduce((sum, t) => {
+			if (t.totalFee) return sum + parseRupiah(t.totalFee);
+			// Fallback calculation
+			return sum + (parseRupiah(t.harga) * (t.feePersen || t.feePercent || 0) / 100);
+		}, 0) || feeTindakanNum;
+		
+		const totalFeeTransport = slip.transactionDetails?.reduce((sum, t) => sum + parseRupiah(t.feeTransport || 0), 0) || 0;
+		
+		// Calculate fee paket total
+		const totalFeePaket = slip.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+		
+		const totalGajiSebelumPotongan = gajiPokokNum + uangTransportNum + totalFeePaket + totalFeeTindakan;
 
 		return `
 <!DOCTYPE html>
@@ -375,8 +452,8 @@ export default function SlipgajiKaryawan() {
 				${slip.feePaket && slip.feePaket.length > 0 ? 
 					slip.feePaket.map(p => `
 						<div class="summary-row">
-							<span class="summary-label">FEE PAKET ${p.namaPaket}</span>
-							<span class="summary-value">${formatRupiah(p.fee)}</span>
+							<span class="summary-label">FEE PAKET ${p.nama || p.namaPaket || ""}</span>
+							<span class="summary-value">${formatRupiah(p.jumlah || p.fee || 0)}</span>
 						</div>
 					`).join('') : ''
 				}
@@ -558,16 +635,26 @@ export default function SlipgajiKaryawan() {
 										<tbody>
 											{selected.transactionDetails && selected.transactionDetails.length > 0 ? (
 												selected.transactionDetails.map((trans, idx) => {
-													const totalFee = (trans.harga * trans.feePercent) / 100;
-													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													const parseRupiah = (str) => {
+														if (typeof str === 'number') return str;
+														if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+														return 0;
+													};
+													const formatRupiah = (num) => {
+														if (typeof num === 'string' && num.includes('Rp')) return num;
+														const n = typeof num === 'number' ? num : parseRupiah(num);
+														return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													};
+													const totalFee = trans.totalFee ? parseRupiah(trans.totalFee) : (parseRupiah(trans.harga) * (trans.feePersen || trans.feePercent || 0) / 100);
+													const klinikHomeService = trans.klinikHomeService || trans.klinik || "";
 													return (
 														<tr key={idx} className="border-b hover:bg-gray-50">
-															<td className="px-4 py-2 text-gray-700">{trans.tanggal}</td>
-															<td className="px-4 py-2 text-gray-700">{trans.namaPasien}</td>
-															<td className="px-4 py-2 text-gray-700">{trans.klinik}</td>
-															<td className="px-4 py-2 text-gray-700">{trans.tindakan}</td>
+															<td className="px-4 py-2 text-gray-700">{trans.tanggal || ""}</td>
+															<td className="px-4 py-2 text-gray-700">{trans.namaPasien || ""}</td>
+															<td className="px-4 py-2 text-gray-700">{klinikHomeService}</td>
+															<td className="px-4 py-2 text-gray-700">{trans.tindakan || ""}</td>
 															<td className="px-4 py-2 text-right text-gray-700">{formatRupiah(trans.harga)}</td>
-															<td className="px-4 py-2 text-right text-gray-700">{trans.feePercent}%</td>
+															<td className="px-4 py-2 text-right text-gray-700">{trans.feePersen || trans.feePercent || 0}%</td>
 															<td className="px-4 py-2 text-right font-semibold text-gray-900">{formatRupiah(totalFee)}</td>
 															<td className="px-4 py-2 text-right text-gray-700">{trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
 														</tr>
@@ -585,15 +672,36 @@ export default function SlipgajiKaryawan() {
 													<td className="px-4 py-3 text-right text-gray-700">-</td>
 													<td className="px-4 py-3 text-right text-gray-900">
 														{(() => {
-															const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-															const total = selected.transactionDetails.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0);
+															const parseRupiah = (str) => {
+																if (typeof str === 'number') return str;
+																if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+																return 0;
+															};
+															const formatRupiah = (num) => {
+																if (typeof num === 'string' && num.includes('Rp')) return num;
+																const n = typeof num === 'number' ? num : parseRupiah(num);
+																return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+															};
+															const total = selected.transactionDetails.reduce((sum, t) => {
+																if (t.totalFee) return sum + parseRupiah(t.totalFee);
+																return sum + (parseRupiah(t.harga) * (t.feePersen || t.feePercent || 0) / 100);
+															}, 0);
 															return formatRupiah(total);
 														})()}
 													</td>
 													<td className="px-4 py-3 text-right text-gray-900">
 														{(() => {
-															const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-															const total = selected.transactionDetails.reduce((sum, t) => sum + (t.feeTransport || 0), 0);
+															const parseRupiah = (str) => {
+																if (typeof str === 'number') return str;
+																if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+																return 0;
+															};
+															const formatRupiah = (num) => {
+																if (typeof num === 'string' && num.includes('Rp')) return num;
+																const n = typeof num === 'number' ? num : parseRupiah(num);
+																return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+															};
+															const total = selected.transactionDetails.reduce((sum, t) => sum + parseRupiah(t.feeTransport || 0), 0);
 															return formatRupiah(total);
 														})()}
 													</td>
@@ -629,17 +737,26 @@ export default function SlipgajiKaryawan() {
 										</div>
 										{selected.feePaket && selected.feePaket.length > 0 && (
 											<>
-												{selected.feePaket.map((paket, idx) => (
-													<div key={idx} className="flex justify-between text-sm">
-														<span className="text-gray-700">FEE PAKET {paket.namaPaket}</span>
-														<span className="font-semibold text-gray-900">
-															{(() => {
-																const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-																return formatRupiah(paket.fee);
-															})()}
-														</span>
-													</div>
-												))}
+												{selected.feePaket.map((paket, idx) => {
+													const parseRupiah = (str) => {
+														if (typeof str === 'number') return str;
+														if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+														return 0;
+													};
+													const formatRupiah = (num) => {
+														if (typeof num === 'string' && num.includes('Rp')) return num;
+														const n = typeof num === 'number' ? num : parseRupiah(num);
+														return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													};
+													return (
+														<div key={idx} className="flex justify-between text-sm">
+															<span className="text-gray-700">FEE PAKET ({paket.nama || paket.namaPaket || ""})</span>
+															<span className="font-semibold text-gray-900">
+																{formatRupiah(paket.jumlah || paket.fee || 0)}
+															</span>
+														</div>
+													);
+												})}
 											</>
 										)}
 										<div className="flex justify-between text-sm">
@@ -652,12 +769,25 @@ export default function SlipgajiKaryawan() {
 											</span>
 										</div>
 										<div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
-											<span className="text-gray-900">TOTAL GAJI {selected.month.split(' ')[0].toUpperCase()}</span>
+											<span className="text-gray-900">TOTAL GAJI BERSIH</span>
 											<span className="text-gray-900">
-												{(() => {
-													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													const total = (selected.gajiPokok || 0) + (selected.uangTransport || 0) + 
-														(selected.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) + (selected.feeTindakan || 0);
+												{selected.amount || (() => {
+													const parseRupiah = (str) => {
+														if (typeof str === 'number') return str;
+														if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+														return 0;
+													};
+													const formatRupiah = (num) => {
+														if (typeof num === 'string' && num.includes('Rp')) return num;
+														const n = typeof num === 'number' ? num : parseRupiah(num);
+														return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+													};
+													const gajiPokok = parseRupiah(selected.gajiPokok);
+													const uangTransport = parseRupiah(selected.uangTransport);
+													const feePaket = selected.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+													const feeTindakan = parseRupiah(selected.feeTindakan);
+													const potongan = parseRupiah(selected.potongBpjsTk);
+													const total = gajiPokok + uangTransport + feePaket + feeTindakan - potongan;
 													return formatRupiah(total);
 												})()}
 											</span>

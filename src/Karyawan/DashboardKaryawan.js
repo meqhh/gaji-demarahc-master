@@ -12,7 +12,9 @@ export default function DashboardKaryawan() {
   const [absensiData, setAbsensiData] = useState([]);
   const chartRef = useRef(null);
   const [showAbsensiModal, setShowAbsensiModal] = useState(false);
+  const [showCheckInForm, setShowCheckInForm] = useState(false);
   const [todayAbsensi, setTodayAbsensi] = useState(null);
+  const [attendanceType, setAttendanceType] = useState("");
 
   const { userProfile, addAbsensi } = useContext(require('../context/AppContext').AppContext);
 
@@ -68,12 +70,23 @@ export default function DashboardKaryawan() {
       }
       return;
     }
+    // Show check-in form
+    setShowCheckInForm(true);
+    setAttendanceType("");
+  };
+
+  const handleCheckInSubmit = () => {
+    if (!attendanceType) {
+      alert("Mohon pilih Attendance Type terlebih dahulu!");
+      return;
+    }
+
     const now = new Date();
     const checkInId = `CI-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
     const newItem = {
       id: Date.now(),
       bulan: getMonthLabel(now),
-      status: 'Hadir',
+      status: attendanceType,
       tanggal: formatDate(now),
       jamMasuk: formatTime(now),
       checkInId,
@@ -94,9 +107,20 @@ export default function DashboardKaryawan() {
       });
     }
 
-    // Show attendance modal instead of navigating
+    // Close form and show attendance modal
+    setShowCheckInForm(false);
+    setAttendanceType("");
     setTodayAbsensi(newItem);
     setShowAbsensiModal(true);
+  };
+
+  const handleReset = () => {
+    setAttendanceType("");
+  };
+
+  const handleCancel = () => {
+    setShowCheckInForm(false);
+    setAttendanceType("");
   };
 
   useEffect(() => {
@@ -315,6 +339,97 @@ export default function DashboardKaryawan() {
           "Have a great day at work, stay positive and productive!"
         </p>
       </div>
+
+      {/* Check In Attendance Form Modal */}
+      {showCheckInForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black opacity-50" onClick={handleCancel}></div>
+          <div className="bg-white rounded-lg shadow-xl z-10 max-w-lg w-full border border-gray-200 animate-slide-up">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Check In Attendance</h2>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-6 space-y-6">
+              {/* Current Date Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Current Date
+                </label>
+                <input
+                  type="text"
+                  value={today.toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    day: '2-digit', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })}
+                  readOnly
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
+                />
+              </div>
+
+              {/* Attendance Type Field */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Attendance Type <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={attendanceType}
+                    onChange={(e) => setAttendanceType(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white cursor-pointer pr-10"
+                    required
+                  >
+                    <option value="">- Select one -</option>
+                    <option value="Hadir">Hadir</option>
+                    <option value="Izin">Izin</option>
+                    <option value="Sakit">Sakit</option>
+                    <option value="Cuti">Cuti</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={handleCancel}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="flex-1 px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Reset
+                </button>
+                <button
+                  onClick={handleCheckInSubmit}
+                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                  Check In
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Attendance Modal */}
       {showAbsensiModal && (

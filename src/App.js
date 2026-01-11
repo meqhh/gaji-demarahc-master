@@ -24,6 +24,7 @@ import DashboardKaryawan from "./Karyawan/DashboardKaryawan";
 import DataDiri from "./Karyawan/DataDiri";
 import AbsensiKaryawan from "./Karyawan/AbsensiKaryawan";
 import SlipGajiKaryawan from "./Karyawan/SlipgajiKaryawan";
+import CutiKaryawanKaryawan from "./Karyawan/CutiKaryawan";
 import KaryawanProfileSettings from "./Pages/KaryawanProfileSettings";
 import KaryawanSecurity from "./Pages/KaryawanSecurity";
 import KaryawanHelp from "./Pages/KaryawanHelp";
@@ -69,6 +70,7 @@ function App() {
             <Route path="datadiri" element={<DataDiri />} />
             <Route path="absensi" element={<AbsensiKaryawan />} />
             <Route path="slipgaji" element={<SlipGajiKaryawan />} />
+            <Route path="cuti" element={<CutiKaryawanKaryawan />} />
             {/* Treatment (karyawan) removed from karyawan portal */}
             <Route path="profile" element={<KaryawanProfileSettings />} />
             <Route path="security" element={<KaryawanSecurity />} />

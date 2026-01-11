@@ -8,6 +8,27 @@ function SlipGaji() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteData, setDeleteData] = useState(null);
 
+  // Generate all month/year options from 2010 to current year + 1
+  const generateMonthYearOptions = () => {
+    const monthNames = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    const options = [];
+    const currentYear = new Date().getFullYear();
+    const endYear = currentYear + 1; // Include next year
+    
+    for (let year = 2010; year <= endYear; year++) {
+      for (let month = 0; month < 12; month++) {
+        options.push(`${monthNames[month]} ${year}`);
+      }
+    }
+    
+    return options;
+  };
+
+  const monthYearOptions = generateMonthYearOptions();
+
   // Helper function to generate sample transaction details
   const generateTransactionDetails = (nama) => {
     return [
@@ -415,9 +436,11 @@ function SlipGaji() {
               onChange={(e) => setBulan(e.target.value)}
               className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:border-purple-400"
             >
-              <option>Juli 2025</option>
-              <option>Agustus 2025</option>
-              <option>September 2025</option>
+              {monthYearOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </div>
 
