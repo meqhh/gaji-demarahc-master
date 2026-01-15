@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+ import React, { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 // QR removed: using professional check-in ID instead of QR codes
