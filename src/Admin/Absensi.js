@@ -30,19 +30,33 @@ function Absensi() {
   const updateAbsensi = context?.updateAbsensi;
   const deleteAbsensi = context?.deleteAbsensi;
   const setAbsensiData = context?.setAbsensiData;
+  const karyawanData = context?.karyawanData;
 
   // Use absensiData from context - ensure it's always an array
   const absensi = Array.isArray(absensiData) ? absensiData : [];
 
-  // Get unique karyawan names from absensi data - must be before early return
+  // Get unique karyawan names - prioritize from karyawanData, then from absensi - must be before early return
   const uniqueKaryawanNames = useMemo(() => {
-    const names = absensi
+    // First, get names from karyawanData if available
+    const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
+      ? karyawanData
+          .map((k) => k?.nama)
+          .filter((name) => name && name.trim() !== "")
+      : [];
+    
+    // Then get names from absensi data
+    const absensiNames = absensi
       .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "")
+      .filter((name) => name && name.trim() !== "");
+    
+    // Combine and get unique names
+    const allNames = [...karyawanNames, ...absensiNames];
+    const uniqueNames = allNames
       .filter((name, index, self) => self.indexOf(name) === index) // Get unique names
       .sort(); // Sort alphabetically
-    return names;
-  }, [absensi]);
+    
+    return uniqueNames;
+  }, [absensi, karyawanData]);
 
   // Data awal
   const defaultAbsensi = [

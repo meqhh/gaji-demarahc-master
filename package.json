@@ -23,7 +23,12 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "server": "cd server && npm run dev",
+    "server:start": "cd server && npm start",
+    "install:all": "npm install && cd server && npm install && cd ..",
+    "dev": "concurrently \"npm start\" \"npm run server\"",
+    "build:all": "npm run build && echo Build complete"
   },
   "eslintConfig": {
     "extends": [

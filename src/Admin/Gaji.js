@@ -284,6 +284,7 @@ function FeePaketModal({ show, onClose, onSubmit, initialData }) {
 function Gaji() {
   const context = useContext(AppContext);
   const absensiData = context?.absensiData || []; // Only used for filter options (karyawan names)
+  const karyawanData = context?.karyawanData || []; // Get karyawan data from context
 
   const defaultGajiData = [
     { id: 1, karyawan: "Syardatul Maula", pasien: "Andi Susilo", alamat: "Jl. Merdeka 12", treatment: "Home Visit - Pemeriksaan", harga: 150000, fee: 20, tanggal: "2025-08-13" },
@@ -418,15 +419,28 @@ function Gaji() {
   const [filterTahun, setFilterTahun] = useState("Semua Tahun");
   const [filterKaryawan, setFilterKaryawan] = useState("Semua");
 
-  // Get unique karyawan names from absensi data
+  // Get unique karyawan names - prioritize from karyawanData, then from absensi data
   const uniqueKaryawanNames = useMemo(() => {
-    const names = absensiData
+    // First, get names from karyawanData if available
+    const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
+      ? karyawanData
+          .map((k) => k?.nama)
+          .filter((name) => name && name.trim() !== "")
+      : [];
+    
+    // Then get names from absensi data
+    const absensiNames = absensiData
       .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "")
+      .filter((name) => name && name.trim() !== "");
+    
+    // Combine and get unique names
+    const allNames = [...karyawanNames, ...absensiNames];
+    const uniqueNames = allNames
       .filter((name, index, self) => self.indexOf(name) === index) // Get unique names
       .sort(); // Sort alphabetically
-    return names;
-  }, [absensiData]);
+    
+    return uniqueNames;
+  }, [absensiData, karyawanData]);
 
   // Get all months (Januari - Desember)
   const uniqueMonths = useMemo(() => {

@@ -1,4 +1,14 @@
-# QUICK START - Backend Setup
+# Backend Setup Guide - File-Based Database
+
+## Overview
+This backend uses **Node.js + Express** with **JSON file-based storage** instead of MongoDB. Data is persisted in `server/data/` directory as JSON files.
+
+## Why File-Based Storage?
+✅ No MongoDB installation required  
+✅ Zero external dependencies  
+✅ Perfect for development & small deployments  
+✅ Easy backup (just copy JSON files)  
+✅ Human-readable data format  
 
 ## Step 1: Install Dependencies
 
@@ -7,36 +17,16 @@ cd server
 npm install
 ```
 
-## Step 2: Download & Setup MongoDB
+## Step 2: Configure Environment
 
-### Option A: Local MongoDB (Recommended for Development)
-
-**Windows:**
-1. Download dari: https://www.mongodb.com/try/download/community
-2. Install MongoDB Community Edition
-3. MongoDB akan auto-run as service di background
-
-**Mac:**
-```bash
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
+File: `server/.env`
+```
+PORT=5000
+NODE_ENV=development
+JWT_SECRET=your_jwt_secret_key_change_this_in_production
 ```
 
-**Linux (Ubuntu):**
-```bash
-wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-sudo apt-get update
-sudo apt-get install -y mongodb-org
-sudo systemctl start mongod
-```
-
-### Option B: MongoDB Atlas (Cloud)
-1. Buat akun: https://www.mongodb.com/cloud/atlas
-2. Create Free Cluster
-3. Get connection string
-4. Update `.env` dengan string tersebut
+⚠️ **Important:** Change `JWT_SECRET` before production deployment!
 
 ## Step 3: Start Backend Server
 
@@ -45,9 +35,10 @@ cd server
 npm run dev
 ```
 
-Output yang diharapkan:
+Expected output:
 ```
-✓ MongoDB connected
+✓ File-based database initialized
+Server running on http://localhost:5000
 🚀 Server berjalan di http://localhost:5000
 📚 API Documentation tersedia di http://localhost:5000/api
 🏥 Health check di http://localhost:5000/api/health
@@ -171,7 +162,7 @@ kill -9 <PID>
 
 ### Token Invalid
 Pastikan:
-- Token ada di header: `Authorization: Bearer <token>`
+- Token ada d    i header: `Authorization: Bearer <token>`
 - Token belum expired (7 hari)
 - `JWT_SECRET` di `.env` sama
 

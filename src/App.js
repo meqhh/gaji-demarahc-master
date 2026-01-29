@@ -6,6 +6,7 @@ import LayoutKaryawan from "./Layout/LayoutKaryawan";
 
 // LOGIN PAGE
 import Login from "./Karyawan/Login";
+import Register from "./Karyawan/Register";
 
 // ADMIN PAGE
 import DashboardAdmin from "./Admin/Dashboard";
@@ -37,6 +38,7 @@ function App() {
 
           {/* Login Route */}
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           {/* Redirect root "/" ke /login */}
           <Route path="/" element={<Navigate to="/login" replace />} />

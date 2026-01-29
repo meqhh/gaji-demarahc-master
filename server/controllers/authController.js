@@ -1,5 +1,6 @@
-import User from '../models/User.js';
+import { usersDB } from '../database/fileDb.js';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 // Register
 export const register = async (req, res) => {
@@ -10,20 +11,27 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
     
-    // Cek email sudah ada
-    const existingUser = await User.findOne({ email });
+    // Check if email already exists
+    const existingUser = usersDB.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email sudah terdaftar' });
     }
     
-    const newUser = new User({
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    const newUser = {
+      id: `USR${Date.now()}`,
       nama,
       email,
-      password,
-      role: role || 'karyawan'
-    });
+      password: hashedPassword,
+      role: role || 'karyawan',
+      createdAt: new Date().toISOString(),
+      lastLogin: null
+    };
     
-    await newUser.save();
+    usersDB.save(newUser);
     
     res.status(201).json({
       success: true,
@@ -43,23 +51,24 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email dan password harus diisi' });
     }
     
-    const user = await User.findOne({ email });
+    const user = usersDB.findOne({ email });
     if (!user) {
       return res.status(401).json({ success: false, message: 'Email atau password salah' });
     }
     
-    const isPasswordValid = await user.comparePassword(password);
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Email atau password salah' });
     }
     
     // Update last login
-    user.lastLogin = new Date();
-    await user.save();
+    user.lastLogin = new Date().toISOString();
+    usersDB.save(user);
     
     // Generate JWT
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, nama: user.nama },
+      { id: user.id, email: user.email, role: user.role, nama: user.nama },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -70,7 +79,7 @@ export const login = async (req, res) => {
       data: {
         token,
         user: {
-          id: user._id,
+          id: user.id,
           nama: user.nama,
           email: user.email,
           role: user.role
@@ -85,10 +94,15 @@ export const login = async (req, res) => {
 // Get current user
 export const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = usersDB.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+    }
+    
+    const { password, ...userWithoutPassword } = user;
     res.json({
       success: true,
-      data: user
+      data: userWithoutPassword
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -98,11 +112,16 @@ export const getCurrentUser = async (req, res) => {
 // Get all users (admin only)
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    const users = usersDB.getAll();
+    const usersWithoutPassword = users.map(u => {
+      const { password, ...user } = u;
+      return user;
+    });
+    
     res.json({
       success: true,
       message: 'Data user berhasil diambil',
-      data: users
+      data: usersWithoutPassword
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -114,18 +133,32 @@ export const updateUser = async (req, res) => {
   try {
     const { nama, email } = req.body;
     
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { nama, email },
-      { new: true }
-    ).select('-password');
+    const user = usersDB.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+    }
     
+    if (nama) user.nama = nama;
+    if (email) user.email = email;
+    user.updatedAt = new Date().toISOString();
+    
+    usersDB.save(user);
+    
+    const { password, ...userWithoutPassword } = user;
     res.json({
       success: true,
       message: 'User berhasil diperbarui',
-      data: user
+      data: userWithoutPassword
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+export default {
+  register,
+  login,
+  getCurrentUser,
+  getAllUsers,
+  updateUser
 };

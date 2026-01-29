@@ -1,386 +1,175 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
+import { AppContext } from "../context/AppContext";
 
 function SlipGaji() {
-  const [bulan, setBulan] = useState("Agustus 2025");
-  const [karyawan, setKaryawan] = useState("Semua");
+  const { karyawanData = [] } = useContext(AppContext);
+  
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
+  const [bulan, setBulan] = useState("Januari 2026");
+  const [filterKaryawan, setFilterKaryawan] = useState("Semua");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
   const [selectedData, setSelectedData] = useState(null);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteData, setDeleteData] = useState(null);
+  const [showTambah, setShowTambah] = useState(false);
 
-  // Generate all month/year options from 2010 to current year + 1
-  const generateMonthYearOptions = () => {
+  // Local data state untuk slip gaji
+  const [dataSlip, setDataSlip] = useState(() => {
+    const saved = localStorage.getItem("slipGajiData");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [formData, setFormData] = useState({
+    karyawanId: "",
+    nama: "",
+    nip: "",
+    posisi: "",
+    departemen: "",
+    gajiPokok: 0,
+    tunjangan: 0,
+    bonus: 0,
+    potonganAsuransi: 0,
+    potonganTax: 0,
+    status: "Draft"
+  });
+
+  // Generate month/year options
+  const monthYearOptions = useMemo(() => {
     const monthNames = [
       "Januari", "Februari", "Maret", "April", "Mei", "Juni",
       "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     ];
     const options = [];
-    const currentYear = new Date().getFullYear();
-    const endYear = currentYear + 1; // Include next year
-    
-    for (let year = 2010; year <= endYear; year++) {
+    for (let year = 2024; year <= 2026; year++) {
       for (let month = 0; month < 12; month++) {
         options.push(`${monthNames[month]} ${year}`);
       }
     }
-    
     return options;
-  };
-
-  const monthYearOptions = generateMonthYearOptions();
-
-  // Helper function to generate sample transaction details
-  const generateTransactionDetails = (nama) => {
-    return [
-      { tanggal: "01/11/2024", namaPasien: "karintha", klinik: "klinik", tindakan: "laktasi", harga: 250000, feePercent: 10, feeTransport: 20000 },
-      { tanggal: "02/11/2024", namaPasien: "yeni", klinik: "bumi sakinah", tindakan: "pijit bayi", harga: 155000, feePercent: 10, feeTransport: 15000 },
-      { tanggal: "04/11/2024", namaPasien: "vhytta", klinik: "cipta asri", tindakan: "baby spa", harga: 165000, feePercent: 10, feeTransport: 0 },
-      { tanggal: "05/11/2024", namaPasien: "dewi", klinik: "royal vasa", tindakan: "pijit anak", harga: 280000, feePercent: 10, feeTransport: 20000 },
-      { tanggal: "06/11/2024", namaPasien: "titania", klinik: "ruko marbella", tindakan: "laktasi + oksitosin", harga: 350000, feePercent: 10, feeTransport: 0 },
-      { tanggal: "07/11/2024", namaPasien: "suci reski amalia", klinik: "golden prima", tindakan: "pijit hamil", harga: 150000, feePercent: 10, feeTransport: 15000 },
-    ];
-  };
-
-  // Helper function to generate fee paket
-  const generateFeePaket = (nama) => {
-    return [
-      { namaPaket: "RISNIKHO", fee: 100000 },
-      { namaPaket: "EVY", fee: 100000 },
-      { namaPaket: "SURI LIM", fee: 200000 },
-      { namaPaket: "IWENSARI", fee: 100000 },
-      { namaPaket: "KHOSFYANTI", fee: 200000 },
-      { namaPaket: "KOMEINA", fee: 100000 },
-    ];
-  };
-
-  const defaultDataGaji = [
-    { 
-      id: 1, 
-      nama: "Syardatul Maula", 
-      posisi: "Bidan", 
-      total: 5970000, 
-      status: "Dikirim", 
-      gajiPokok: 1500000, 
-      uangTransport: 460000,
-      feePaket: generateFeePaket("Syardatul Maula"),
-      feeTindakan: 3210000,
-      potonganBPJS: 50000,
-      transactionDetails: generateTransactionDetails("Syardatul Maula")
-    },
-    { 
-      id: 2, 
-      nama: "Firda", 
-      posisi: "Bidan", 
-      total: 8456850, 
-      status: "Belum Dikirim", 
-      gajiPokok: 2000000, 
-      uangTransport: 500000,
-      feePaket: generateFeePaket("Firda"),
-      feeTindakan: 4000000,
-      potonganBPJS: 43150,
-      transactionDetails: generateTransactionDetails("Firda")
-    },
-    { 
-      id: 3, 
-      nama: "Filga Tri Adhab", 
-      posisi: "Bidan", 
-      total: 7321250, 
-      status: "Belum Dikirim", 
-      gajiPokok: 2000000, 
-      uangTransport: 450000,
-      feePaket: generateFeePaket("Filga Tri Adhab"),
-      feeTindakan: 3500000,
-      potonganBPJS: 182750,
-      transactionDetails: generateTransactionDetails("Filga Tri Adhab")
-    },
-    { 
-      id: 4, 
-      nama: "Yuyun Puspitayani H", 
-      posisi: "Bidan", 
-      total: 5365250, 
-      status: "Dikirim", 
-      gajiPokok: 1500000, 
-      uangTransport: 400000,
-      feePaket: generateFeePaket("Yuyun Puspitayani H"),
-      feeTindakan: 2500000,
-      potonganBPJS: 334750,
-      transactionDetails: generateTransactionDetails("Yuyun Puspitayani H")
-    },
-  ];
-
-  const sampleNames = [
-    "Ahmad Fikri", "Siti Hapsari", "Budi Santoso", "Dewi Lestari", "Rizky Pratama",
-    "Intan Permata", "Aulia Rahman", "Rina Kurnia", "Taufik Hidayat", "Maya Sari",
-    "Fajar Nugroho", "Rina Dewi", "Andi Wijaya", "Lina Marlina", "Hendra Saputra",
-    "Nadia Safitri", "Yusuf Ramadhan", "Siska Amelia", "Ricky Adi", "Putri Anggraini",
-    "Doni Prasetyo", "Vina Oktavia", "Eko Saputra", "Linda Kusuma", "Hesti Rahma",
-    "Ardiansyah", "Nina Mariana", "Galih Pratama", "Fitriani", "Slamet Widodo"
-  ];
-
-  const [dataGaji, setDataGaji] = useState(defaultDataGaji);
-
-  useEffect(() => {
-    const stored = defaultDataGaji;
-    const existingNames = stored.map((g) => g.nama);
-    const merged = [...stored];
-
-    let nextId = Math.max(...stored.map(g => g.id), 0) + 1;
-
-    sampleNames.forEach((name) => {
-      if (!existingNames.includes(name)) {
-        merged.push({
-          id: nextId,
-          nama: name,
-          posisi: "Staff",
-          total: 5500000,
-          status: "Belum Dikirim",
-          gajiPokok: 2000000,
-          tunjangan: 1500000,
-          bonus: 300000,
-          potongan: 300000
-        });
-        nextId += 1;
-      }
-    });
-
-    setDataGaji(merged);
   }, []);
 
-  const filteredData = dataGaji.filter((item) =>
-    karyawan === "Semua" ? true : item.nama === karyawan
-  );
+  // Persist slip data
+  useEffect(() => {
+    localStorage.setItem("slipGajiData", JSON.stringify(dataSlip));
+  }, [dataSlip]);
 
-  const formatRupiah = (angka) =>
-    `Rp. ${angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+  // Filter data
+  const filteredData = useMemo(() => {
+    return dataSlip.filter((item) => {
+      const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
+      const matchPeriode = item.periode === bulan;
+      const matchSearch = searchQuery === "" || 
+        item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchKaryawan && matchPeriode && matchSearch;
+    });
+  }, [dataSlip, filterKaryawan, bulan, searchQuery]);
+
+  // Toast
+  const showToast = (message) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3000);
+  };
+
+  // Format Rupiah
+  const formatRupiah = (angka) => {
+    if (!angka) return "Rp 0";
+    return `Rp ${parseInt(angka).toLocaleString("id-ID")}`;
+  };
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = dataSlip.length;
+    const draft = dataSlip.filter(d => d.status === "Draft").length;
+    const proses = dataSlip.filter(d => d.status === "Proses").length;
+    const selesai = dataSlip.filter(d => d.status === "Selesai").length;
+    return { total, draft, proses, selesai };
+  }, [dataSlip]);
+
+  // Handlers
+  const handleAddClick = () => {
+    setFormData({
+      karyawanId: "",
+      nama: "",
+      nip: "",
+      posisi: "",
+      departemen: "",
+      gajiPokok: 0,
+      tunjangan: 0,
+      bonus: 0,
+      potonganAsuransi: 0,
+      potonganTax: 0,
+      status: "Draft"
+    });
+    setShowTambah(true);
+  };
+
+  const handleSelectKaryawan = (karyawan) => {
+    setFormData({
+      karyawanId: karyawan.id,
+      nama: karyawan.nama,
+      nip: karyawan.nip || "",
+      posisi: karyawan.posisi || "",
+      departemen: karyawan.departemen || "",
+      gajiPokok: karyawan.gajiPokok || 0,
+      tunjangan: karyawan.tunjangan || 0,
+      bonus: 0,
+      potonganAsuransi: karyawan.asuransi || 0,
+      potonganTax: karyawan.pajak || 0,
+      status: "Draft"
+    });
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: isNaN(value) ? value : (parseInt(value) || 0)
+    }));
+  };
+
+  const handleSaveSlip = () => {
+    if (!formData.karyawanId || !formData.nama) {
+      alert("Pilih karyawan terlebih dahulu!");
+      return;
+    }
+
+    const totalPenghasilan = formData.gajiPokok + formData.tunjangan + formData.bonus;
+    const totalPotongan = formData.potonganAsuransi + formData.potonganTax;
+    const gajiNetto = totalPenghasilan - totalPotongan;
+
+    const maxId = Math.max(...dataSlip.map(item => item.id || 0), 0);
+    const newSlip = {
+      id: maxId + 1,
+      karyawanId: formData.karyawanId,
+      nama: formData.nama,
+      nip: formData.nip,
+      posisi: formData.posisi,
+      departemen: formData.departemen,
+      gajiPokok: formData.gajiPokok,
+      tunjangan: formData.tunjangan,
+      bonus: formData.bonus,
+      potonganAsuransi: formData.potonganAsuransi,
+      potonganTax: formData.potonganTax,
+      totalPenghasilan: totalPenghasilan,
+      totalPotongan: totalPotongan,
+      gajiNetto: gajiNetto,
+      periode: bulan,
+      status: formData.status,
+      createdAt: new Date().toISOString()
+    };
+
+    setDataSlip(prev => [...prev, newSlip]);
+    showToast("✓ Slip gaji berhasil ditambahkan!");
+    setShowTambah(false);
+  };
 
   const handleDetail = (item) => {
     setSelectedData(item);
     setShowDetail(true);
-  };
-
-  const handleCetak = (item) => {
-    const printWindow = window.open('', '', 'height=700,width=1200');
-    const totalFeeTindakan = item.transactionDetails?.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0) || 0;
-    const totalFeeTransport = item.transactionDetails?.reduce((sum, t) => sum + (t.feeTransport || 0), 0) || 0;
-    const totalGajiSebelumPotongan = (item.gajiPokok || 0) + (item.uangTransport || 0) + 
-      (item.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) + (item.feeTindakan || 0);
-    
-    const content = `<!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>Slip Gaji - ${item.nama}</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              padding: 20px;
-              color: #222;
-              font-size: 11px;
-            }
-            .container { 
-              max-width: 1000px; 
-              margin: 0 auto;
-              background: white;
-            }
-            .header { 
-              text-align: center; 
-              margin-bottom: 20px;
-              padding-bottom: 15px;
-              border-bottom: 2px solid #333;
-            }
-            .header h1 {
-              font-size: 20px;
-              font-weight: bold;
-              color: #1a1a1a;
-              margin-bottom: 5px;
-            }
-            .header .subtitle {
-              font-size: 12px;
-              color: #666;
-            }
-            .employee-info {
-              margin: 15px 0;
-              padding: 10px;
-              background: #f9f9f9;
-              border-left: 3px solid #333;
-              font-size: 11px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 15px 0;
-              font-size: 10px;
-            }
-            thead {
-              background: #333;
-              color: white;
-            }
-            th, td {
-              border: 1px solid #ddd;
-              padding: 8px 6px;
-              text-align: left;
-            }
-            th {
-              font-weight: 600;
-              font-size: 9px;
-            }
-            tbody tr:nth-child(even) {
-              background: #f9f9f9;
-            }
-            .text-right {
-              text-align: right;
-            }
-            .total-row {
-              background: #e8e8e8;
-              font-weight: 600;
-            }
-            .summary-section {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 20px;
-              margin: 20px 0;
-            }
-            .summary-box {
-              border: 1px solid #ddd;
-              padding: 15px;
-              background: #fafafa;
-            }
-            .summary-box h3 {
-              font-size: 11px;
-              font-weight: 700;
-              margin-bottom: 10px;
-              padding-bottom: 8px;
-              border-bottom: 2px solid #333;
-            }
-            .summary-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 6px 0;
-              border-bottom: 1px solid #eee;
-              font-size: 11px;
-            }
-            .summary-row.total {
-              background: #f0f0f0;
-              padding: 8px 5px;
-              margin-top: 8px;
-              font-weight: 700;
-              border-top: 2px solid #333;
-              border-bottom: 2px solid #333;
-            }
-            @media print {
-              body { margin: 0; padding: 10mm; }
-              .container { max-width: 100%; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>DEMARA HEALTH CARE</h1>
-              <div class="subtitle">HAPPY MOMMY HEALTHY BABY</div>
-              <div class="subtitle">SLIP GAJI - ${bulan}</div>
-            </div>
-            
-            <div class="employee-info">
-              <strong>Nama:</strong> ${item.nama} | <strong>Posisi:</strong> ${item.posisi} | <strong>Periode:</strong> ${bulan}
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Tanggal</th>
-                  <th>Nama Pasien</th>
-                  <th>Klinik/Home Service</th>
-                  <th>Tindakan</th>
-                  <th class="text-right">Harga</th>
-                  <th class="text-right">FEE</th>
-                  <th class="text-right">TOTAL</th>
-                  <th class="text-right">FEE TRANSPORT</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${item.transactionDetails && item.transactionDetails.length > 0 ? 
-                  item.transactionDetails.map(trans => {
-                    const totalFee = (trans.harga * trans.feePercent) / 100;
-                    return `
-                      <tr>
-                        <td>${trans.tanggal}</td>
-                        <td>${trans.namaPasien}</td>
-                        <td>${trans.klinik}</td>
-                        <td>${trans.tindakan}</td>
-                        <td class="text-right">${formatRupiah(trans.harga)}</td>
-                        <td class="text-right">${trans.feePercent}%</td>
-                        <td class="text-right">${formatRupiah(totalFee)}</td>
-                        <td class="text-right">${trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
-                      </tr>
-                    `;
-                  }).join('') + `
-                      <tr class="total-row">
-                        <td colspan="4" class="text-right"><strong>TOTAL</strong></td>
-                        <td class="text-right">-</td>
-                        <td class="text-right">-</td>
-                        <td class="text-right"><strong>${formatRupiah(totalFeeTindakan)}</strong></td>
-                        <td class="text-right"><strong>${formatRupiah(totalFeeTransport)}</strong></td>
-                      </tr>
-                    `
-                  : '<tr><td colspan="8" style="text-align:center;padding:15px;">Tidak ada data transaksi</td></tr>'
-                }
-              </tbody>
-            </table>
-
-            <div class="summary-section">
-              <div class="summary-box">
-                <h3>RINCIAN GAJI</h3>
-                <div class="summary-row">
-                  <span>GAJI POKOK</span>
-                  <span>${formatRupiah(item.gajiPokok || 0)}</span>
-                </div>
-                <div class="summary-row">
-                  <span>UANG TRANSPORT</span>
-                  <span>${formatRupiah(item.uangTransport || 0)}</span>
-                </div>
-                ${item.feePaket && item.feePaket.length > 0 ? 
-                  item.feePaket.map(p => `
-                    <div class="summary-row">
-                      <span>FEE PAKET ${p.namaPaket}</span>
-                      <span>${formatRupiah(p.fee)}</span>
-                    </div>
-                  `).join('') : ''
-                }
-                <div class="summary-row">
-                  <span>FEE TINDAKAN</span>
-                  <span>${formatRupiah(item.feeTindakan || 0)}</span>
-                </div>
-                <div class="summary-row total">
-                  <span>TOTAL GAJI ${bulan.split(' ')[0].toUpperCase()}</span>
-                  <span>${formatRupiah(totalGajiSebelumPotongan)}</span>
-                </div>
-              </div>
-
-              <div class="summary-box">
-                <h3>POTONGAN</h3>
-                <div class="summary-row">
-                  <span>POTONG BPJS TK</span>
-                  <span>${formatRupiah(item.potonganBPJS || 0)}</span>
-                </div>
-                <div class="summary-row total">
-                  <span>TOTAL GAJI</span>
-                  <span>${formatRupiah(item.total)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div style="margin-top:20px;font-size:10px;color:#777;text-align:center;border-top:1px solid #ddd;padding-top:10px">
-              Dicetak pada: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })} 
-              pukul ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-            </div>
-          </div>
-          <script>setTimeout(() => window.print(), 250);</script>
-        </body>
-      </html>`;
-    printWindow.document.write(content);
-    printWindow.document.close();
   };
 
   const handleDelete = (item) => {
@@ -390,338 +179,374 @@ function SlipGaji() {
 
   const confirmDelete = () => {
     if (deleteData) {
+      setDataSlip(prev => prev.filter(item => item.id !== deleteData.id));
+      showToast("✗ Slip gaji berhasil dihapus!");
       setShowDelete(false);
       setDeleteData(null);
     }
   };
 
-  return (
-    <main className="p-8 bg-gray-50 min-h-screen">
-      <style>{`
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slide-up { animation: slideUp 0.6s ease-out forwards; opacity: 0; }
-        .animate-slide-down { animation: slideDown 0.5s ease-out; }
-        .card-hover { transition: all 0.3s ease; }
-        .card-hover:hover { transform: translateY(-8px); box-shadow: 0 20px 50px -15px rgba(0,0,0,0.15); }
-      `}</style>
-
-      {/* Header Section */}
-      <div className="mb-8 flex items-center justify-between animate-slide-down">
-        <div>
-          <h1 className="text-4xl font-bold text-purple-600 mb-1">Slip Gaji</h1>
-          <div className="flex items-center gap-2 text-gray-500">
-            <span className="inline-block text-gray-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10.5L12 4l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V10.5z" />
-              </svg>
-            </span>
-            <span className="text-gray-400">Slip Gaji</span>
+  const handlePrint = (item) => {
+    const printWindow = window.open('', '', 'height=900,width=1200');
+    const content = `<!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Slip Gaji - ${item.nama}</title>
+        <style>
+          * { margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; padding: 40px; background: white; }
+          .container { max-width: 900px; margin: 0 auto; }
+          .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+          .header h1 { font-size: 22px; font-weight: bold; margin-bottom: 3px; }
+          .header p { font-size: 12px; color: #333; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 30px 0; }
+          .box { border: 1px solid #ddd; padding: 15px; background: #fafafa; }
+          .box h3 { font-size: 12px; font-weight: bold; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #000; }
+          .row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+          .row span:first-child { font-weight: bold; color: #333; }
+          .row.total { border-top: 2px solid #000; padding-top: 6px; margin-top: 6px; font-weight: bold; }
+          @media print { body { margin: 0; padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>SLIP GAJI KARYAWAN</h1>
+            <p>DEMARA HEALTH CARE</p>
+            <p>Periode: ${item.periode}</p>
+          </div>
+          
+          <div class="grid">
+            <div class="box">
+              <h3>DATA KARYAWAN</h3>
+              <div class="row"><span>Nama</span><span>${item.nama}</span></div>
+              <div class="row"><span>NIP</span><span>${item.nip || "-"}</span></div>
+              <div class="row"><span>Posisi</span><span>${item.posisi}</span></div>
+              <div class="row"><span>Departemen</span><span>${item.departemen || "-"}</span></div>
+            </div>
+            <div class="box">
+              <h3>PENGHASILAN</h3>
+              <div class="row"><span>Gaji Pokok</span><span>${formatRupiah(item.gajiPokok)}</span></div>
+              <div class="row"><span>Tunjangan</span><span>${formatRupiah(item.tunjangan)}</span></div>
+              <div class="row"><span>Bonus</span><span>${formatRupiah(item.bonus)}</span></div>
+              <div class="row total"><span>Total Penghasilan</span><span>${formatRupiah(item.totalPenghasilan)}</span></div>
+            </div>
+          </div>
+          
+          <div class="grid">
+            <div class="box">
+              <h3>POTONGAN</h3>
+              <div class="row"><span>Asuransi</span><span>${formatRupiah(item.potonganAsuransi)}</span></div>
+              <div class="row"><span>Pajak</span><span>${formatRupiah(item.potonganTax)}</span></div>
+              <div class="row total"><span>Total Potongan</span><span>${formatRupiah(item.totalPotongan)}</span></div>
+            </div>
+            <div class="box">
+              <h3>RINGKASAN</h3>
+              <div class="row" style="font-weight: bold; font-size: 13px; padding: 8px 0; border-top: 2px solid #000;">
+                <span>GAJI NETTO</span>
+                <span>${formatRupiah(item.gajiNetto)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div style="margin-top: 50px; text-align: center; font-size: 11px; color: #666;">
+            <p>Dicetak: ${new Date().toLocaleDateString('id-ID')}</p>
           </div>
         </div>
+        <script>setTimeout(() => window.print(), 250);</script>
+      </body>
+    </html>`;
+    printWindow.document.write(content);
+    printWindow.document.close();
+  };
+
+  return (
+    <main className="p-8 bg-white min-h-screen">
+      {/* Toast */}
+      {toastVisible && (
+        <div className="fixed top-4 right-4 bg-gray-800 text-white px-6 py-3 rounded shadow-lg z-50 text-sm font-medium">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Slip Gaji</h1>
+          <p className="text-sm text-gray-600 mt-1">Kelola slip gaji karyawan</p>
+        </div>
+        <button 
+          onClick={handleAddClick}
+          className="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2.5 rounded text-sm font-semibold transition-colors"
+        >
+          + Tambah Slip
+        </button>
       </div>
 
-      {/* Slip Gaji Card */}
-      <div className="bg-white shadow-md rounded-xl overflow-hidden card-hover animate-slide-up" style={{ animationDelay: '0.1s' }}>
-        <div className="border-b-2 border-gray-200 p-8">
-          <h2 className="text-2xl font-bold text-gray-900">Slip Gaji</h2>
-        </div>
-
-        {/* Filter Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 border-b border-gray-200 bg-gray-50">
-          <div className="animate-slide-up" style={{ animationDelay: '0.15s' }}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Bulan/Tahun</label>
-            <select 
-              value={bulan}
-              onChange={(e) => setBulan(e.target.value)}
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:border-purple-400"
-            >
-              {monthYearOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'Total', value: stats.total },
+          { label: 'Draft', value: stats.draft },
+          { label: 'Proses', value: stats.proses },
+          { label: 'Selesai', value: stats.selesai }
+        ].map((stat, idx) => (
+          <div key={idx} className="bg-gray-50 border border-gray-200 rounded p-4">
+            <p className="text-xs font-semibold text-gray-600">{stat.label}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
           </div>
+        ))}
+      </div>
 
-          <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Karyawan</label>
-            <select
-              value={karyawan}
-              onChange={(e) => setKaryawan(e.target.value)}
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:border-purple-400"
-            >
-              <option>Semua</option>
-              {dataGaji.map((item) => (
-                <option key={item.id}>{item.nama}</option>
-              ))}
-            </select>
+      {/* Main Card */}
+      <div className="bg-white border border-gray-200 rounded overflow-hidden">
+        {/* Filter */}
+        <div className="border-b border-gray-200 p-6 bg-gray-50">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Periode</label>
+              <select 
+                value={bulan}
+                onChange={(e) => setBulan(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+              >
+                {monthYearOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Karyawan</label>
+              <select
+                value={filterKaryawan}
+                onChange={(e) => setFilterKaryawan(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+              >
+                <option>Semua</option>
+                {Array.isArray(karyawanData) && karyawanData.map((k) => (
+                  <option key={k.id} value={k.nama}>{k.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Cari</label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Nama atau NIP..."
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+              />
+            </div>
           </div>
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200 bg-white">
-                <th className="px-8 py-5 text-left text-sm font-bold text-gray-700">No.</th>
-                <th className="px-8 py-5 text-left text-sm font-bold text-gray-700">Nama Karyawan</th>
-                <th className="px-8 py-5 text-left text-sm font-bold text-gray-700">Posisi</th>
-                <th className="px-8 py-5 text-left text-sm font-bold text-gray-700">Total Gaji</th>
-                <th className="px-8 py-5 text-left text-sm font-bold text-gray-700">Status</th>
-                <th className="px-8 py-5 text-left text-sm font-bold text-gray-700">Aksi</th>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">No</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Nama</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">NIP</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Posisi</th>
+                <th className="px-6 py-3 text-right font-bold text-gray-700">Gaji Netto</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Status</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((item, index) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition-all animate-slide-up"
-                  style={{ animationDelay: `${0.25 + index * 0.05}s` }}
-                >
-                  <td className="px-8 py-5 bg-gray-100 text-gray-800 font-semibold">{String(index + 1).padStart(2, "0")}.</td>
-                  <td className="px-8 py-5 bg-gray-100 text-gray-800 font-medium">{item.nama}</td>
-                  <td className="px-8 py-5 bg-gray-100 text-gray-800">{item.posisi}</td>
-                  <td className="px-8 py-5 bg-gray-100 text-gray-800 font-semibold">{formatRupiah(item.total)}</td>
-                  <td className="px-8 py-5 bg-gray-100 text-center">
-                    <span
-                      className={`px-3 py-1 rounded text-xs font-bold inline-block ${
-                        item.status === "Dikirim"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 bg-gray-100 text-left space-x-2">
-                    <button 
-                      onClick={() => handleDetail(item)}
-                      className="text-green-600 hover:text-green-700 font-bold text-sm transition-colors"
-                    >
-                      Detail
-                    </button>
-                    <button 
-                      onClick={() => handleCetak(item)}
-                      className="text-blue-600 hover:text-blue-700 font-bold text-sm transition-colors"
-                    >
-                      Cetak
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item)}
-                      className="text-red-600 hover:text-red-700 font-bold text-sm transition-colors"
-                    >
-                      Hapus
-                    </button>
+              {filteredData.length > 0 ? (
+                filteredData.map((item, idx) => (
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-6 py-3 text-gray-700 font-medium">{idx + 1}</td>
+                    <td className="px-6 py-3 text-gray-900 font-medium">{item.nama}</td>
+                    <td className="px-6 py-3 text-gray-600 text-xs">{item.nip || "-"}</td>
+                    <td className="px-6 py-3 text-gray-700">{item.posisi}</td>
+                    <td className="px-6 py-3 text-right text-gray-900 font-semibold">{formatRupiah(item.gajiNetto)}</td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
+                        item.status === "Selesai" ? "bg-gray-200 text-gray-800" :
+                        item.status === "Proses" ? "bg-gray-300 text-gray-900" :
+                        "bg-gray-100 text-gray-700"
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 space-x-2">
+                      <button onClick={() => handleDetail(item)} className="text-gray-700 hover:text-gray-900 font-medium text-xs">Detail</button>
+                      <button onClick={() => handlePrint(item)} className="text-gray-700 hover:text-gray-900 font-medium text-xs">Cetak</button>
+                      <button onClick={() => handleDelete(item)} className="text-gray-600 hover:text-red-700 font-medium text-xs">Hapus</button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                    Belum ada slip gaji
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
-          {filteredData.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-2xl text-gray-400">📭 Belum ada slip gaji untuk periode ini</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* === Modal Detail Slip Gaji === */}
+      {/* Modal Detail */}
       {showDetail && selectedData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-6xl p-8 animate-slide-up max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-2xl font-semibold text-gray-900">Detail Slip Gaji - {selectedData.nama}</h2>
-                <button
-                  onClick={() => setShowDetail(false)}
-                  className="text-gray-400 hover:text-gray-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
-                >
-                  ✕
-                </button>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="border-b border-gray-200 p-6 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Detail Slip Gaji</h2>
+              <button onClick={() => setShowDetail(false)} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Data Karyawan</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Nama</span><span className="font-medium">{selectedData.nama}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">NIP</span><span className="font-medium">{selectedData.nip || "-"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Posisi</span><span className="font-medium">{selectedData.posisi}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Departemen</span><span className="font-medium">{selectedData.departemen || "-"}</span></div>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Penghasilan</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Gaji Pokok</span><span className="font-medium">{formatRupiah(selectedData.gajiPokok)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Tunjangan</span><span className="font-medium">{formatRupiah(selectedData.tunjangan)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Bonus</span><span className="font-medium">{formatRupiah(selectedData.bonus)}</span></div>
+                    <div className="flex justify-between border-t pt-2 mt-2 font-bold text-gray-900"><span>Total</span><span>{formatRupiah(selectedData.totalPenghasilan)}</span></div>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-gray-500">Periode: {bulan}</p>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Potongan</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Asuransi</span><span className="font-medium">{formatRupiah(selectedData.potonganAsuransi)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Pajak</span><span className="font-medium">{formatRupiah(selectedData.potonganTax)}</span></div>
+                    <div className="flex justify-between border-t pt-2 mt-2 font-bold text-gray-900"><span>Total</span><span>{formatRupiah(selectedData.totalPotongan)}</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-800 text-white rounded p-4 flex flex-col justify-center items-center">
+                  <p className="text-xs font-semibold text-gray-300 mb-2">GAJI NETTO</p>
+                  <p className="text-3xl font-bold">{formatRupiah(selectedData.gajiNetto)}</p>
+                </div>
+              </div>
             </div>
 
-            {/* Content */}
-            <div className="space-y-6">
-              {/* Tabel Detail Transaksi */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Detail Transaksi</h3>
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-100">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tanggal</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Nama Pasien</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Klinik/Home Service</th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tindakan</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">Harga</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">TOTAL</th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE TRANSPORT</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedData.transactionDetails && selectedData.transactionDetails.length > 0 ? (
-                        selectedData.transactionDetails.map((trans, idx) => {
-                          const totalFee = (trans.harga * trans.feePercent) / 100;
-                          return (
-                            <tr key={idx} className="border-b hover:bg-gray-50">
-                              <td className="px-4 py-2 text-gray-700">{trans.tanggal}</td>
-                              <td className="px-4 py-2 text-gray-700">{trans.namaPasien}</td>
-                              <td className="px-4 py-2 text-gray-700">{trans.klinik}</td>
-                              <td className="px-4 py-2 text-gray-700">{trans.tindakan}</td>
-                              <td className="px-4 py-2 text-right text-gray-700">{formatRupiah(trans.harga)}</td>
-                              <td className="px-4 py-2 text-right text-gray-700">{trans.feePercent}%</td>
-                              <td className="px-4 py-2 text-right font-semibold text-gray-900">{formatRupiah(totalFee)}</td>
-                              <td className="px-4 py-2 text-right text-gray-700">{trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={8} className="px-4 py-8 text-center text-gray-400">Tidak ada data transaksi</td>
-                        </tr>
-                      )}
-                      {selectedData.transactionDetails && selectedData.transactionDetails.length > 0 && (
-                        <tr className="bg-gray-100 font-semibold">
-                          <td colSpan={4} className="px-4 py-3 text-right text-gray-900">TOTAL</td>
-                          <td className="px-4 py-3 text-right text-gray-700">-</td>
-                          <td className="px-4 py-3 text-right text-gray-700">-</td>
-                          <td className="px-4 py-3 text-right text-gray-900">
-                            {formatRupiah(selectedData.transactionDetails.reduce((sum, t) => sum + (t.harga * t.feePercent) / 100, 0))}
-                          </td>
-                          <td className="px-4 py-3 text-right text-gray-900">
-                            {formatRupiah(selectedData.transactionDetails.reduce((sum, t) => sum + (t.feeTransport || 0), 0))}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Summary Gaji */}
-              <div className="grid grid-cols-2 gap-6">
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Rincian Gaji</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">GAJI POKOK</span>
-                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.gajiPokok || 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">UANG TRANSPORT</span>
-                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.uangTransport || 0)}</span>
-                    </div>
-                    {selectedData.feePaket && selectedData.feePaket.length > 0 && (
-                      <>
-                        {selectedData.feePaket.map((paket, idx) => (
-                          <div key={idx} className="flex justify-between text-sm">
-                            <span className="text-gray-700">FEE PAKET {paket.namaPaket}</span>
-                            <span className="font-semibold text-gray-900">{formatRupiah(paket.fee)}</span>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">FEE TINDAKAN</span>
-                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.feeTindakan || 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
-                      <span className="text-gray-900">TOTAL GAJI {bulan.split(' ')[0].toUpperCase()}</span>
-                      <span className="text-gray-900">
-                        {formatRupiah(
-                          (selectedData.gajiPokok || 0) +
-                          (selectedData.uangTransport || 0) +
-                          (selectedData.feePaket?.reduce((sum, p) => sum + p.fee, 0) || 0) +
-                          (selectedData.feeTindakan || 0)
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  <h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Potongan</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-700">POTONG BPJS TK</span>
-                      <span className="font-semibold text-gray-900">{formatRupiah(selectedData.potonganBPJS || 0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
-                      <span className="text-gray-900">TOTAL GAJI</span>
-                      <span className="text-gray-900">{formatRupiah(selectedData.total)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-6 border-t border-gray-200">
-                <button
-                  onClick={() => handleCetak(selectedData)}
-                  className="flex-1 px-4 py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
-                >
-                  Cetak
-                </button>
-                <button
-                  onClick={() => setShowDetail(false)}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Tutup
-                </button>
-              </div>
+            <div className="border-t border-gray-200 p-6 bg-gray-50 flex gap-3">
+              <button onClick={() => handlePrint(selectedData)} className="flex-1 bg-gray-800 text-white py-2 rounded font-medium hover:bg-gray-900">Cetak</button>
+              <button onClick={() => setShowDetail(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded font-medium hover:bg-gray-50">Tutup</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* === Modal Delete Slip Gaji === */}
+      {/* Modal Delete */}
       {showDelete && deleteData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8 animate-slide-up">
-            {/* Icon & Header */}
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-red-100 rounded-full mb-4">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Hapus Slip Gaji</h2>
-              <p className="text-sm text-gray-500">Anda akan menghapus:</p>
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded shadow-lg w-full max-w-md p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Hapus Slip Gaji?</h2>
+            <div className="bg-gray-50 border border-gray-200 rounded p-4 mb-6">
+              <p className="font-medium text-gray-900">{deleteData.nama}</p>
+              <p className="text-sm text-gray-600">{deleteData.posisi} • {bulan}</p>
             </div>
-
-            {/* Data yang akan dihapus */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-              <p className="text-gray-900 font-medium">{deleteData.nama}</p>
-              <p className="text-sm text-gray-600 mt-1">{deleteData.posisi} • {bulan}</p>
-            </div>
-
-            {/* Warning Text */}
-            <p className="text-sm text-gray-600 mb-6 text-center">
-              Tindakan ini tidak dapat dibatalkan. Data akan dihapus secara permanen.
-            </p>
-
-            {/* Action Buttons */}
+            <p className="text-sm text-gray-600 mb-6">Tindakan ini tidak dapat dibatalkan.</p>
             <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowDelete(false);
-                  setDeleteData(null);
-                }}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-              >
-                Hapus
-              </button>
+              <button onClick={() => setShowDelete(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded font-medium hover:bg-gray-50">Batal</button>
+              <button onClick={confirmDelete} className="flex-1 bg-gray-800 text-white py-2 rounded font-medium hover:bg-gray-900">Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Tambah */}
+      {showTambah && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded shadow-lg w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+            <div className="border-b border-gray-200 p-6 bg-gray-50">
+              <h2 className="text-lg font-bold text-gray-900">Tambah Slip Gaji</h2>
+              <p className="text-xs text-gray-600 mt-1">Pilih karyawan dan isi data gaji</p>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Select Karyawan */}
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2">Pilih Karyawan</label>
+                <div className="border border-gray-300 rounded max-h-48 overflow-y-auto bg-white">
+                  {Array.isArray(karyawanData) && karyawanData.length > 0 ? (
+                    karyawanData.map((k) => (
+                      <button
+                        key={k.id}
+                        onClick={() => handleSelectKaryawan(k)}
+                        className={`w-full px-4 py-3 text-left border-b hover:bg-gray-50 transition-colors ${
+                          formData.karyawanId === k.id ? 'bg-gray-100 border-l-4 border-l-gray-800' : ''
+                        }`}
+                      >
+                        <p className="font-semibold text-gray-900 text-sm">{k.nama}</p>
+                        <p className="text-xs text-gray-600">{k.nip} • {k.posisi}</p>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-gray-500 text-sm">Tidak ada data karyawan</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Form Data */}
+              {formData.karyawanId && (
+                <>
+                  <div className="bg-gray-50 border border-gray-200 rounded p-4">
+                    <p className="text-xs font-semibold text-gray-600">KARYAWAN TERPILIH</p>
+                    <p className="text-base font-bold text-gray-900">{formData.nama}</p>
+                    <p className="text-xs text-gray-600">{formData.nip} • {formData.posisi} • {formData.departemen}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-900 mb-1">Gaji Pokok</label>
+                      <input type="number" name="gajiPokok" value={formData.gajiPokok} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-900 mb-1">Tunjangan</label>
+                      <input type="number" name="tunjangan" value={formData.tunjangan} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-900 mb-1">Bonus</label>
+                      <input type="number" name="bonus" value={formData.bonus} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-900 mb-1">Potongan Asuransi</label>
+                      <input type="number" name="potonganAsuransi" value={formData.potonganAsuransi} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-900 mb-1">Potongan Pajak</label>
+                      <input type="number" name="potonganTax" value={formData.potonganTax} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-900 mb-1">Status</label>
+                      <select name="status" value={formData.status} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600">
+                        <option value="Draft">Draft</option>
+                        <option value="Proses">Proses</option>
+                        <option value="Selesai">Selesai</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 p-6 bg-gray-50 flex gap-3">
+              <button onClick={() => setShowTambah(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded font-medium hover:bg-gray-50">Batal</button>
+              <button onClick={handleSaveSlip} className="flex-1 bg-gray-800 text-white py-2 rounded font-medium hover:bg-gray-900">Simpan Slip</button>
             </div>
           </div>
         </div>

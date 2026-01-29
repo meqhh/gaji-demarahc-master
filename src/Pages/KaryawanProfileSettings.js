@@ -1,19 +1,22 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 
 function KaryawanProfileSettings() {
-  // Use email to identify unique employee
-  const userEmail = localStorage.getItem("karyawanEmail") || "karyawan@demara.com";
-  
-  const [profileData, setProfileData] = useState({
+  const { karyawanData, getKaryawanById } = useContext(AppContext);
+
+  // Identify logged-in karyawan by stored id
+  const loggedKaryawanId = localStorage.getItem("karyawanId");
+  const storedEmail = localStorage.getItem("karyawanEmail") || "";
+
+  const defaultProfile = {
     name: "Portal Karyawan",
-    email: userEmail,
+    email: storedEmail || "karyawan@demara.com",
     phone: "+62 812-3456-7891",
     address: "Jl. Melati No. 456, Jakarta",
     joinDate: "15 Februari 2024",
     position: "Bidan",
     department: "Kesehatan Ibu & Anak",
-    photo: localStorage.getItem(`karyawan_photo_${userEmail}`) || "https://ui-avatars.com/api/?name=Portal+Karyawan&background=6B7280&color=fff",
+    photo: storedEmail ? (localStorage.getItem(`karyawan_photo_${storedEmail}`) || `https://ui-avatars.com/api/?name=${encodeURIComponent(storedEmail)}&background=6B7280&color=fff`) : "https://ui-avatars.com/api/?name=Portal+Karyawan&background=6B7280&color=fff",
     emergencyContact: {
       name: "Siti Rahma",
       relation: "Istri",
@@ -23,7 +26,9 @@ function KaryawanProfileSettings() {
       email: true,
       whatsapp: false
     }
-  });
+  };
+
+  const [profileData, setProfileData] = useState(defaultProfile);
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(profileData);
@@ -53,7 +58,7 @@ function KaryawanProfileSettings() {
   const handleSave = () => {
     setProfileData(formData);
     // Save employee photo to localStorage (independent from admin)
-    localStorage.setItem(`karyawan_photo_${userEmail}`, formData.photo);
+    localStorage.setItem(`karyawan_photo_${formData.email}`, formData.photo);
     localStorage.setItem("karyawan_photo", formData.photo);
     setIsEditing(false);
   };
@@ -79,6 +84,34 @@ function KaryawanProfileSettings() {
     setPasswordForm({ current: "", newPass: "", confirm: "" });
     alert("Permintaan ubah kata sandi dikirim.");
   };
+
+  // When component mounts or karyawanData changes, try to populate profile from registered karyawan
+  useEffect(() => {
+    if (loggedKaryawanId) {
+      // Prefer AppContext lookup
+      let k = typeof getKaryawanById === 'function' ? getKaryawanById(loggedKaryawanId) : undefined;
+      if (!k && Array.isArray(karyawanData)) {
+        k = karyawanData.find(x => x.id === loggedKaryawanId || x.email === storedEmail || x.username === storedEmail);
+      }
+      if (k) {
+        const mapped = {
+          name: k.nama || k.name || "",
+          email: k.email || storedEmail || "",
+          phone: k.phone || "",
+          address: k.address || "",
+          joinDate: k.createdAt ? (new Date(k.createdAt)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'}) : (k.joinDate || defaultProfile.joinDate),
+          position: k.posisi || k.position || defaultProfile.position,
+          department: k.departemen || k.department || defaultProfile.department,
+          photo: localStorage.getItem(`karyawan_photo_${k.email}`) || k.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(k.nama || k.username || '')}&background=6B7280&color=fff`,
+          emergencyContact: k.emergencyContact || defaultProfile.emergencyContact,
+          notifications: k.notifications || defaultProfile.notifications
+        };
+        setProfileData(mapped);
+        setFormData(mapped);
+        setPhotoPreview(mapped.photo);
+      }
+    }
+  }, [loggedKaryawanId, karyawanData, getKaryawanById]);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">

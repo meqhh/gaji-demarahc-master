@@ -2,28 +2,58 @@ import React, { useState, useContext, useEffect, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
 function CutiKaryawan() {
-  const { userProfile, cutiData = [], setCutiData, addCuti, updateCuti, absensiData = [] } = useContext(AppContext);
+  const { userProfile, cutiData = [], setCutiData, addCuti, updateCuti, absensiData = [], karyawanData = [] } = useContext(AppContext);
   
-  // Get unique karyawan names from absensi data
+  // Get unique karyawan names - prioritize from karyawanData, then from absensi data
   const uniqueKaryawanNames = useMemo(() => {
+    // First, get names from karyawanData if available
+    const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
+      ? karyawanData
+          .map((k) => k?.nama)
+          .filter((name) => name && name.trim() !== "")
+      : [];
+    
+    // Then get names from absensi data
     const absensi = Array.isArray(absensiData) ? absensiData : [];
-    const names = absensi
+    const absensiNames = absensi
       .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "")
+      .filter((name) => name && name.trim() !== "");
+    
+    // Combine and get unique names
+    const allNames = [...karyawanNames, ...absensiNames];
+    const uniqueNames = allNames
       .filter((name, index, self) => self.indexOf(name) === index) // Get unique names
       .sort(); // Sort alphabetically
-    return names;
-  }, [absensiData]);
-  
-  // Initialize libur data for all karyawan from absensi
-  useEffect(() => {
-    if (!absensiData || absensiData.length === 0) return;
     
-    // Get unique karyawan names from absensi
-    const absensi = Array.isArray(absensiData) ? absensiData : [];
-    const uniqueKaryawan = absensi
-      .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "")
+    return uniqueNames;
+  }, [absensiData, karyawanData]);
+  
+  // Initialize libur data for all karyawan from absensi and karyawanData
+  useEffect(() => {
+    // Check if there are any employee names to work with
+    const hasAbsensi = absensiData && absensiData.length > 0;
+    const hasKaryawan = karyawanData && karyawanData.length > 0;
+    
+    if (!hasAbsensi && !hasKaryawan) return;
+    
+    // Get unique karyawan names from both sources
+    const absensiNames = hasAbsensi 
+      ? absensiData
+          .map((a) => a?.nama)
+          .filter((name) => name && name.trim() !== "")
+          .filter((name, index, self) => self.indexOf(name) === index)
+      : [];
+    
+    const karyawanNames = hasKaryawan
+      ? karyawanData
+          .map((k) => k?.nama)
+          .filter((name) => name && name.trim() !== "")
+          .filter((name, index, self) => self.indexOf(name) === index)
+      : [];
+    
+    // Combine to get all unique names
+    const allNames = [...karyawanNames, ...absensiNames];
+    const uniqueKaryawan = allNames
       .filter((name, index, self) => self.indexOf(name) === index);
     
     if (uniqueKaryawan.length === 0) return;
@@ -88,7 +118,7 @@ function CutiKaryawan() {
     if (newLiburData.length > 0) {
       setCutiData([...existingCuti, ...newLiburData]);
     }
-  }, [absensiData, cutiData, setCutiData]);
+  }, [absensiData, cutiData, setCutiData, karyawanData]);
 
   const dataCuti = cutiData;
 

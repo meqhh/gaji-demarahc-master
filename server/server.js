@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -23,13 +22,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✓ MongoDB connected'))
-  .catch(err => {
-    console.log('✗ MongoDB connection failed:', err.message);
-    console.log('⚠️ Make sure MongoDB is running or check MONGODB_URI in .env');
-  });
+// Initialize file-based database
+console.log('✓ File-based database initialized');
 
 // Routes
 app.get('/api', (req, res) => {
@@ -37,6 +31,7 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'Gaji Demara API',
     version: '1.0.0',
+    database: 'File-based JSON storage',
     endpoints: {
       auth: '/api/auth',
       karyawan: '/api/karyawan',
