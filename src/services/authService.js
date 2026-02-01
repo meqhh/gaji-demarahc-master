@@ -1,6 +1,31 @@
 // API Base URL - change this based on environment
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+// Helper: parse response safely
+async function parseResponse(response) {
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (e) {
+    // response not JSON or empty
+    data = null;
+  }
+
+  if (!response.ok) {
+    const message = (data && data.message) || response.statusText || 'Request failed';
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+function networkErrorToMessage(error) {
+  if (!error) return 'Gagal terhubung ke server';
+  if (error instanceof TypeError) return 'Tidak dapat terhubung ke server. Pastikan backend menyala di http://localhost:5000';
+  if (typeof error.message === 'string' && error.message.includes('Failed to fetch')) return 'Tidak dapat terhubung ke server. Pastikan backend menyala di http://localhost:5000';
+  return error.message || 'Terjadi kesalahan pada jaringan';
+}
+
 // Login dengan backend API
 export const loginUser = async (email, password) => {
   try {
@@ -12,15 +37,9 @@ export const loginUser = async (email, password) => {
       body: JSON.stringify({ email, password })
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Login failed');
-    }
-
-    return data;
+    return await parseResponse(response);
   } catch (error) {
-    throw new Error(error.message || 'Gagal login ke server');
+    throw new Error(networkErrorToMessage(error));
   }
 };
 
@@ -40,15 +59,9 @@ export const registerUser = async (userData) => {
       })
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Registration failed');
-    }
-
-    return data;
+    return await parseResponse(response);
   } catch (error) {
-    throw new Error(error.message || 'Gagal mendaftar ke server');
+    throw new Error(networkErrorToMessage(error) || 'Gagal mendaftar ke server');
   }
 };
 
@@ -63,15 +76,9 @@ export const getCurrentUser = async (token) => {
       }
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch current user');
-    }
-
-    return data;
+    return await parseResponse(response);
   } catch (error) {
-    throw new Error(error.message || 'Gagal mengambil data user');
+    throw new Error(networkErrorToMessage(error) || 'Gagal mengambil data user');
   }
 };
 
@@ -86,15 +93,9 @@ export const getKaryawanList = async (token) => {
       }
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch karyawan');
-    }
-
-    return data;
+    return await parseResponse(response);
   } catch (error) {
-    throw new Error(error.message || 'Gagal mengambil data karyawan');
+    throw new Error(networkErrorToMessage(error) || 'Gagal mengambil data karyawan');
   }
 };
 
@@ -109,15 +110,9 @@ export const getKaryawanById = async (token, karyawanId) => {
       }
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to fetch karyawan');
-    }
-
-    return data;
+    return await parseResponse(response);
   } catch (error) {
-    throw new Error(error.message || 'Gagal mengambil data karyawan');
+    throw new Error(networkErrorToMessage(error) || 'Gagal mengambil data karyawan');
   }
 };
 
@@ -133,15 +128,9 @@ export const createKaryawan = async (token, karyawanData) => {
       body: JSON.stringify(karyawanData)
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to create karyawan');
-    }
-
-    return data;
+    return await parseResponse(response);
   } catch (error) {
-    throw new Error(error.message || 'Gagal membuat data karyawan');
+    throw new Error(networkErrorToMessage(error) || 'Gagal membuat data karyawan');
   }
 };
 

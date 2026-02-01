@@ -14,6 +14,12 @@ import slipGajiRoutes from './routes/slipGaji.js';
 // Load environment variables
 dotenv.config();
 
+// Validate JWT secret
+if (!process.env.JWT_SECRET) {
+  console.error('❌ Missing JWT_SECRET environment variable. Create `server/.env` with `JWT_SECRET=your_jwt_secret` or set it in the environment.');
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 

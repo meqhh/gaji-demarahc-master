@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "id": "USR1769848658597",
+    "nama": "gelannnnnn",
+    "email": "radoramajaya@gmail.com",
+    "password": "$2a$10$FY4nBPT17SLbtK5A1SK2lusTe6R9t.aS9/vxtfdoLgMk3COja0r6.",
+    "role": "karyawan",
+    "createdAt": "2026-01-31T08:37:38.597Z",
+    "lastLogin": "2026-01-31T08:37:40.589Z"
+  },
+  {
+    "id": "USR1769924637461",
+    "nama": "gelannnnnn",
+    "email": "glenn@gmail.com",
+    "password": "$2a$10$ozYVXLymP4hFKfumVtEbIuBN.36ZxS4Jcu3L4edsfhReAuXp/C8Xm",
+    "role": "karyawan",
+    "createdAt": "2026-02-01T05:43:57.461Z",
+    "lastLogin": "2026-02-01T05:44:27.617Z"
+  },
+  {
+    "id": "USR1769924746570",
+    "nama": "siapudan",
+    "email": "siapudan@gmail.com",
+    "password": "$2a$10$pe1N7Fv61kaMTbpwN9o8eO6RRvcgsq/Wlq2RpsE34CaTTi7GZmFhi",
+    "role": "karyawan",
+    "createdAt": "2026-02-01T05:45:46.570Z",
+    "lastLogin": "2026-02-01T05:46:06.003Z"
+  }
+]

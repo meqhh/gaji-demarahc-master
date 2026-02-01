@@ -38,7 +38,8 @@ export const register = async (req, res) => {
       message: 'User berhasil terdaftar'
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -66,6 +67,11 @@ export const login = async (req, res) => {
     user.lastLogin = new Date().toISOString();
     usersDB.save(user);
     
+    // Ensure JWT secret is set
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ success: false, message: 'Server configuration error: JWT_SECRET not set' });
+    }
+
     // Generate JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, nama: user.nama },
@@ -87,7 +93,8 @@ export const login = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -105,7 +112,8 @@ export const getCurrentUser = async (req, res) => {
       data: userWithoutPassword
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -124,7 +132,8 @@ export const getAllUsers = async (req, res) => {
       data: usersWithoutPassword
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -151,7 +160,8 @@ export const updateUser = async (req, res) => {
       data: userWithoutPassword
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
