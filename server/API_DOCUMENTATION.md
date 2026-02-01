@@ -26,6 +26,10 @@ NODE_ENV=development
 JWT_SECRET=your_jwt_secret_key_change_this_in_production
 ```
 
+> 💡 Tip: Untuk clone baru, salin `server/.env.example` ke `server/.env` atau jalankan `npm run setup-env` di folder `server/`.
+> 
+> ⚠️ Catatan: Server akan menggunakan nilai default `JWT_SECRET` untuk pengembangan jika tidak ada env, agar tidak crash; namun **pastikan** mengatur `JWT_SECRET` yang aman sebelum deploy ke produksi.
+
 ### Menjalankan Server
 
 **Development (dengan auto-reload):**

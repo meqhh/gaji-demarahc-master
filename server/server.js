@@ -14,10 +14,16 @@ import slipGajiRoutes from './routes/slipGaji.js';
 // Load environment variables
 dotenv.config();
 
-// Validate JWT secret
+// Provide safe default in development to avoid crashes on fresh clones.
+// In production, require JWT_SECRET to be set for security.
 if (!process.env.JWT_SECRET) {
-  console.error('❌ Missing JWT_SECRET environment variable. Create `server/.env` with `JWT_SECRET=your_jwt_secret` or set it in the environment.');
-  process.exit(1);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Missing JWT_SECRET environment variable. In production set `JWT_SECRET` in environment or `server/.env` and restart.');
+    process.exit(1);
+  } else {
+    process.env.JWT_SECRET = 'dev_jwt_secret';
+    console.warn('⚠️ `JWT_SECRET` not set — using development default. Set a secure value in `server/.env` or environment variables.');
+  }
 }
 
 const app = express();
