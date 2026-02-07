@@ -17,18 +17,14 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 function Dashboard() {
   const { karyawanData, absensiData, gajiData } = useContext(AppContext) || {};
   const [pendingAbsensi, setPendingAbsensi] = useState(0);
-
-  useEffect(() => {
-    const pending = (absensiData || []).filter((a) => a.status === "Menunggu").length;
-    setPendingAbsensi(pending);
-  }, [absensiData]);
-
-  const chartData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun"],
+  const [totalKehadiran, setTotalKehadiran] = useState(0);
+  const [totalGaji, setTotalGaji] = useState(0);
+  const [chartData, setChartData] = useState({
+    labels: [],
     datasets: [
       {
         label: "Total Gaji (Rp)",
-        data: [5000000, 7000000, 6000000, 8000000, 9000000, 10000000],
+        data: [],
         backgroundColor: "#1f2937",
         borderColor: "#111827",
         borderWidth: 0,
@@ -36,7 +32,60 @@ function Dashboard() {
         barThickness: 50,
       },
     ],
-  };
+  });
+
+  useEffect(() => {
+    const pending = (absensiData || []).filter((a) => a.status === "Menunggu").length;
+    setPendingAbsensi(pending);
+
+    // Calculate total kehadiran
+    const hadir = (absensiData || []).filter((a) => a.status === "Hadir").length;
+    setTotalKehadiran(hadir);
+
+    // Calculate total gaji
+    const total = (gajiData || []).reduce((sum, g) => sum + (g.harga || 0), 0);
+    setTotalGaji(total);
+
+    // Calculate monthly gaji data for chart
+    if (gajiData && gajiData.length > 0) {
+      const monthlyData = {};
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
+      
+      gajiData.forEach(g => {
+        if (g.tanggal) {
+          try {
+            const date = new Date(g.tanggal);
+            const month = monthNames[date.getMonth()];
+            monthlyData[month] = (monthlyData[month] || 0) + (g.harga || 0);
+          } catch (e) {
+            console.error("Error parsing date:", e);
+          }
+        }
+      });
+
+      // Get last 6 months or available data
+      const lastSixMonths = monthNames.slice(-6);
+      const data = lastSixMonths.map(m => monthlyData[m] || 0);
+      const labels = lastSixMonths;
+
+      if (data.length > 0) {
+        setChartData({
+          labels,
+          datasets: [
+            {
+              label: "Total Gaji (Rp)",
+              data,
+              backgroundColor: "#1f2937",
+              borderColor: "#111827",
+              borderWidth: 0,
+              borderRadius: 4,
+              barThickness: 50,
+            },
+          ],
+        });
+      }
+    }
+  }, [absensiData, gajiData]);
 
   return (
     <main className="p-8 bg-gray-50 min-h-screen">
@@ -69,8 +118,8 @@ function Dashboard() {
             <p className="text-sm font-semibold text-gray-600 uppercase">Kehadiran</p>
             <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zM4 8h12v8H4V8z" clipRule="evenodd" /></svg>
           </div>
-          <p className="text-2xl font-bold text-gray-900">156/bln</p>
-          <p className="text-xs text-blue-600 mt-2">↑ 95% rata-rata</p>
+          <p className="text-2xl font-bold text-gray-900">{totalKehadiran}/{(karyawanData || []).length}</p>
+          <p className="text-xs text-blue-600 mt-2">↑ {(karyawanData || []).length > 0 ? Math.round((totalKehadiran / (karyawanData || []).length) * 100) : 0}%</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover animate-slide-up" style={{ animationDelay: '0.2s' }}>
@@ -78,8 +127,8 @@ function Dashboard() {
             <p className="text-sm font-semibold text-gray-600 uppercase">Total Gaji</p>
             <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M8.16 2.75a.75.75 0 00-1.32 0l-1.4 3.5H1.75a.75.75 0 000 1.5h3.26l-1.4 3.5a.75.75 0 001.32 0l1.4-3.5h3.26a.75.75 0 000-1.5H7.54l1.4-3.5zm3.68 3.5a.75.75 0 00-1.32 0l-1.4 3.5h3.26l-1.4-3.5z" /></svg>
           </div>
-          <p className="text-xl font-bold text-gray-900">Rp. 43.5M</p>
-          <p className="text-xs text-gray-500 mt-2">Desember 2025</p>
+          <p className="text-xl font-bold text-gray-900">Rp. {(totalGaji / 1000000).toFixed(1)}M</p>
+          <p className="text-xs text-gray-500 mt-2">{new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })}</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 card-hover animate-slide-up" style={{ animationDelay: '0.25s' }}>

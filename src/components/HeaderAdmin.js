@@ -9,16 +9,14 @@ function HeaderAdmin() {
   const { userProfile } = useContext(AppContext);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Simulasi user data - ambil dari context
+  // User data dari context - tanpa data dummy
   const adminUser = {
-    name: userProfile?.name || "Admin Panel",
-    role: "Administrator",
-    initials: "AP",
-    email: userProfile?.email || "admin@demara.com",
-    position: userProfile?.role || "Administrator",
-    department: userProfile?.department || "Management",
+    name: userProfile?.nama || "",
+    email: userProfile?.email || "",
+    position: "Admin",
+    department: userProfile?.department || "",
     // Foto profil - dari context atau default
-    photo: userProfile?.photo || "https://ui-avatars.com/api/?name=Admin+Panel&background=6366F1&color=fff&bold=true&size=128"
+    photo: userProfile?.photo || `https://ui-avatars.com/api/?name=${userProfile?.nama || "User"}&background=6366F1&color=fff&bold=true&size=128`
   };
 
   const handleLogout = () => {
@@ -52,7 +50,9 @@ function HeaderAdmin() {
   return (
     <header className="fixed top-0 left-60 right-0 bg-gradient-to-r from-white to-gray-50 shadow-lg z-40 h-16 flex items-center justify-between px-8 border-b border-gray-200">
       <div className="text-sm text-gray-600">
-        <span className="font-semibold text-gray-800">Selamat datang, {adminUser.name}</span>
+        <span className="font-semibold text-gray-800">
+          {adminUser.name ? `Selamat datang, ${adminUser.name}` : "Selamat datang"}
+        </span>
       </div>
 
       <div className="relative" ref={dropdownRef}>
@@ -60,7 +60,7 @@ function HeaderAdmin() {
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-300 group"
-          title={`${adminUser.name} - ${adminUser.role}`}
+          title={adminUser.name || "Admin Panel"}
         >
           {/* Profile Avatar with Photo */}
           <img 
@@ -97,7 +97,7 @@ function HeaderAdmin() {
                 <div className="flex-1">
                   <p className="font-bold text-base text-gray-900">{adminUser.name}</p>
                   <p className="text-sm text-gray-600 mt-0.5">{adminUser.position}</p>
-                  <p className="text-xs text-gray-500 mt-1">{adminUser.department}</p>
+                  {adminUser.department && <p className="text-xs text-gray-500 mt-1">{adminUser.department}</p>}
                   <p className="text-xs text-gray-400 mt-2">{adminUser.email}</p>
                 </div>
               </div>

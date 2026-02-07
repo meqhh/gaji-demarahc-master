@@ -13,16 +13,43 @@ function HeaderKaryawan() {
     return localStorage.getItem(`karyawan_photo_${userEmail}`) || localStorage.getItem("karyawan_photo") || "https://ui-avatars.com/api/?name=Portal+Karyawan&background=8B5CF6&color=fff&bold=true&size=128";
   });
 
+  // Load position and department from localStorage
+  const [userPosition, setUserPosition] = useState(() => {
+    try {
+      const profileData = localStorage.getItem("karyawanProfileData");
+      if (profileData) {
+        const data = JSON.parse(profileData);
+        return data.position || "";
+      }
+    } catch (e) {
+      console.error("Error parsing profile data:", e);
+    }
+    return "";
+  });
+
+  const [userDepartment, setUserDepartment] = useState(() => {
+    try {
+      const profileData = localStorage.getItem("karyawanProfileData");
+      if (profileData) {
+        const data = JSON.parse(profileData);
+        return data.department || "";
+      }
+    } catch (e) {
+      console.error("Error parsing profile data:", e);
+    }
+    return "";
+  });
+
   const karyawanUser = {
     name: "Portal Karyawan",
     role: "Employee",
     email: localStorage.getItem("karyawanEmail") || "karyawan@demara.com",
-    position: "Bidan",
-    department: "Kesehatan Ibu & Anak",
+    position: userPosition,
+    department: userDepartment,
     photo: currentPhoto
   };
 
-  // Monitor localStorage changes to update photo dynamically
+  // Monitor localStorage changes to update photo, position, and department dynamically
   useEffect(() => {
     const interval = setInterval(() => {
       const userEmail = localStorage.getItem("karyawanEmail");
@@ -30,9 +57,25 @@ function HeaderKaryawan() {
       if (newPhoto && newPhoto !== currentPhoto) {
         setCurrentPhoto(newPhoto);
       }
+
+      // Update position and department from profile data
+      try {
+        const profileData = localStorage.getItem("karyawanProfileData");
+        if (profileData) {
+          const data = JSON.parse(profileData);
+          if (data.position !== userPosition) {
+            setUserPosition(data.position || "");
+          }
+          if (data.department !== userDepartment) {
+            setUserDepartment(data.department || "");
+          }
+        }
+      } catch (e) {
+        console.error("Error parsing profile data:", e);
+      }
     }, 500);
     return () => clearInterval(interval);
-  }, [currentPhoto]);
+  }, [currentPhoto, userPosition, userDepartment]);
 
   const handleLogout = () => {
     setShowLogoutModal(true);

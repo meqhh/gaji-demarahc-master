@@ -1,0 +1,359 @@
+{
+  "version": "1.0.0",
+  "description": "Konfigurasi menu terpusat untuk Admin dan Karyawan",
+  "menus": {
+    "admin": {
+      "mainMenu": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "path": "/admin/dashboard",
+          "icon": "chart-bar",
+          "component": "DashboardAdmin",
+          "requiredRole": ["admin"],
+          "description": "Ringkasan data keseluruhan sistem",
+          "relatedKaryawanPath": null,
+          "syncWith": ["karyawan.dashboard"]
+        },
+        {
+          "id": "karyawan",
+          "label": "Data Karyawan",
+          "path": "/admin/karyawan",
+          "icon": "users",
+          "component": "Karyawan",
+          "requiredRole": ["admin"],
+          "description": "Kelola data karyawan",
+          "relatedKaryawanPath": "/karyawan/datadiri",
+          "syncWith": ["karyawan.datadiri"],
+          "dataSource": "api/karyawan",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": true
+          }
+        },
+        {
+          "id": "gaji",
+          "label": "Gaji",
+          "path": "/admin/gaji",
+          "icon": "money",
+          "component": "Gaji",
+          "requiredRole": ["admin"],
+          "description": "Kelola data gaji karyawan",
+          "relatedKaryawanPath": "/karyawan/slipgaji",
+          "syncWith": ["karyawan.slipgaji"],
+          "dataSource": "api/gaji",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": true
+          }
+        },
+        {
+          "id": "absensi",
+          "label": "Absensi",
+          "path": "/admin/absensi",
+          "icon": "calendar",
+          "component": "AbsensiAdmin",
+          "requiredRole": ["admin"],
+          "description": "Kelola data absensi karyawan",
+          "relatedKaryawanPath": "/karyawan/absensi",
+          "syncWith": ["karyawan.absensi"],
+          "dataSource": "api/absensi",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": true
+          }
+        },
+        {
+          "id": "slip-gaji",
+          "label": "Slip Gaji",
+          "path": "/admin/slip-gaji",
+          "icon": "document",
+          "component": "SlipGajiAdmin",
+          "requiredRole": ["admin"],
+          "description": "Kelola slip gaji karyawan",
+          "relatedKaryawanPath": "/karyawan/slipgaji",
+          "syncWith": ["karyawan.slipgaji"],
+          "dataSource": "api/slipGaji",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": true
+          }
+        },
+        {
+          "id": "cuti",
+          "label": "Cuti",
+          "path": "/admin/cuti",
+          "icon": "calendar-x",
+          "component": "CutiKaryawan",
+          "requiredRole": ["admin"],
+          "description": "Kelola data cuti karyawan",
+          "relatedKaryawanPath": "/karyawan/cuti",
+          "syncWith": ["karyawan.cuti"],
+          "dataSource": "api/cuti",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": true
+          }
+        },
+        {
+          "id": "treatment",
+          "label": "Treatment",
+          "path": "/admin/treatment",
+          "icon": "heart",
+          "component": "Treatment",
+          "requiredRole": ["admin"],
+          "description": "Kelola data treatment/benefit karyawan",
+          "relatedKaryawanPath": null,
+          "syncWith": [],
+          "dataSource": "api/treatment",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": true
+          }
+        }
+      ],
+      "settingsMenu": [
+        {
+          "id": "profile",
+          "label": "Pengaturan Profil",
+          "path": "/admin/profile",
+          "icon": "user",
+          "component": "AdminProfileSettings",
+          "requiredRole": ["admin"],
+          "description": "Atur profil admin",
+          "relatedKaryawanPath": "/karyawan/profile",
+          "syncWith": ["admin.profile"]
+        },
+        {
+          "id": "security",
+          "label": "Keamanan",
+          "path": "/admin/security",
+          "icon": "lock",
+          "component": "AdminSecurity",
+          "requiredRole": ["admin"],
+          "description": "Atur keamanan akun",
+          "relatedKaryawanPath": "/karyawan/security",
+          "syncWith": []
+        },
+        {
+          "id": "help",
+          "label": "Bantuan",
+          "path": "/admin/help",
+          "icon": "help-circle",
+          "component": "AdminHelp",
+          "requiredRole": ["admin"],
+          "description": "Pusat bantuan dan dokumentasi",
+          "relatedKaryawanPath": "/karyawan/help",
+          "syncWith": []
+        }
+      ]
+    },
+    "karyawan": {
+      "mainMenu": [
+        {
+          "id": "dashboard",
+          "label": "Dashboard",
+          "path": "/karyawan/dashboard",
+          "icon": "chart-bar",
+          "component": "DashboardKaryawan",
+          "requiredRole": ["karyawan"],
+          "description": "Ringkasan data pribadi",
+          "relatedAdminPath": null,
+          "syncWith": ["admin.dashboard"]
+        },
+        {
+          "id": "datadiri",
+          "label": "Data Diri",
+          "path": "/karyawan/datadiri",
+          "icon": "user-circle",
+          "component": "DataDiri",
+          "requiredRole": ["karyawan"],
+          "description": "Lihat dan edit data pribadi",
+          "relatedAdminPath": "/admin/karyawan",
+          "syncWith": ["admin.karyawan"],
+          "dataSource": "api/karyawan",
+          "permissions": {
+            "create": false,
+            "read": true,
+            "update": true,
+            "delete": false
+          }
+        },
+        {
+          "id": "absensi",
+          "label": "Absensi",
+          "path": "/karyawan/absensi",
+          "icon": "calendar",
+          "component": "AbsensiKaryawan",
+          "requiredRole": ["karyawan"],
+          "description": "Lihat data absensi pribadi",
+          "relatedAdminPath": "/admin/absensi",
+          "syncWith": ["admin.absensi"],
+          "dataSource": "api/absensi",
+          "permissions": {
+            "create": false,
+            "read": true,
+            "update": false,
+            "delete": false
+          }
+        },
+        {
+          "id": "slipgaji",
+          "label": "Slip Gaji",
+          "path": "/karyawan/slipgaji",
+          "icon": "document",
+          "component": "SlipGajiKaryawan",
+          "requiredRole": ["karyawan"],
+          "description": "Lihat slip gaji pribadi",
+          "relatedAdminPath": "/admin/slip-gaji",
+          "syncWith": ["admin.slip-gaji"],
+          "dataSource": "api/slipGaji",
+          "permissions": {
+            "create": false,
+            "read": true,
+            "update": false,
+            "delete": false
+          }
+        },
+        {
+          "id": "cuti",
+          "label": "Cuti",
+          "path": "/karyawan/cuti",
+          "icon": "calendar-x",
+          "component": "CutiKaryawan",
+          "requiredRole": ["karyawan"],
+          "description": "Lihat dan ajukan cuti",
+          "relatedAdminPath": "/admin/cuti",
+          "syncWith": ["admin.cuti"],
+          "dataSource": "api/cuti",
+          "permissions": {
+            "create": true,
+            "read": true,
+            "update": true,
+            "delete": false
+          }
+        }
+      ],
+      "settingsMenu": [
+        {
+          "id": "profile",
+          "label": "Pengaturan Profil",
+          "path": "/karyawan/profile",
+          "icon": "user",
+          "component": "KaryawanProfileSettings",
+          "requiredRole": ["karyawan"],
+          "description": "Atur profil pribadi",
+          "relatedAdminPath": "/admin/profile",
+          "syncWith": ["admin.profile"]
+        },
+        {
+          "id": "security",
+          "label": "Keamanan",
+          "path": "/karyawan/security",
+          "icon": "lock",
+          "component": "KaryawanSecurity",
+          "requiredRole": ["karyawan"],
+          "description": "Atur keamanan akun",
+          "relatedAdminPath": "/admin/security",
+          "syncWith": []
+        },
+        {
+          "id": "help",
+          "label": "Bantuan",
+          "path": "/karyawan/help",
+          "icon": "help-circle",
+          "component": "KaryawanHelp",
+          "requiredRole": ["karyawan"],
+          "description": "Pusat bantuan dan dokumentasi",
+          "relatedAdminPath": "/admin/help",
+          "syncWith": []
+        }
+      ]
+    }
+  },
+  "rolePermissions": {
+    "admin": {
+      "dashboard": ["read"],
+      "karyawan": ["create", "read", "update", "delete"],
+      "gaji": ["create", "read", "update", "delete"],
+      "absensi": ["create", "read", "update", "delete"],
+      "slip-gaji": ["create", "read", "update", "delete"],
+      "cuti": ["create", "read", "update", "delete"],
+      "treatment": ["create", "read", "update", "delete"],
+      "profile": ["read", "update"],
+      "security": ["read", "update"],
+      "help": ["read"]
+    },
+    "karyawan": {
+      "dashboard": ["read"],
+      "datadiri": ["read", "update"],
+      "absensi": ["read"],
+      "slipgaji": ["read"],
+      "cuti": ["create", "read", "update"],
+      "profile": ["read", "update"],
+      "security": ["read", "update"],
+      "help": ["read"]
+    }
+  },
+  "syncConfig": {
+    "interval": 30000,
+    "retryAttempts": 3,
+    "retryDelay": 5000,
+    "dataSources": [
+      {
+        "id": "api/karyawan",
+        "endpoint": "/api/karyawan",
+        "method": "GET",
+        "cacheEnabled": true,
+        "cacheDuration": 60000
+      },
+      {
+        "id": "api/gaji",
+        "endpoint": "/api/gaji",
+        "method": "GET",
+        "cacheEnabled": true,
+        "cacheDuration": 60000
+      },
+      {
+        "id": "api/absensi",
+        "endpoint": "/api/absensi",
+        "method": "GET",
+        "cacheEnabled": true,
+        "cacheDuration": 30000
+      },
+      {
+        "id": "api/slipGaji",
+        "endpoint": "/api/slip-gaji",
+        "method": "GET",
+        "cacheEnabled": true,
+        "cacheDuration": 60000
+      },
+      {
+        "id": "api/cuti",
+        "endpoint": "/api/cuti",
+        "method": "GET",
+        "cacheEnabled": true,
+        "cacheDuration": 30000
+      },
+      {
+        "id": "api/treatment",
+        "endpoint": "/api/treatment",
+        "method": "GET",
+        "cacheEnabled": true,
+        "cacheDuration": 60000
+      }
+    ]
+  }
+}

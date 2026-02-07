@@ -17,17 +17,7 @@ function Karyawan() {
   useEffect(() => {
     const savedData = Array.isArray(karyawanData) && karyawanData.length > 0 
       ? karyawanData 
-      : (() => {
-          const sampleData = [
-            { id: "001", nama: "Ahmad Fikri", posisi: "Manager", nohp: "081234567890", email: "ahmad@company.com", alamat: "Jl. Merdeka No. 1", tempatLahir: "Jakarta", tanggalLahir: "1990-05-15", tglMasuk: "2023-01-10", tglKontrak: "2023-01-10", lamaKontrak: "2 Tahun", foto: null },
-            { id: "002", nama: "Siti Hapsari", posisi: "Staff", nohp: "081234567891", email: "siti@company.com", alamat: "Jl. Sudirman No. 5", tempatLahir: "Bandung", tanggalLahir: "1995-08-20", tglMasuk: "2023-03-15", tglKontrak: "2023-03-15", lamaKontrak: "1 Tahun", foto: null },
-            { id: "003", nama: "Budi Santoso", posisi: "Staff", nohp: "081234567892", email: "budi@company.com", alamat: "Jl. Gatot Subroto No. 10", tempatLahir: "Surabaya", tanggalLahir: "1992-03-10", tglMasuk: "2023-02-01", tglKontrak: "2023-02-01", lamaKontrak: "2 Tahun", foto: null },
-            { id: "004", nama: "Dewi Lestari", posisi: "Admin", nohp: "081234567893", email: "dewi@company.com", alamat: "Jl. Ahmad Yani No. 8", tempatLahir: "Medan", tanggalLahir: "1998-11-25", tglMasuk: "2023-06-01", tglKontrak: "2023-06-01", lamaKontrak: "1 Tahun", foto: null },
-            { id: "005", nama: "Rizky Pratama", posisi: "Staff", nohp: "081234567894", email: "rizky@company.com", alamat: "Jl. Imam Bonjol No. 12", tempatLahir: "Yogyakarta", tanggalLahir: "1996-07-18", tglMasuk: "2023-04-15", tglKontrak: "2023-04-15", lamaKontrak: "1 Tahun", foto: null },
-          ];
-          localStorage.setItem("karyawanData", JSON.stringify(sampleData));
-          return sampleData;
-        })();
+      : [];
     
     setData(savedData);
   }, []);

@@ -2,11 +2,29 @@ import React, { useState, useEffect } from 'react';
 import Logo from '../Images/demaralogo.png';
 
 export default function ProfileSettings() {
-  const [profile, setProfile] = useState({ name: 'Admin User', email: 'demara.hr@example.com', avatar: '' });
+  const [profile, setProfile] = useState({ name: '', email: '', avatar: '' });
 
   useEffect(() => {
+    // Get profile from login data first
+    const user = localStorage.getItem('user');
+    const karyawanUsername = localStorage.getItem('karyawanUsername');
+    const karyawanEmail = localStorage.getItem('karyawanEmail');
+    
+    if (user) {
+      const userData = JSON.parse(user);
+      setProfile({ name: userData.nama || '', email: userData.email || '', avatar: '' });
+    } else if (karyawanUsername) {
+      setProfile({ name: karyawanUsername, email: karyawanEmail || '', avatar: '' });
+    }
+    
+    // Load saved avatar if any
     const saved = localStorage.getItem('userProfile');
-    if (saved) setProfile(JSON.parse(saved));
+    if (saved) {
+      const savedData = JSON.parse(saved);
+      if (savedData.avatar) {
+        setProfile(prev => ({ ...prev, avatar: savedData.avatar }));
+      }
+    }
   }, []);
 
   const handleChange = (key) => (e) => setProfile({ ...profile, [key]: e.target.value });
@@ -22,6 +40,23 @@ export default function ProfileSettings() {
   const save = () => {
     localStorage.setItem('userProfile', JSON.stringify(profile));
     alert('Profil disimpan.');
+  };
+
+  const resetProfile = () => {
+    // Reset to current user data from login
+    const user = localStorage.getItem('user');
+    const karyawanUsername = localStorage.getItem('karyawanUsername');
+    const karyawanEmail = localStorage.getItem('karyawanEmail');
+    
+    if (user) {
+      const userData = JSON.parse(user);
+      setProfile({ name: userData.nama || '', email: userData.email || '', avatar: '' });
+    } else if (karyawanUsername) {
+      setProfile({ name: karyawanUsername, email: karyawanEmail || '', avatar: '' });
+    } else {
+      setProfile({ name: '', email: '', avatar: '' });
+    }
+    localStorage.removeItem('userProfile');
   };
 
   return (
@@ -65,7 +100,7 @@ export default function ProfileSettings() {
 
             <div className="mt-6 flex items-center space-x-3">
               <button onClick={save} className="bg-[#CC45DE] text-white px-4 py-2 rounded-md">Simpan Perubahan</button>
-              <button onClick={() => { setProfile({ name: 'Admin User', email: 'demara.hr@example.com', avatar: '' }); localStorage.removeItem('userProfile'); }} className="px-4 py-2 rounded-md border">Reset</button>
+              <button onClick={resetProfile} className="px-4 py-2 rounded-md border">Reset</button>
             </div>
           </div>
         </div>

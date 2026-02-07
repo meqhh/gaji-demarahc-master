@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
+import { AppContext } from "../context/AppContext";
 
-// ======================
-// DATA TREATMENTS
-// ======================
-const treatments = [
+// All treatment data comes from AppContext/backend (no hardcoded master data)
+
+export default function TreatmentKaryawan() {
+  const { treatmentData = [] } = useContext(AppContext);
   { id: 1, nama: "Pijat Bayi Sehat", category: "Baby Treatment", harga: 150000 },
   { id: 2, nama: "Pijat Balita", category: "Baby Treatment", harga: 185000 },
   { id: 3, nama: "Pijat Pediatric Bayi", category: "Baby Treatment", harga: 195000 },
@@ -96,37 +97,8 @@ const treatments = [
   { id: 56, nama: "Baby Package 10x Pijat Pediatric (Free 2x Pijat Bayi)", category: "Baby Package", harga: 1650000, fee: 10 },
 
   // Re-Laktasi Arugaan Package
-  { id: 57, nama: "Re-Laktasi Arugaan 4x (Free 1x Pijat Laktasi)", category: "Re-Laktasi Package", harga: 2000000, fee: 10 },
-  { id: 58, nama: "Re-Laktasi Arugaan 6x", category: "Re-Laktasi Package", harga: 3000000, fee: 10 },
 
-  // Program Menyusui (Perbaikan DBF / Bingung Puting)
-  { id: 59, nama: "Program Menyusui 3x Pertemuan", category: "Program Menyusui", harga: 1000000, fee: 10 },
-  { id: 60, nama: "Program Menyusui 4x Pertemuan", category: "Program Menyusui", harga: 1200000, fee: 10 },
-  { id: 61, nama: "Program Menyusui 6x Pertemuan (Free 2x Pijat Bayi)", category: "Program Menyusui", harga: 1800000, fee: 10 },
-
-  // Paket Pijat Hamil
-  { id: 62, nama: "Paket Pijat Hamil 3x (Free 1x Pijat Hamil)", category: "Pijat Hamil Package", harga: 1000000, fee: 10 },
-  { id: 63, nama: "Paket Pijat Hamil 4x", category: "Pijat Hamil Package", harga: 1300000, fee: 10 },
-  { id: 64, nama: "Paket Pijat Hamil 6x", category: "Pijat Hamil Package", harga: 2000000, fee: 10 },
-
-  // Paket Pijat Badan Pasca Melahirkan
-  { id: 65, nama: "Pijat Badan Pasca Melahirkan 3x (Tanpa Pijat Perut)", category: "Pijat Pasca Melahirkan", harga: 1000000, fee: 10 },
-  { id: 66, nama: "Pijat Badan Pasca Melahirkan 4x", category: "Pijat Pasca Melahirkan", harga: 1400000, fee: 10 },
-  { id: 67, nama: "Pijat Badan Pasca Melahirkan 6x (Free 2x Pijat Bayi)", category: "Pijat Pasca Melahirkan", harga: 2000000, fee: 10 },
-
-  // Happy New Born 1
-  { id: 68, nama: "Happy New Born 1 – 3x Kunjungan", category: "New Born Package", harga: 500000, fee: 10 },
-  { id: 69, nama: "Happy New Born 1 – 7x Kunjungan", category: "New Born Package", harga: 900000, fee: 10 },
-
-  // Happy New Born 2
-  { id: 70, nama: "Happy New Born 2 – 3x Kunjungan (+ Pijat Laktasi 3x + Konsultasi)", category: "New Born Package", harga: 1500000, fee: 10 },
-  { id: 71, nama: "Happy New Born 2 – 7x Kunjungan (+ Pijat Laktasi 2x + Konsultasi + Pijat Bayi)", category: "New Born Package", harga: 2000000, fee: 10 },
-
-  // Happy New Born 3 (Wonderful Package)
-  { id: 72, nama: "Happy New Born 3 – 14x Kunjungan", category: "New Born Package", harga: 2000000, fee: 10 },
-  { id: 73, nama: "Happy New Born 3 – 30x Kunjungan", category: "New Born Package", harga: 3000000, fee: 10 },
-
-  ];
+// Treatment list is loaded from AppContext/backend - no hardcoded data
 
 // FEE OTOMATIS BERDASARKAN KATEGORI
 function getFeeByCategory(category) {
@@ -144,13 +116,13 @@ function getFeeByCategory(category) {
 }
 
 function TreatmentKaryawan() {
-  const [dataTreatment] = useState(treatments);
+  const { treatmentData = [] } = useContext(AppContext);
   const [search, setSearch] = useState("");
   const [showDetail, setShowDetail] = useState(false);
   const [detailData, setDetailData] = useState(null);
 
   // FILTER DATA BY SEARCH
-  const filteredData = dataTreatment.filter((item) =>
+  const filteredData = treatmentData.filter((item) =>
     item.nama.toLowerCase().includes(search.toLowerCase()) ||
     item.category.toLowerCase().includes(search.toLowerCase())
   );

@@ -2,23 +2,14 @@ import React, { useState, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
 export default function CutiKaryawan() {
-  const { userProfile, cutiData = [], addCuti, updateCuti, deleteCuti } = useContext(AppContext);
+  const { userProfile, karyawanData = [], cutiData = [], addCuti, updateCuti, deleteCuti } = useContext(AppContext);
 
   // Filter cuti berdasarkan nama karyawan yang login
   const myCutiData = useMemo(() => {
     if (!userProfile?.name) return [];
     
-    // Data libur contoh untuk karyawan
-    const defaultLiburData = [
-      { id: 1, nama: userProfile.name, tanggal: "2025-12-25", lama: 2, alasan: "Libur Natal", status: "Disetujui" },
-      { id: 2, nama: userProfile.name, tanggal: "2025-12-30", lama: 3, alasan: "Libur Tahun Baru", status: "Pending" },
-      { id: 3, nama: userProfile.name, tanggal: "2025-11-15", lama: 1, alasan: "Keperluan pribadi", status: "Disetujui" },
-    ];
-    
-    // Gabungkan data dari context dengan data default jika kosong
-    const allData = Array.isArray(cutiData) && cutiData.length > 0 
-      ? cutiData 
-      : defaultLiburData;
+    // All data comes from backend API/context only (no dummy data)
+    const allData = Array.isArray(cutiData) ? cutiData : [];
     
     // Filter berdasarkan nama karyawan yang login
     return allData.filter(c => c.nama && c.nama.toLowerCase() === userProfile.name.toLowerCase());
@@ -32,7 +23,7 @@ export default function CutiKaryawan() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteData, setDeleteData] = useState(null);
   const [formData, setFormData] = useState({
-    nama: userProfile?.name || "",
+    nama: "",
     tanggal: "",
     lama: "",
     alasan: "",
@@ -53,12 +44,15 @@ export default function CutiKaryawan() {
   // Tambah data cuti
   const handleTambahCuti = (e) => {
     e.preventDefault();
+    if (!formData.nama.trim()) {
+      alert("Nama karyawan tidak boleh kosong");
+      return;
+    }
     const newCuti = {
       ...formData,
-      nama: userProfile?.name || "",
     };
     addCuti(newCuti);
-    setFormData({ nama: userProfile?.name || "", tanggal: "", lama: "", alasan: "", status: "Pending" });
+    setFormData({ nama: "", tanggal: "", lama: "", alasan: "", status: "Pending" });
     setShowTambahModal(false);
   };
 
@@ -77,9 +71,13 @@ export default function CutiKaryawan() {
 
   const handleUpdateCuti = (e) => {
     e.preventDefault();
+    if (!formData.nama.trim()) {
+      alert("Nama karyawan tidak boleh kosong");
+      return;
+    }
     if (selectedCuti) {
       updateCuti(selectedCuti.id, formData);
-      setFormData({ nama: userProfile?.name || "", tanggal: "", lama: "", alasan: "", status: "Pending" });
+      setFormData({ nama: "", tanggal: "", lama: "", alasan: "", status: "Pending" });
       setShowEditModal(false);
       setSelectedCuti(null);
     }
@@ -151,29 +149,6 @@ export default function CutiKaryawan() {
             <span className="text-gray-500">Kelola Pengajuan Cuti</span>
           </div>
         </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: "Total Pengajuan", value: myCutiData.length, color: "bg-gray-800" },
-          { label: "Pending", value: myCutiData.filter(d => d.status === "Pending").length, color: "bg-gray-600" },
-          { label: "Disetujui", value: myCutiData.filter(d => d.status === "Disetujui").length, color: "bg-gray-700" },
-          { label: "Ditolak", value: myCutiData.filter(d => d.status === "Ditolak").length, color: "bg-gray-500" },
-        ].map((stat, idx) => (
-          <div
-            key={idx}
-            className={`${stat.color} rounded-lg p-6 text-white shadow-md card-hover animate-slide-up`}
-            style={{ animationDelay: `${idx * 0.1}s` }}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90 font-medium">{stat.label}</p>
-                <p className="text-3xl font-bold mt-2">{stat.value}</p>
-              </div>
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Filter & Search Section */}
@@ -347,12 +322,19 @@ export default function CutiKaryawan() {
             <form onSubmit={handleTambahCuti} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <input
-                  type="text"
+                <select
                   value={formData.nama}
-                  disabled
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg bg-gray-100 text-gray-600"
-                />
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                  required
+                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                >
+                  <option value="">-- Pilih Nama Karyawan --</option>
+                  {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
+                    <option key={idx} value={karyawan.nama || ""}>
+                      {karyawan.nama}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -421,12 +403,19 @@ export default function CutiKaryawan() {
             <form onSubmit={handleUpdateCuti} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <input
-                  type="text"
+                <select
                   value={formData.nama}
-                  disabled
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg bg-gray-100 text-gray-600"
-                />
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                  required
+                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                >
+                  <option value="">-- Pilih Nama Karyawan --</option>
+                  {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
+                    <option key={idx} value={karyawan.nama || ""}>
+                      {karyawan.nama}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

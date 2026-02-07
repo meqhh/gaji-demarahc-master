@@ -29,6 +29,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Profile fields for admin/karyawan
+  telepon: {
+    type: String,
+    default: null
+  },
+  alamat: {
+    type: String,
+    default: null
+  },
+  biografi: {
+    type: String,
+    default: null
+  },
+  departemen: {
+    type: String,
+    enum: ['HR', 'Keuangan', 'IT', 'Operasional', 'Admin', 'Kesehatan', 'Pendidikan', 'Lainnya'],
+    default: null
+  },
   lastLogin: Date,
   createdAt: {
     type: Date,

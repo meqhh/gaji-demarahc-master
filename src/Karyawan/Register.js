@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerUser, loginUser } from "../services/authService";
+import { registerUser } from "../services/authService";
 import Logo from "../Images/demaralogo.png";
 
 function Register() {
@@ -14,7 +14,9 @@ function Register() {
     nama: "",
     email: "",
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    role: 'karyawan',
+    adminKey: ''
   });
 
   useEffect(() => {
@@ -43,6 +45,13 @@ function Register() {
         return;
       }
 
+      // If admin role chosen, require admin key to be provided (backend will validate)
+      if (formData.role === 'admin' && !formData.adminKey) {
+        setError('Untuk mendaftar sebagai admin, masukkan kunci registrasi admin');
+        setIsLoading(false);
+        return;
+      }
+
       if (formData.password !== formData.confirmPassword) {
         setError("Password tidak cocok");
         setIsLoading(false);
@@ -59,40 +68,17 @@ function Register() {
       const registerResponse = await registerUser({
         nama: formData.nama,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        role: formData.role,
+        adminKey: formData.adminKey
       });
 
       if (registerResponse.success) {
-        setSuccess("Pendaftaran berhasil! Sedang login...");
-        
-        // Auto-login setelah register
-        setTimeout(async () => {
-          try {
-            const loginResponse = await loginUser(formData.email, formData.password);
-            
-            if (loginResponse.success) {
-              const { token, user } = loginResponse.data;
-              
-              // Save ke localStorage
-              localStorage.setItem("token", token);
-              localStorage.setItem("user", JSON.stringify(user));
-              localStorage.setItem("karyawanLoggedIn", "true");
-              localStorage.setItem("karyawanUsername", user.nama);
-              localStorage.setItem("karyawanId", user.id);
-              localStorage.setItem("karyawanEmail", user.email);
-
-              // Mark last login
-              const todayKey = new Date().toISOString().slice(0, 10);
-              localStorage.setItem('karyawanLastLogin', todayKey);
-
-              // Redirect ke dashboard
-              navigate("/karyawan/dashboard");
-            }
-          } catch (loginErr) {
-            // Jika auto-login gagal, arahkan ke login page
-            navigate("/login");
-          }
-        }, 1500);
+        // Beri tahu user dan arahkan ke halaman login untuk melakukan login manual
+        setSuccess("Pendaftaran berhasil. Silakan login.");
+        setTimeout(() => {
+          navigate("/login", { state: { successMessage: 'Pendaftaran berhasil. Silakan login.' } });
+        }, 900);
       }
     } catch (err) {
       setError(err.message || "Pendaftaran gagal. Silakan coba lagi.");
@@ -213,6 +199,36 @@ function Register() {
                 />
               </div>
             </div>
+
+              {/* Role select */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-800 mb-2">Daftar sebagai</label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-700 bg-white input-focus transition-all duration-300 disabled:bg-gray-100 disabled:opacity-60"
+                >
+                  <option value="karyawan">Karyawan</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              {formData.role === 'admin' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-800 mb-2">Kunci Registrasi Admin</label>
+                  <input
+                    type="password"
+                    name="adminKey"
+                    value={formData.adminKey}
+                    onChange={handleChange}
+                    placeholder="Masukkan kunci admin"
+                    disabled={isLoading}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 text-gray-700 bg-white input-focus transition-all duration-300 disabled:bg-gray-100 disabled:opacity-60"
+                  />
+                </div>
+              )}
 
             {/* Submit Button */}
             <div className="flex justify-center pt-2">

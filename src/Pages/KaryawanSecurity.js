@@ -12,18 +12,10 @@ function KaryawanSecurity() {
   const [successMessage, setSuccessMessage] = useState("");
 
   // Login History Data
-  const [loginHistory] = useState([
-    { id: 1, device: "Chrome - Windows 10", location: "Jakarta, Indonesia", date: "24 Des 2025", time: "14:30", status: "Aktif Sekarang" },
-    { id: 2, device: "Safari - iPhone 12", location: "Jakarta, Indonesia", date: "23 Des 2025", time: "09:15", status: "Daring" },
-    { id: 3, device: "Chrome - Windows 10", location: "Jakarta, Indonesia", date: "22 Des 2025", time: "16:45", status: "Daring" },
-    { id: 4, device: "Firefox - Ubuntu", location: "Bandung, Indonesia", date: "20 Des 2025", time: "11:20", status: "Daring" },
-  ]);
+  const [loginHistory] = useState([]);
 
   // Active Sessions
-  const [activeSessions] = useState([
-    { id: 1, device: "Desktop Windows", browser: "Chrome", lastActive: "Sekarang" },
-    { id: 2, device: "Mobile iPhone", browser: "Safari", lastActive: "1 jam lalu" },
-  ]);
+  const [activeSessions] = useState([]);
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;

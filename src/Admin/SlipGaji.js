@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
 function SlipGaji() {
-  const { karyawanData = [] } = useContext(AppContext);
+  const { karyawanData = [], slipGajiData = [], addSlipGaji, deleteSlipGaji, setSlipGajiData } = useContext(AppContext);
   
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -14,12 +14,6 @@ function SlipGaji() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteData, setDeleteData] = useState(null);
   const [showTambah, setShowTambah] = useState(false);
-
-  // Local data state untuk slip gaji
-  const [dataSlip, setDataSlip] = useState(() => {
-    const saved = localStorage.getItem("slipGajiData");
-    return saved ? JSON.parse(saved) : [];
-  });
 
   const [formData, setFormData] = useState({
     karyawanId: "",
@@ -50,14 +44,9 @@ function SlipGaji() {
     return options;
   }, []);
 
-  // Persist slip data
-  useEffect(() => {
-    localStorage.setItem("slipGajiData", JSON.stringify(dataSlip));
-  }, [dataSlip]);
-
   // Filter data
   const filteredData = useMemo(() => {
-    return dataSlip.filter((item) => {
+    return slipGajiData.filter((item) => {
       const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
       const matchPeriode = item.periode === bulan;
       const matchSearch = searchQuery === "" || 
@@ -65,7 +54,7 @@ function SlipGaji() {
         item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchKaryawan && matchPeriode && matchSearch;
     });
-  }, [dataSlip, filterKaryawan, bulan, searchQuery]);
+  }, [slipGajiData, filterKaryawan, bulan, searchQuery]);
 
   // Toast
   const showToast = (message) => {
@@ -82,12 +71,12 @@ function SlipGaji() {
 
   // Stats
   const stats = useMemo(() => {
-    const total = dataSlip.length;
-    const draft = dataSlip.filter(d => d.status === "Draft").length;
-    const proses = dataSlip.filter(d => d.status === "Proses").length;
-    const selesai = dataSlip.filter(d => d.status === "Selesai").length;
+    const total = slipGajiData.length;
+    const draft = slipGajiData.filter(d => d.status === "Draft").length;
+    const proses = slipGajiData.filter(d => d.status === "Proses").length;
+    const selesai = slipGajiData.filter(d => d.status === "Selesai").length;
     return { total, draft, proses, selesai };
-  }, [dataSlip]);
+  }, [slipGajiData]);
 
   // Handlers
   const handleAddClick = () => {
@@ -141,9 +130,7 @@ function SlipGaji() {
     const totalPotongan = formData.potonganAsuransi + formData.potonganTax;
     const gajiNetto = totalPenghasilan - totalPotongan;
 
-    const maxId = Math.max(...dataSlip.map(item => item.id || 0), 0);
     const newSlip = {
-      id: maxId + 1,
       karyawanId: formData.karyawanId,
       nama: formData.nama,
       nip: formData.nip,
@@ -162,7 +149,7 @@ function SlipGaji() {
       createdAt: new Date().toISOString()
     };
 
-    setDataSlip(prev => [...prev, newSlip]);
+    addSlipGaji(newSlip);
     showToast("✓ Slip gaji berhasil ditambahkan!");
     setShowTambah(false);
   };
@@ -179,7 +166,7 @@ function SlipGaji() {
 
   const confirmDelete = () => {
     if (deleteData) {
-      setDataSlip(prev => prev.filter(item => item.id !== deleteData.id));
+      deleteSlipGaji(deleteData.id);
       showToast("✗ Slip gaji berhasil dihapus!");
       setShowDelete(false);
       setDeleteData(null);

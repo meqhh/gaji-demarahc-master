@@ -5,7 +5,7 @@ import bcrypt from 'bcryptjs';
 // Register
 export const register = async (req, res) => {
   try {
-    const { nama, email, password, role } = req.body;
+    const { nama, email, password, role, adminKey } = req.body;
     
     if (!nama || !email || !password) {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
@@ -17,6 +17,17 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email sudah terdaftar' });
     }
     
+    // If attempting to register as admin, require admin registration key
+    if ((role === 'admin' || role === 'Admin') ) {
+      const requiredKey = process.env.ADMIN_REGISTER_KEY;
+      if (!requiredKey) {
+        return res.status(500).json({ success: false, message: 'Server not configured for admin registration' });
+      }
+      if (!adminKey || adminKey !== requiredKey) {
+        return res.status(403).json({ success: false, message: 'Kunci registrasi admin tidak valid' });
+      }
+    }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -137,26 +148,36 @@ export const getAllUsers = async (req, res) => {
   }
 };
 
-// Update user
+// Update user profile (including admin profile fields)
 export const updateUser = async (req, res) => {
   try {
-    const { nama, email } = req.body;
+    const { nama, email, telepon, alamat, biografi, departemen } = req.body;
     
     const user = usersDB.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
     
+    // Update basic info
     if (nama) user.nama = nama;
     if (email) user.email = email;
-    user.updatedAt = new Date().toISOString();
     
+    // Update profile fields (if provided, null/empty string is valid)
+    if (telepon !== undefined) user.telepon = telepon || null;
+    if (alamat !== undefined) user.alamat = alamat || null;
+    if (biografi !== undefined) user.biografi = biografi || null;
+    if (departemen !== undefined) {
+      const validDepartements = ['HR', 'Keuangan', 'IT', 'Operasional', 'Admin', 'Kesehatan', 'Pendidikan', 'Lainnya'];
+      user.departemen = validDepartements.includes(departemen) ? departemen : null;
+    }
+    
+    user.updatedAt = new Date().toISOString();
     usersDB.save(user);
     
     const { password, ...userWithoutPassword } = user;
     res.json({
       success: true,
-      message: 'User berhasil diperbarui',
+      message: 'Profil berhasil diperbarui',
       data: userWithoutPassword
     });
   } catch (error) {

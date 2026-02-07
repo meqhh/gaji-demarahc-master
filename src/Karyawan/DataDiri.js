@@ -4,32 +4,43 @@ import ProfilImage from "../Images/profil.jpg";
 export default function DataDiri() {
   const [isEditing, setIsEditing] = useState(false);
   const [karyawanData, setKaryawanData] = useState({
-    nama: "Syardatul Maula",
-    tempatTanggalLahir: "Batam, 03-01-1995",
-    status: "Aktif",
-    posisi: "Bidan",
-    alamat: "Jl. Nongsa Utama No. 123, Batam",
-    noTelepon: "08123456789",
-    email: "sardatulmaula@demara.co.id",
-    tanggalMasuk: "19-10-2023",
-    tanggalKontrak: "01-01-2024",
-    foto: ProfilImage
+    nama: "",
+    tempatTanggalLahir: "",
+    status: "",
+    posisi: "",
+    alamat: "",
+    noTelepon: "",
+    email: "",
+    tanggalMasuk: "",
+    tanggalKontrak: "",
+    foto: ""
   });
 
   const [formData, setFormData] = useState(karyawanData);
 
   useEffect(() => {
+    // Load from login data first
+    const user = localStorage.getItem('user');
+    if (user) {
+      const userData = JSON.parse(user);
+      setKaryawanData(prev => ({
+        ...prev,
+        nama: userData.nama || '',
+        email: userData.email || ''
+      }));
+      setFormData(prev => ({
+        ...prev,
+        nama: userData.nama || '',
+        email: userData.email || ''
+      }));
+    }
+    
+    // Then try to load saved data from localStorage
     const saved = localStorage.getItem("karyawanData");
     if (saved) {
       const data = JSON.parse(saved);
-      // If saved data doesn't include a foto, default to bundled image
-      if (!data.foto) data.foto = ProfilImage;
       setKaryawanData(data);
       setFormData(data);
-    } else {
-      // Ensure initial state always has a foto
-      setKaryawanData(prev => ({ ...prev, foto: ProfilImage }));
-      setFormData(prev => ({ ...prev, foto: ProfilImage }));
     }
   }, []);
 
@@ -39,9 +50,8 @@ export default function DataDiri() {
   };
 
   const handleSave = () => {
-    // Ensure we persist a foto (default to bundled image if user removed it)
+    // Save data to localStorage without requiring foto
     const toSave = { ...formData };
-    if (!toSave.foto) toSave.foto = ProfilImage;
     setKaryawanData(toSave);
     localStorage.setItem("karyawanData", JSON.stringify(toSave));
     setIsEditing(false);

@@ -7,21 +7,12 @@ export default function AbsensiKaryawan() {
 	const navigate = useNavigate();
 	const { userProfile, addAbsensi } = useContext(AppContext);
 
-	const defaultAbsensi = [
-		{ id: 1, bulan: "Agustus, 2025", status: "Hadir", tanggal: "13 Aug 2025", jamMasuk: "07:30", checkInId: "CI-20250813-001" },
-		{ id: 2, bulan: "Agustus, 2025", status: "Hadir", tanggal: "12 Aug 2025", jamMasuk: "07:30", checkInId: "CI-20250812-001" },
-		{ id: 3, bulan: "Agustus, 2025", status: "Hadir", tanggal: "11 Aug 2025", jamMasuk: "07:30", checkInId: "CI-20250811-001" },
-		{ id: 4, bulan: "Agustus, 2025", status: "Hadir", tanggal: "10 Aug 2025", jamMasuk: "07:30", checkInId: "CI-20250810-001" },
-		{ id: 5, bulan: "Agustus, 2025", status: "Hadir", tanggal: "09 Aug 2025", jamMasuk: "07:30", checkInId: "CI-20250809-001" },
-		{ id: 6, bulan: "Agustus, 2025", status: "Hadir", tanggal: "08 Aug 2025", jamMasuk: "07:30", checkInId: "CI-20250808-001" },
-	];
-
-	// store absensi per-user so admin and karyawan have separate lists
+	// No default dummy data - all data from backend API/localStorage
 	const storageKey = userProfile?.email ? `absensi_${userProfile.email}` : 'absensi_guest';
 
 	const [absensi, setAbsensi] = useState(() => {
 		const saved = localStorage.getItem(storageKey);
-		return saved ? JSON.parse(saved) : defaultAbsensi;
+		return saved ? JSON.parse(saved) : [];
 	});
 
 	useEffect(() => {
@@ -115,8 +106,7 @@ export default function AbsensiKaryawan() {
 			status: 'Hadir',
 			tanggal: formatDate(now),
 			jamMasuk: formatTime(now),
-			checkInId,
-			note: userProfile?.name ? `Absen manual oleh ${userProfile.name}` : 'Absen manual karyawan'
+			checkInId
 		};
 		setAbsensi(prev => [newItem, ...prev]);
 		// Also add to global absensi (visible in admin panel)
@@ -247,8 +237,7 @@ export default function AbsensiKaryawan() {
 					tanggal: tanggalFormatted,
 					jamMasuk: formData.jamMasuk,
 					jamKeluar: formData.jamKeluar || "",
-					checkInId: checkInId,
-					note: userProfile?.name ? `Absen manual oleh ${userProfile.name}` : 'Absen manual karyawan'
+					checkInId: checkInId
 				};
 				setAbsensi(prev => [newItem, ...prev]);
 				
@@ -413,12 +402,6 @@ export default function AbsensiKaryawan() {
 									<div className="border-b border-gray-200 pb-4">
 										<p className="text-xs font-semibold text-gray-600 uppercase">ID Check-in</p>
 										<p className="text-gray-700 font-mono text-sm mt-1">{selected.checkInId}</p>
-									</div>
-								)}
-								{selected.note && (
-									<div className="pb-4">
-										<p className="text-xs font-semibold text-gray-600 uppercase">Catatan</p>
-										<p className="text-gray-700 text-sm mt-1">{selected.note}</p>
 									</div>
 								)}
 							</div>

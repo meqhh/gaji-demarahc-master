@@ -89,8 +89,7 @@ export default function DashboardKaryawan() {
       status: attendanceType,
       tanggal: formatDate(now),
       jamMasuk: formatTime(now),
-      checkInId,
-      note: userProfile?.name ? `Absen manual oleh ${userProfile.name}` : 'Absen manual karyawan'
+      checkInId
     };
 
     const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');

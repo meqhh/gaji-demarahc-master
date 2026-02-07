@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser } from "../services/authService";
 import Logo from "../Images/demaralogo.png";
 import Hero from "../Images/loginkaryawan.png";
@@ -9,11 +9,19 @@ function Login() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     document.title = "Login - Demara";
   }, []);
+
+  useEffect(() => {
+    if (location && location.state && location.state.successMessage) {
+      setInfo(location.state.successMessage);
+    }
+  }, [location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -116,9 +124,12 @@ function Login() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {error && (
-              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-xl border border-red-200">{error}</div>
-            )}
+              {info && (
+                <div className="text-green-700 text-sm text-center bg-green-50 p-3 rounded-xl border border-green-200">{info}</div>
+              )}
+              {error && (
+                <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-xl border border-red-200">{error}</div>
+              )}
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Email</label>

@@ -1,30 +1,25 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { getCurrentUser, getKaryawanList } from '../services/authService';
 
 export const AppContext = createContext();
 
 export const AppContextProvider = ({ children }) => {
-  // User Profile Data
+  // User Profile Data - Load from API if authenticated
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('userProfile');
-    return saved ? JSON.parse(saved) : {
-      id: 'ADMIN001',
-      name: 'Admin Panel',
-      email: 'admin@demara.com',
-      role: 'Administrator',
-      phone: '+62 812-3456-7890',
-      address: 'Jl. Merdeka No. 123, Jakarta',
-      joinDate: '01 Januari 2024',
-      department: 'Management',
-      bio: 'Mengelola sistem administrasi Demara',
-      photo: 'https://ui-avatars.com/api/?name=Admin+Panel&background=6B7280&color=fff&bold=true'
-    };
+    return saved ? JSON.parse(saved) : null;
   });
+
+  const [userLoading, setUserLoading] = useState(true);
+  const [userError, setUserError] = useState(null);
 
   // Karyawan Data
   const [karyawanData, setKaryawanData] = useState(() => {
     const saved = localStorage.getItem('karyawanData');
     return saved ? JSON.parse(saved) : [];
   });
+  const [karyawanLoading, setKaryawanLoading] = useState(false);
+  const [karyawanError, setKaryawanError] = useState(null);
 
   // Absensi Data
   const [absensiData, setAbsensiData] = useState(() => {
@@ -61,6 +56,62 @@ export const AppContextProvider = ({ children }) => {
     localStorage.setItem('userProfile', JSON.stringify(userProfile));
   }, [userProfile]);
 
+  // Load user profile dari API jika ada token
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    
+    if (token) {
+      setUserLoading(true);
+      getCurrentUser(token)
+        .then(res => {
+          if (res.success && res.data) {
+            setUserProfile(res.data);
+            setUserError(null);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load user profile:', err);
+          setUserError(err.message);
+        })
+        .finally(() => {
+          setUserLoading(false);
+        });
+    } else {
+      setUserLoading(false);
+    }
+  }, []);
+
+  // Fetch karyawan list from backend when authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    setKaryawanLoading(true);
+    setKaryawanError(null);
+
+    getKaryawanList(token)
+      .then(res => {
+        // Support API shapes { success, data } or direct array
+        if (!res) return;
+        if (res.success && res.data) {
+          setKaryawanData(Array.isArray(res.data) ? res.data : []);
+        } else if (Array.isArray(res)) {
+          setKaryawanData(res);
+        } else if (res.karyawan && Array.isArray(res.karyawan)) {
+          setKaryawanData(res.karyawan);
+        } else {
+          // fallback: try to set if object contains array-like fields
+          const arr = Object.values(res).find(v => Array.isArray(v));
+          if (Array.isArray(arr)) setKaryawanData(arr);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load karyawan list:', err);
+        setKaryawanError(err.message || String(err));
+      })
+      .finally(() => setKaryawanLoading(false));
+  }, [userProfile]);
+
   // Simpan karyawan data ke localStorage
   useEffect(() => {
     localStorage.setItem('karyawanData', JSON.stringify(karyawanData));
@@ -95,10 +146,14 @@ export const AppContextProvider = ({ children }) => {
     // User Profile
     userProfile,
     setUserProfile,
+    userLoading,
+    userError,
     updateUserProfile: (updates) => setUserProfile(prev => ({ ...prev, ...updates })),
 
     // Karyawan
     karyawanData,
+    karyawanLoading,
+    karyawanError,
     setKaryawanData,
     addKaryawan: (karyawan) => setKaryawanData(prev => Array.isArray(prev) ? [...prev, { ...karyawan, id: karyawan.id || String(Date.now()) }] : [{ ...karyawan, id: karyawan.id || String(Date.now()) }]),
     updateKaryawan: (id, updates) => setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => k.id === id ? { ...k, ...updates } : k) : []),

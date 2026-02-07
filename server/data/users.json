@@ -25,5 +25,55 @@
     "role": "karyawan",
     "createdAt": "2026-02-01T05:45:46.570Z",
     "lastLogin": "2026-02-01T05:46:06.003Z"
+  },
+  {
+    "id": "USR1770447308757",
+    "nama": "oktav",
+    "email": "oktav@gmail.com",
+    "password": "$2a$10$L3GBYj6b7IyGEi9yTds39OXcVwqBaQJgV6.oUIxtv.bPCgWqmSOl2",
+    "role": "karyawan",
+    "createdAt": "2026-02-07T06:55:08.757Z",
+    "lastLogin": "2026-02-07T07:54:07.932Z"
+  },
+  {
+    "id": "USR1770447508354",
+    "nama": "oktav",
+    "email": "epen@gmail.com",
+    "password": "$2a$10$b447iK5iJNwXB/lMZJr7zurA09W14z8sQzzMMklFjuadrukmCEFKW",
+    "role": "karyawan",
+    "createdAt": "2026-02-07T06:58:28.354Z",
+    "lastLogin": "2026-02-07T06:58:38.727Z"
+  },
+  {
+    "id": "USR1770448552630",
+    "nama": "oktav",
+    "email": "danz@gmail.com",
+    "password": "$2a$10$L/vYxTgEVWwO5n8nh0qVS.hF2JDkiiZm806g4a5VbHcAIOBDx4zQS",
+    "role": "admin",
+    "createdAt": "2026-02-07T07:15:52.630Z",
+    "lastLogin": "2026-02-07T14:56:18.949Z",
+    "telepon": null,
+    "alamat": null,
+    "biografi": null,
+    "departemen": "IT",
+    "updatedAt": "2026-02-07T08:51:42.613Z"
+  },
+  {
+    "id": "USR1770451601360",
+    "nama": "Glenn Desmon Sirait",
+    "email": "Glenn@gmail.com",
+    "password": "$2a$10$/iRbO/Zd0aQNM1y9R8jGm.KfDnAqK9rdPK4iRGH/MlcfGyKguNU5e",
+    "role": "admin",
+    "createdAt": "2026-02-07T08:06:41.360Z",
+    "lastLogin": "2026-02-07T08:06:58.496Z"
+  },
+  {
+    "id": "USR1770475562208",
+    "nama": "Siti nurbaya",
+    "email": "siti@gmail.com",
+    "password": "$2a$10$fCaUumSE05RWNQIUXnS0lOTy8TPvcGsc.f3wAiZAAKubWaj0gWtKW",
+    "role": "karyawan",
+    "createdAt": "2026-02-07T14:46:02.208Z",
+    "lastLogin": "2026-02-07T14:46:13.996Z"
   }
 ]

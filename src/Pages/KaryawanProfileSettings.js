@@ -2,25 +2,25 @@ import React, { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 
 function KaryawanProfileSettings() {
-  const { karyawanData, getKaryawanById } = useContext(AppContext);
+  const { karyawanData, getKaryawanById, userProfile, updateKaryawan, updateUserProfile } = useContext(AppContext);
 
-  // Identify logged-in karyawan by stored id
-  const loggedKaryawanId = localStorage.getItem("karyawanId");
-  const storedEmail = localStorage.getItem("karyawanEmail") || "";
+  // Identify logged-in karyawan by AppContext first, then localStorage
+  const loggedKaryawanId = userProfile?.id || localStorage.getItem("karyawanId");
+  const storedEmail = userProfile?.email || localStorage.getItem("karyawanEmail") || "";
 
   const defaultProfile = {
-    name: "Portal Karyawan",
-    email: storedEmail || "karyawan@demara.com",
-    phone: "+62 812-3456-7891",
-    address: "Jl. Melati No. 456, Jakarta",
-    joinDate: "15 Februari 2024",
-    position: "Bidan",
-    department: "Kesehatan Ibu & Anak",
-    photo: storedEmail ? (localStorage.getItem(`karyawan_photo_${storedEmail}`) || `https://ui-avatars.com/api/?name=${encodeURIComponent(storedEmail)}&background=6B7280&color=fff`) : "https://ui-avatars.com/api/?name=Portal+Karyawan&background=6B7280&color=fff",
+    name: "",
+    email: storedEmail || "",
+    phone: "",
+    address: "",
+    joinDate: "",
+    position: "",
+    department: "",
+    photo: (storedEmail && localStorage.getItem(`karyawan_photo_${storedEmail}`)) || (userProfile?.name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile.name)}&background=6B7280&color=fff` : `https://ui-avatars.com/api/?name=Karyawan&background=6B7280&color=fff`),
     emergencyContact: {
-      name: "Siti Rahma",
-      relation: "Istri",
-      phone: "+62 812-0000-1111"
+      name: "",
+      relation: "",
+      phone: ""
     },
     notifications: {
       email: true,
@@ -37,14 +37,8 @@ function KaryawanProfileSettings() {
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryCodes, setRecoveryCodes] = useState([]);
   const [photoPreview, setPhotoPreview] = useState(profileData.photo);
-  const [sessions, setSessions] = useState([
-    { id: 1, device: 'Chrome — Windows', location: 'Jakarta, ID', lastActive: 'Sekarang' },
-    { id: 2, device: 'Safari — iPhone', location: 'Bandung, ID', lastActive: '2 hari lalu' }
-  ]);
-  const [recentActivity] = useState([
-    { id: 1, time: '2025-12-20 09:12', activity: 'Login berhasil dari Chrome — Windows' },
-    { id: 2, time: '2025-12-18 18:03', activity: 'Ubah data profil' }
-  ]);
+  const [sessions, setSessions] = useState([]);
+  const [recentActivity] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -60,6 +54,43 @@ function KaryawanProfileSettings() {
     // Save employee photo to localStorage (independent from admin)
     localStorage.setItem(`karyawan_photo_${formData.email}`, formData.photo);
     localStorage.setItem("karyawan_photo", formData.photo);
+    // Save profile data including position and department
+    localStorage.setItem("karyawanProfileData", JSON.stringify({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      position: formData.position,
+      department: formData.department,
+      joinDate: formData.joinDate
+    }));
+
+    // Update context if available (no dummy data creation)
+    if (typeof updateKaryawan === 'function' && loggedKaryawanId) {
+      try {
+        updateKaryawan(loggedKaryawanId, {
+          nama: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          posisi: formData.position,
+          departemen: formData.department,
+          joinDate: formData.joinDate,
+          photo: formData.photo
+        });
+      } catch (e) {
+        console.error('Failed to update karyawan in context', e);
+      }
+    }
+
+    if (typeof updateUserProfile === 'function') {
+      updateUserProfile({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+      });
+    }
     setIsEditing(false);
   };
 
@@ -179,6 +210,14 @@ function KaryawanProfileSettings() {
                     <div className="font-medium text-gray-900">{profileData.email}</div>
                   </div>
                   <div>
+                    <div className="text-xs text-gray-500">Posisi</div>
+                    <div className="font-medium text-gray-900">{profileData.position || '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">Departemen</div>
+                    <div className="font-medium text-gray-900">{profileData.department || '—'}</div>
+                  </div>
+                  <div>
                     <div className="text-xs text-gray-500">Telepon</div>
                     <div className="font-medium text-gray-900">{profileData.phone}</div>
                   </div>
@@ -209,6 +248,17 @@ function KaryawanProfileSettings() {
                     <div>
                       <label className="text-sm text-gray-700">Email</label>
                       <input name="email" value={formData.email} onChange={handleChange} className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-700">Posisi</label>
+                      <input name="position" value={formData.position} onChange={handleChange} placeholder="Contoh: Bidan, Dokter, Admin, etc" className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300" />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700">Departemen</label>
+                      <input name="department" value={formData.department} onChange={handleChange} placeholder="Contoh: Klinik, HR, Keuangan, etc" className="mt-1 w-full border border-gray-300 rounded-md px-3 py-2 text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300" />
                     </div>
                   </div>
 

@@ -1,6 +1,14 @@
 // API Base URL - change this based on environment
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
+// Derive a friendly server URL for error messages (strip trailing /api or slashes)
+function getServerUrl() {
+  const raw = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  let base = String(raw).replace(/\/+$/, '');
+  base = base.replace(/\/api$/i, '');
+  return base;
+}
+
 // Helper: parse response safely
 async function parseResponse(response) {
   let data = null;
@@ -20,9 +28,10 @@ async function parseResponse(response) {
 }
 
 function networkErrorToMessage(error) {
+  const serverUrl = getServerUrl();
   if (!error) return 'Gagal terhubung ke server';
-  if (error instanceof TypeError) return 'Tidak dapat terhubung ke server. Pastikan backend menyala di http://localhost:5000';
-  if (typeof error.message === 'string' && error.message.includes('Failed to fetch')) return 'Tidak dapat terhubung ke server. Pastikan backend menyala di http://localhost:5000';
+  if (error instanceof TypeError) return `Tidak dapat terhubung ke server. Pastikan backend menyala di ${serverUrl}`;
+  if (typeof error.message === 'string' && error.message.includes('Failed to fetch')) return `Tidak dapat terhubung ke server. Pastikan backend menyala di ${serverUrl}`;
   return error.message || 'Terjadi kesalahan pada jaringan';
 }
 
@@ -55,7 +64,8 @@ export const registerUser = async (userData) => {
         nama: userData.nama,
         email: userData.email,
         password: userData.password,
-        role: 'karyawan'
+        role: userData.role || 'karyawan',
+        ...(userData.adminKey ? { adminKey: userData.adminKey } : {})
       })
     });
 
@@ -79,6 +89,24 @@ export const getCurrentUser = async (token) => {
     return await parseResponse(response);
   } catch (error) {
     throw new Error(networkErrorToMessage(error) || 'Gagal mengambil data user');
+  }
+};
+
+// Update user profile dengan token
+export const updateUserProfile = async (token, profileData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(profileData)
+    });
+
+    return await parseResponse(response);
+  } catch (error) {
+    throw new Error(networkErrorToMessage(error) || 'Gagal memperbarui profil');
   }
 };
 
@@ -138,6 +166,7 @@ export default {
   loginUser,
   registerUser,
   getCurrentUser,
+  updateUserProfile,
   getKaryawanList,
   getKaryawanById,
   createKaryawan

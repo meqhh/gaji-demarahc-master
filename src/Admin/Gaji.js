@@ -286,118 +286,24 @@ function Gaji() {
   const absensiData = context?.absensiData || []; // Only used for filter options (karyawan names)
   const karyawanData = context?.karyawanData || []; // Get karyawan data from context
 
-  const defaultGajiData = [
-    { id: 1, karyawan: "Syardatul Maula", pasien: "Andi Susilo", alamat: "Jl. Merdeka 12", treatment: "Home Visit - Pemeriksaan", harga: 150000, fee: 20, tanggal: "2025-08-13" },
-    { id: 2, karyawan: "Ridwan", pasien: "Siti Aminah", alamat: "Perum. Bunga", treatment: "Imunisasi", harga: 200000, fee: 25, tanggal: "2025-08-13" },
-    { id: 3, karyawan: "Firda", pasien: "Budi Santoso", alamat: "Jl. Melati", treatment: "Postnatal Care", harga: 300000, fee: 15, tanggal: "2025-08-13" },
-  ];
-
-  const defaultFeePaket = [
-    { id: 1, pasien: "Andi Susilo", paket: "Paket Antenatal", hargaPaket: 500000, fee: 80000 },
-    { id: 2, pasien: "Siti Aminah", paket: "Paket Persalinan", hargaPaket: 1200000, fee: 200000 },
-  ];
-
   const [gajiData, setGajiData] = useState(() => {
     try {
       const saved = localStorage.getItem("gajiData");
-      return saved ? JSON.parse(saved) : defaultGajiData;
+      return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      return defaultGajiData;
+      return [];
     }
   });
 
-  // Initialize gaji data for all karyawan from absensi
-  useEffect(() => {
-    if (!absensiData || absensiData.length === 0) return;
-
-    // Check if initialization already done
-    const initKey = 'gajiDataInitialized';
-    if (localStorage.getItem(initKey) === 'true') return;
-
-    // Get unique karyawan names from absensi
-    const uniqueKaryawan = absensiData
-      .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "")
-      .filter((name, index, self) => self.indexOf(name) === index);
-
-    if (uniqueKaryawan.length === 0) return;
-
-    // Get existing gaji data
-    const existingGaji = gajiData || [];
-    const existingKaryawan = existingGaji
-      .map((g) => g.karyawan)
-      .filter((name) => name);
-
-    // Create gaji data for karyawan that don't have gaji data yet
-    const newGajiData = [];
-    const treatments = [
-      "Home Visit - Pemeriksaan",
-      "Imunisasi",
-      "Postnatal Care",
-      "Konsultasi",
-      "Pemeriksaan Rutin",
-      "Vaksinasi"
-    ];
-    const addresses = [
-      "Jl. Merdeka",
-      "Perum. Bunga",
-      "Jl. Melati",
-      "Jl. Sudirman",
-      "Jl. Gatot Subroto"
-    ];
-
-    uniqueKaryawan.forEach((karyawanName, index) => {
-      // Skip if karyawan already has gaji data
-      if (existingKaryawan.includes(karyawanName)) return;
-
-      // Get absensi dates for this karyawan
-      const karyawanAbsensi = absensiData.filter(a => a.nama === karyawanName);
-      
-      // Create 2-3 sample gaji entries for each karyawan
-      const numEntries = Math.min(3, karyawanAbsensi.length || 2);
-      for (let i = 0; i < numEntries; i++) {
-        // Use date from absensi if available, otherwise use current date
-        let gajiDate;
-        if (karyawanAbsensi[i] && karyawanAbsensi[i].date) {
-          gajiDate = karyawanAbsensi[i].date;
-        } else {
-          const randomDate = new Date();
-          randomDate.setDate(randomDate.getDate() - (index * 7 + i * 3));
-          gajiDate = randomDate.toISOString().split('T')[0];
-        }
-        
-        newGajiData.push({
-          id: Date.now() + index * 1000 + i,
-          karyawan: karyawanName,
-          pasien: `Pasien ${karyawanName} ${i + 1}`,
-          alamat: addresses[index % addresses.length] + ` ${i + 1}`,
-          treatment: treatments[(index + i) % treatments.length],
-          harga: 150000 + (index * 25000) + (i * 50000),
-          fee: 15 + (index % 10),
-          tanggal: gajiDate
-        });
-      }
-    });
-
-    // Add new gaji data if any
-    if (newGajiData.length > 0) {
-      setGajiData((prev) => {
-        const updated = [...prev, ...newGajiData];
-        localStorage.setItem(initKey, 'true');
-        return updated;
-      });
-    } else {
-      localStorage.setItem(initKey, 'true');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [absensiData]); // Only run when absensiData changes
+  // All gaji data comes from localStorage/backend API (no auto-generation)
+  // This useEffect is removed to prevent dummy data auto-creation
 
   const [feePaketData, setFeePaketData] = useState(() => {
     try {
       const saved = localStorage.getItem("feePaketData");
-      return saved ? JSON.parse(saved) : defaultFeePaket;
+      return saved ? JSON.parse(saved) : [];
     } catch (e) {
-      return defaultFeePaket;
+      return [];
     }
   });
 

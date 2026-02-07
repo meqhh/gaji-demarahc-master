@@ -58,149 +58,24 @@ function Absensi() {
     return uniqueNames;
   }, [absensi, karyawanData]);
 
-  // Data awal
-  const defaultAbsensi = [
-    {
-      id: 1,
-      nama: "Syardatul Maula",
-      posisi: "Bidan",
-      date: "2025-08-13",
-      jamMasuk: "07:30",
-      jamKeluar: "17:00",
-      status: "Hadir",
-    },
-    {
-      id: 2,
-      nama: "Ridwan",
-      posisi: "Driver",
-      date: "2025-08-13",
-      jamMasuk: "07:30",
-      jamKeluar: "15:30",
-      status: "Hadir",
-    },
-    {
-      id: 3,
-      nama: "Firda",
-      posisi: "Bidan",
-      date: "2025-08-13",
-      jamMasuk: "07:30",
-      jamKeluar: "17:00",
-      status: "Hadir",
-    },
-    {
-      id: 4,
-      nama: "Mela Anjasari",
-      posisi: "Bidan",
-      date: "2025-08-13",
-      jamMasuk: "07:30",
-      jamKeluar: "17:00",
-      status: "Hadir",
-    },
-    {
-      id: 5,
-      nama: "Yuyun Puspitayani H",
-      posisi: "Admin",
-      date: "2025-08-13",
-      jamMasuk: "07:30",
-      jamKeluar: "17:00",
-      status: "Hadir",
-    },
-    {
-      id: 6,
-      nama: "Filga Tri Adab",
-      posisi: "Bidan",
-      date: "2025-08-13",
-      jamMasuk: "07:30",
-      jamKeluar: "17:00",
-      status: "Hadir",
-    },
-  ];
+  // No default dummy data - all data from backend API
 
-  // Initialize context with default data if empty (only once)
+  // Initialize from localStorage/backend API (no dummy data)
   useEffect(() => {
-    // Check if context is available
-    if (!context || !setAbsensiData || !addAbsensi) {
+    if (!context || !setAbsensiData) {
       return;
     }
 
     try {
       const saved = localStorage.getItem("absensiData");
-      let hasSavedData = false;
-      
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          hasSavedData = Array.isArray(parsed) && parsed.length > 0;
+          if (Array.isArray(parsed)) {
+            setAbsensiData(parsed);
+          }
         } catch (parseError) {
           console.error("Error parsing absensiData from localStorage:", parseError);
-          hasSavedData = false;
-        }
-      }
-      
-      // Only initialize if no saved data exists and context is empty
-      if (!hasSavedData && absensiData && Array.isArray(absensiData) && absensiData.length === 0) {
-        // Merge with the same 30 sample names from Karyawan data
-        const sampleNames = [
-          "Ahmad Fikri",
-          "Siti Hapsari",
-          "Budi Santoso",
-          "Dewi Lestari",
-          "Rizky Pratama",
-          "Intan Permata",
-          "Aulia Rahman",
-          "Rina Kurnia",
-          "Taufik Hidayat",
-          "Maya Sari",
-          "Fajar Nugroho",
-          "Rina Dewi",
-          "Andi Wijaya",
-          "Lina Marlina",
-          "Hendra Saputra",
-          "Nadia Safitri",
-          "Yusuf Ramadhan",
-          "Siska Amelia",
-          "Ricky Adi",
-          "Putri Anggraini",
-          "Doni Prasetyo",
-          "Vina Oktavia",
-          "Eko Saputra",
-          "Linda Kusuma",
-          "Hesti Rahma",
-          "Ardiansyah",
-          "Nina Mariana",
-          "Galih Pratama",
-          "Fitriani",
-          "Slamet Widodo",
-        ];
-
-        const existingNames = defaultAbsensi.map((a) => a.nama);
-        const maxId = defaultAbsensi.length > 0 
-          ? Math.max(...defaultAbsensi.map((a) => a.id || 0), 0)
-          : 0;
-        let nextId = maxId + 1;
-
-        const initialData = [...defaultAbsensi];
-        sampleNames.forEach((name) => {
-          if (!existingNames.includes(name)) {
-            initialData.push({
-              id: nextId++,
-              nama: name,
-              posisi: "Staff",
-              date: "2025-12-17",
-              jamMasuk: "08:00",
-              jamKeluar: "17:00",
-              status: "Hadir",
-            });
-          }
-        });
-
-        // Add all default data to context using setAbsensiData to avoid multiple renders
-        if (setAbsensiData && initialData.length > 0) {
-          setAbsensiData(initialData);
-        } else if (addAbsensi) {
-          initialData.forEach((item) => {
-            addAbsensi(item);
-          });
         }
       }
     } catch (error) {

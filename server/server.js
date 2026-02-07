@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 
 // Import routes
 import authRoutes from './routes/auth.js';
+import menuRoutes from './routes/menu.js';
 import karyawanRoutes from './routes/karyawan.js';
 import cutiRoutes from './routes/cuti.js';
 import absensiRoutes from './routes/absensi.js';
@@ -45,6 +46,7 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     database: 'File-based JSON storage',
     endpoints: {
+      menus: '/api/menus',
       auth: '/api/auth',
       karyawan: '/api/karyawan',
       cuti: '/api/cuti',
@@ -56,6 +58,7 @@ app.get('/api', (req, res) => {
   });
 });
 
+app.use('/api/menus', menuRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/karyawan', karyawanRoutes);
 app.use('/api/cuti', cutiRoutes);

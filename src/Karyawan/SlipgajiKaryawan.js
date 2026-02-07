@@ -89,26 +89,16 @@ export default function SlipgajiKaryawan() {
 		});
 	};
 
-	// Filter slip gaji berdasarkan karyawan yang login
+	// Filter slip gaji untuk ditampilkan (SEMUA slip untuk semua karyawan)
 	const slips = useMemo(() => {
-		if (!userProfile || !userProfile.name) {
-			// Jika tidak ada userProfile, return empty array
+		// Jika tidak ada slipGajiData, return empty array
+		if (!Array.isArray(slipGajiData) || slipGajiData.length === 0) {
 			return [];
 		}
 
-		// Filter slip gaji berdasarkan nama karyawan
-		const filteredSlips = Array.isArray(slipGajiData) 
-			? slipGajiData.filter(slip => {
-				// Match berdasarkan nama (case insensitive)
-				const slipNama = (slip.nama || "").toLowerCase().trim();
-				const userNama = (userProfile.name || "").toLowerCase().trim();
-				return slipNama === userNama;
-			})
-			: [];
-
-		// Convert to karyawan format
-		return convertSlipGajiData(filteredSlips);
-	}, [slipGajiData, userProfile, karyawanData]);
+		// Convert dan tampilkan SEMUA slip gaji (bukan hanya untuk user yang login)
+		return convertSlipGajiData(slipGajiData);
+	}, [slipGajiData, karyawanData]);
 
 	function openSlip(slip) {
 		setSelected(slip);
