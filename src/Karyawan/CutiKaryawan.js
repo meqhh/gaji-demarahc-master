@@ -25,6 +25,7 @@ export default function CutiKaryawan() {
   const [formData, setFormData] = useState({
     nama: "",
     tanggal: "",
+    tanggalAkhir: "",
     lama: "",
     alasan: "",
     status: "Pending",
@@ -48,11 +49,22 @@ export default function CutiKaryawan() {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
-    const newCuti = {
-      ...formData,
-    };
+
+    const newCuti = { ...formData };
+    // If tanggalAkhir provided and lama empty, compute lama (inclusive)
+    if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
+      try {
+        const start = new Date(formData.tanggal);
+        const end = new Date(formData.tanggalAkhir);
+        const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        newCuti.lama = diff > 0 ? diff : 1;
+      } catch (err) {
+        newCuti.lama = formData.lama || 1;
+      }
+    }
+
     addCuti(newCuti);
-    setFormData({ nama: "", tanggal: "", lama: "", alasan: "", status: "Pending" });
+    setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
     setShowTambahModal(false);
   };
 
@@ -61,6 +73,7 @@ export default function CutiKaryawan() {
     setFormData({
       nama: item.nama || "",
       tanggal: item.tanggal || "",
+      tanggalAkhir: item.tanggalAkhir || "",
       lama: item.lama || "",
       alasan: item.alasan || "",
       status: item.status || "Pending",
@@ -76,8 +89,19 @@ export default function CutiKaryawan() {
       return;
     }
     if (selectedCuti) {
-      updateCuti(selectedCuti.id, formData);
-      setFormData({ nama: "", tanggal: "", lama: "", alasan: "", status: "Pending" });
+      const updates = { ...formData };
+      if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
+        try {
+          const start = new Date(formData.tanggal);
+          const end = new Date(formData.tanggalAkhir);
+          const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+          updates.lama = diff > 0 ? diff : 1;
+        } catch (err) {
+          updates.lama = formData.lama || 1;
+        }
+      }
+      updateCuti(selectedCuti.id, updates);
+      setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
       setShowEditModal(false);
       setSelectedCuti(null);
     }
@@ -198,7 +222,8 @@ export default function CutiKaryawan() {
             <thead>
               <tr className="bg-gray-100 border-b-2 border-gray-200">
                 <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">No</th>
-                <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Tanggal Cuti</th>
+                <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Tanggal Mulai</th>
+                <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Tanggal Akhir</th>
                 <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Durasi (hari)</th>
                 <th className="px-6 py-4 text-left text-sm font-bold text-gray-700">Alasan</th>
                 <th className="px-6 py-4 text-center text-sm font-bold text-gray-700">Status</th>
@@ -210,6 +235,7 @@ export default function CutiKaryawan() {
                 <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-all animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
                   <td className="px-6 py-4 text-gray-800 font-semibold">{index + 1}</td>
                   <td className="px-6 py-4 text-gray-800 font-medium">{item.tanggal}</td>
+                  <td className="px-6 py-4 text-gray-800 font-medium">{item.tanggalAkhir || '-'}</td>
                   <td className="px-6 py-4 text-center">
                     <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm font-semibold border border-gray-300">{item.lama} hari</span>
                   </td>
@@ -278,8 +304,12 @@ export default function CutiKaryawan() {
                 <p className="text-lg font-bold text-gray-800">{selectedCuti.nama}</p>
               </div>
               <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
-                <p className="text-sm text-gray-600 font-medium">Tanggal Cuti</p>
+                <p className="text-sm text-gray-600 font-medium">Tanggal Mulai</p>
                 <p className="text-lg font-bold text-gray-900 mt-1">{selectedCuti.tanggal}</p>
+              </div>
+              <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
+                <p className="text-sm text-gray-600 font-medium">Tanggal Akhir</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">{selectedCuti.tanggalAkhir || '-'}</p>
               </div>
               <div className="bg-gray-50 border-l-4 border-gray-400 p-4 rounded">
                 <p className="text-sm text-gray-600 font-medium">Durasi Cuti</p>
@@ -322,28 +352,39 @@ export default function CutiKaryawan() {
             <form onSubmit={handleTambahCuti} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <select
+                <input
+                  list="karyawan-list"
+                  name="nama"
                   value={formData.nama}
                   onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                   required
+                  placeholder="Pilih atau ketik nama karyawan"
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
-                >
-                  <option value="">-- Pilih Nama Karyawan --</option>
+                />
+                <datalist id="karyawan-list">
                   {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
-                    <option key={idx} value={karyawan.nama || ""}>
-                      {karyawan.nama}
-                    </option>
+                    <option key={idx} value={karyawan.nama || ""} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Cuti</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Mulai</label>
                 <input
                   type="date"
                   value={formData.tanggal}
                   onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
                   required
+                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Akhir (opsional)</label>
+                <input
+                  type="date"
+                  value={formData.tanggalAkhir}
+                  onChange={(e) => setFormData({ ...formData, tanggalAkhir: e.target.value })}
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
               </div>
@@ -355,7 +396,7 @@ export default function CutiKaryawan() {
                   min="1"
                   value={formData.lama}
                   onChange={(e) => setFormData({ ...formData, lama: e.target.value })}
-                  placeholder="Masukkan jumlah hari"
+                  placeholder="Masukkan jumlah hari (atau biarkan kosong untuk dihitung dari tanggal)"
                   required
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
@@ -401,30 +442,41 @@ export default function CutiKaryawan() {
               <button onClick={() => { setShowEditModal(false); setSelectedCuti(null); }} className="text-2xl text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleUpdateCuti} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <select
-                  value={formData.nama}
-                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                  required
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
-                >
-                  <option value="">-- Pilih Nama Karyawan --</option>
-                  {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
-                    <option key={idx} value={karyawan.nama || ""}>
-                      {karyawan.nama}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
+                  <input
+                    list="karyawan-list"
+                    name="nama"
+                    value={formData.nama}
+                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                    required
+                    placeholder="Pilih atau ketik nama karyawan"
+                    className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                  />
+                  <datalist id="karyawan-list">
+                    {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
+                      <option key={idx} value={karyawan.nama || ""} />
+                    ))}
+                  </datalist>
+                </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Cuti</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Mulai</label>
                 <input
                   type="date"
                   value={formData.tanggal}
                   onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
                   required
+                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Akhir (opsional)</label>
+                <input
+                  type="date"
+                  value={formData.tanggalAkhir}
+                  onChange={(e) => setFormData({ ...formData, tanggalAkhir: e.target.value })}
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
               </div>
@@ -436,7 +488,7 @@ export default function CutiKaryawan() {
                   min="1"
                   value={formData.lama}
                   onChange={(e) => setFormData({ ...formData, lama: e.target.value })}
-                  placeholder="Masukkan jumlah hari"
+                  placeholder="Masukkan jumlah hari (atau biarkan kosong untuk dihitung dari tanggal)"
                   required
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />

@@ -33,7 +33,7 @@
     "password": "$2a$10$L3GBYj6b7IyGEi9yTds39OXcVwqBaQJgV6.oUIxtv.bPCgWqmSOl2",
     "role": "karyawan",
     "createdAt": "2026-02-07T06:55:08.757Z",
-    "lastLogin": "2026-02-07T07:54:07.932Z"
+    "lastLogin": "2026-02-13T11:41:10.730Z"
   },
   {
     "id": "USR1770447508354",
@@ -74,6 +74,42 @@
     "password": "$2a$10$fCaUumSE05RWNQIUXnS0lOTy8TPvcGsc.f3wAiZAAKubWaj0gWtKW",
     "role": "karyawan",
     "createdAt": "2026-02-07T14:46:02.208Z",
-    "lastLogin": "2026-02-07T14:46:13.996Z"
+    "lastLogin": "2026-02-07T16:06:26.851Z"
+  },
+  {
+    "id": "USR1770478460141",
+    "nama": "rio hutabarat",
+    "email": "rio@gmail.com",
+    "password": "$2a$10$yKCcTDt1i9VIm7owV3H3y.fk1NBQTyG.cDlojnvmCtYDrTZWOD9Wi",
+    "role": "admin",
+    "createdAt": "2026-02-07T15:34:20.141Z",
+    "lastLogin": "2026-02-13T11:24:59.154Z"
+  },
+  {
+    "id": "USR1770478579445",
+    "nama": "Jesaya Sembiring",
+    "email": "Jesaya@gmail.com",
+    "password": "$2a$10$PXLh8U/z2aSxvBvIBjKAquXm1kwxPEjcIGTTSlhoHXz62kzes.Te.",
+    "role": "karyawan",
+    "createdAt": "2026-02-07T15:36:19.445Z",
+    "lastLogin": "2026-02-07T15:51:50.415Z"
+  },
+  {
+    "id": "USR1770981893749",
+    "nama": "Rio Htz",
+    "email": "Rio@gmail.com",
+    "password": "$2a$10$8v5vxP9TUniFyqBbLqsIK.ac21iwyFoImIK9rErhSV.rGINY5MgLC",
+    "role": "karyawan",
+    "createdAt": "2026-02-13T11:24:53.749Z",
+    "lastLogin": null
+  },
+  {
+    "id": "USR1770982143643",
+    "nama": "opung",
+    "email": "opung@gmail.com",
+    "password": "$2a$10$lirurx/0MkPsNEph9fwireaBiu44BLoX98grgLQgnehCL8ny1Sk3u",
+    "role": "admin",
+    "createdAt": "2026-02-13T11:29:03.643Z",
+    "lastLogin": "2026-02-13T11:29:21.611Z"
   }
 ]

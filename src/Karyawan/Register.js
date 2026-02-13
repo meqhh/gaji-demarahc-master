@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../services/authService";
 import Logo from "../Images/demaralogo.png";
+import { AppContext } from "../context/AppContext";
 
 function Register() {
   const navigate = useNavigate();
+  const appContext = useContext(AppContext);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +76,25 @@ function Register() {
       });
 
       if (registerResponse.success) {
+        // If registering admin or karyawan, pre-fill userProfile so profile pages show name/email
+        try {
+          if (formData.role === 'admin' || formData.role === 'karyawan') {
+            const profile = registerResponse.data || { nama: formData.nama, email: formData.email, id: registerResponse.data?.id || String(Date.now()) };
+            if (appContext && typeof appContext.setUserProfile === 'function') {
+              appContext.setUserProfile(profile);
+            }
+            try { localStorage.setItem('userProfile', JSON.stringify(profile)); } catch (e) { /* ignore */ }
+
+            // For karyawan pages, also set expected localStorage keys
+            if (formData.role === 'karyawan') {
+              try { localStorage.setItem('karyawanId', profile.id || profile._id || String(Date.now())); } catch (e) {}
+              try { localStorage.setItem('karyawanEmail', profile.email || formData.email); } catch (e) {}
+            }
+          }
+        } catch (e) {
+          // non-fatal
+          console.error('Failed to sync registered user to AppContext', e);
+        }
         // Beri tahu user dan arahkan ke halaman login untuk melakukan login manual
         setSuccess("Pendaftaran berhasil. Silakan login.");
         setTimeout(() => {

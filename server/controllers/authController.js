@@ -17,14 +17,25 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email sudah terdaftar' });
     }
     
-    // If attempting to register as admin, require admin registration key
-    if ((role === 'admin' || role === 'Admin') ) {
+    // If attempting to register as admin, require admin registration key.
+    // Allow a fallback: if ADMIN_REGISTER_KEY is not set and no admin exists yet,
+    // permit creation of the first admin (useful for fresh clones/development machines).
+    if (role && role.toString().toLowerCase() === 'admin') {
       const requiredKey = process.env.ADMIN_REGISTER_KEY;
+      const allUsers = usersDB.getAll();
+      const anyAdminExists = allUsers.some(u => u.role && u.role.toString().toLowerCase() === 'admin');
+
       if (!requiredKey) {
-        return res.status(500).json({ success: false, message: 'Server not configured for admin registration' });
-      }
-      if (!adminKey || adminKey !== requiredKey) {
-        return res.status(403).json({ success: false, message: 'Kunci registrasi admin tidak valid' });
+        if (!anyAdminExists) {
+          console.warn('⚠️ ADMIN_REGISTER_KEY not set — allowing first admin registration without key');
+          // allow creation of first admin
+        } else {
+          return res.status(500).json({ success: false, message: 'Server not configured for admin registration' });
+        }
+      } else {
+        if (!adminKey || adminKey !== requiredKey) {
+          return res.status(403).json({ success: false, message: 'Kunci registrasi admin tidak valid' });
+        }
       }
     }
 

@@ -91,11 +91,25 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
-  console.log(`📚 API Documentation tersedia di http://localhost:${PORT}/api`);
-  console.log(`🏥 Health check di http://localhost:${PORT}/api/health`);
-});
+// Start server with retry if port is in use
+function startServer(port) {
+  const server = app.listen(port, () => {
+    console.log(`🚀 Server berjalan di http://localhost:${port}`);
+    console.log(`📚 API Documentation tersedia di http://localhost:${port}/api`);
+    console.log(`🏥 Health check di http://localhost:${port}/api/health`);
+  });
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.warn(`⚠️ Port ${port} sudah digunakan. Mencoba port ${port + 1}...`);
+      setTimeout(() => startServer(port + 1), 200);
+    } else {
+      console.error(err);
+      process.exit(1);
+    }
+  });
+}
+
+startServer(Number(process.env.PORT) || 5000);
 
 export default app;

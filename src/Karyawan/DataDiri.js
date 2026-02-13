@@ -261,7 +261,7 @@ export default function DataDiri() {
                     <div>
                       <label className="text-xs font-semibold text-gray-700 block mb-2">Tanggal Masuk</label>
                       <input 
-                        type="text" 
+                        type="date" 
                         name="tanggalMasuk" 
                         value={formData.tanggalMasuk} 
                         onChange={handleChange}
@@ -272,7 +272,7 @@ export default function DataDiri() {
                     <div>
                       <label className="text-xs font-semibold text-gray-700 block mb-2">Tanggal Kontrak</label>
                       <input 
-                        type="text" 
+                        type="date" 
                         name="tanggalKontrak" 
                         value={formData.tanggalKontrak} 
                         onChange={handleChange}

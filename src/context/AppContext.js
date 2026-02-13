@@ -7,7 +7,15 @@ export const AppContextProvider = ({ children }) => {
   // User Profile Data - Load from API if authenticated
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('userProfile');
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      // Normalize backend field `nama` to `name` for frontend components
+      if (parsed && parsed.nama && !parsed.name) parsed.name = parsed.nama;
+      return parsed;
+    } catch (e) {
+      return null;
+    }
   });
 
   const [userLoading, setUserLoading] = useState(true);
@@ -65,7 +73,10 @@ export const AppContextProvider = ({ children }) => {
       getCurrentUser(token)
         .then(res => {
           if (res.success && res.data) {
-            setUserProfile(res.data);
+            // Normalize backend `nama` -> `name` to keep frontend consistent
+            const user = { ...res.data };
+            if (user.nama && !user.name) user.name = user.nama;
+            setUserProfile(user);
             setUserError(null);
           }
         })
@@ -110,6 +121,65 @@ export const AppContextProvider = ({ children }) => {
         setKaryawanError(err.message || String(err));
       })
       .finally(() => setKaryawanLoading(false));
+  }, [userProfile]);
+
+  // Fetch other datasets (absensi, gaji, slip gaji, cuti, treatment) when authenticated
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:5000') + '/api';
+
+    const endpoints = {
+      absensi: `${API_BASE}/absensi`,
+      gaji: `${API_BASE}/gaji`,
+      slipGaji: `${API_BASE}/slip-gaji`,
+      cuti: `${API_BASE}/cuti`,
+      treatment: `${API_BASE}/treatment`
+    };
+
+    const fetchResource = async (url) => {
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || `${res.status} ${res.statusText}`);
+        }
+
+        const json = await res.json();
+        return json && json.data ? json.data : json;
+      } catch (e) {
+        console.error('Fetch resource failed', url, e);
+        return null;
+      }
+    };
+
+    (async () => {
+      try {
+        const [absensiRes, gajiRes, slipRes, cutiRes, treatmentRes] = await Promise.all([
+          fetchResource(endpoints.absensi),
+          fetchResource(endpoints.gaji),
+          fetchResource(endpoints.slipGaji),
+          fetchResource(endpoints.cuti),
+          fetchResource(endpoints.treatment)
+        ]);
+
+        if (Array.isArray(absensiRes)) setAbsensiData(absensiRes);
+        if (Array.isArray(gajiRes)) setGajiData(gajiRes);
+        if (Array.isArray(slipRes)) setSlipGajiData(slipRes);
+        if (Array.isArray(cutiRes)) setCutiData(cutiRes);
+        if (Array.isArray(treatmentRes)) setTreatmentData(treatmentRes);
+      } catch (e) {
+        console.error('Failed to fetch additional datasets', e);
+      }
+    })();
   }, [userProfile]);
 
   // Simpan karyawan data ke localStorage
