@@ -41,13 +41,36 @@ function Login() {
       if (response.success) {
         const { token, user } = response.data;
 
-        // Save token dan user info
+        // PENTING: Clear semua data lama sebelum set yang baru
+        // Ini mencegah data karyawan lama tertinggal saat admin login
+        localStorage.removeItem("userProfile");
+        localStorage.removeItem("karyawanLoggedIn");
+        localStorage.removeItem("karyawanUsername");
+        localStorage.removeItem("karyawanId");
+        localStorage.removeItem("karyawanEmail");
+        localStorage.removeItem("user");
+
+        // Save token dan user info fresh
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
-        localStorage.setItem("karyawanLoggedIn", "true");
-        localStorage.setItem("karyawanUsername", user.nama);
-        localStorage.setItem("karyawanId", user.id);
-        localStorage.setItem("karyawanEmail", user.email);
+        localStorage.setItem("userProfile", JSON.stringify(user));
+        
+        // Simpan juga dengan prefix sesuai role untuk compatibility
+        if (user.role === 'admin') {
+          localStorage.setItem("adminLoggedIn", "true");
+          localStorage.setItem("adminEmail", user.email);
+          // Clear karyawan keys saat admin login
+          localStorage.removeItem("karyawanLoggedIn");
+          localStorage.removeItem("karyawanEmail");
+        } else {
+          localStorage.setItem("karyawanLoggedIn", "true");
+          localStorage.setItem("karyawanUsername", user.nama);
+          localStorage.setItem("karyawanId", user.id);
+          localStorage.setItem("karyawanEmail", user.email);
+          // Clear admin keys saat karyawan login
+          localStorage.removeItem("adminLoggedIn");
+          localStorage.removeItem("adminEmail");
+        }
 
         // Mark last login
         const todayKey = new Date().toISOString().slice(0, 10);

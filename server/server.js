@@ -11,6 +11,7 @@ import absensiRoutes from './routes/absensi.js';
 import gajiRoutes from './routes/gaji.js';
 import treatmentRoutes from './routes/treatment.js';
 import slipGajiRoutes from './routes/slipGaji.js';
+import publicRoutes from './routes/public.js';
 
 // Load environment variables
 dotenv.config();
@@ -66,6 +67,7 @@ app.use('/api/absensi', absensiRoutes);
 app.use('/api/gaji', gajiRoutes);
 app.use('/api/treatment', treatmentRoutes);
 app.use('/api/slip-gaji', slipGajiRoutes);
+app.use('/api/public', publicRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

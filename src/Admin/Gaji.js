@@ -2,7 +2,18 @@ import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
 // === Modal Tambah/Edit Tindakan === //
-function FeeTindakanModal({ show, onClose, onSubmit, initialData, karyawanOptions = [] }) {
+function FeeTindakanModal({ 
+  show, 
+  onClose, 
+  onSubmit, 
+  initialData, 
+  karyawanOptions = [],
+  kompGaji = {},
+  onKompGajiChange = () => {},
+  totalFeeTindakan = 0,
+  totalFeePaket = 0,
+  formatRupiah = (n) => `Rp. ${Number(n).toLocaleString('id-ID')}`
+}) {
   const [form, setForm] = useState(
     initialData || { karyawan: "", pasien: "", alamat: "", treatment: "", harga: "", fee: "", tanggal: "" }
   );
@@ -19,130 +30,260 @@ function FeeTindakanModal({ show, onClose, onSubmit, initialData, karyawanOption
     onClose();
   };
 
+  // Hitung total gaji
+  const totalGross = (kompGaji.gajiPokok || 0) + (kompGaji.tunjangan || 0) + (kompGaji.bonus || 0) + totalFeeTindakan + totalFeePaket + (kompGaji.tunjanganTransport || 0);
+  const totalGajiBersih = totalGross - (kompGaji.potonganBPJS || 0);
+
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down">
-      <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8 animate-slide-up">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              {initialData ? "Edit Tindakan" : "Tambah Tindakan"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
-            >
-              ✕
-            </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down overflow-y-auto py-8">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-0 animate-slide-up my-auto">
+        {/* Header - Simple */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{initialData ? "Edit Tindakan" : "Tambah Tindakan"}</h2>
           </div>
-          <p className="text-sm text-gray-500">Kelola data tindakan dan fee</p>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        {/* Form */}
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* Pilih Karyawan */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Pilih Karyawan</label>
-            <select
-              id="karyawan"
-              value={form.karyawan || ""}
-              onChange={handleChange}
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-              required
-            >
-              <option value="">Pilih Karyawan</option>
-              {karyawanOptions.map((nama) => (
-                <option key={nama} value={nama}>
-                  {nama}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Form Content - Scrollable */}
+        <form className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]" onSubmit={handleSubmit}>
+          {/* Grid 2 Kolom */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {/* ===== KOLOM KIRI - DATA TINDAKAN ===== */}
+            <div className="space-y-5">
+              <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">Data Tindakan</h3>
 
-          {/* Tanggal */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Tanggal</label>
-            <input
-              type="date"
-              id="tanggal"
-              value={form.tanggal || ""}
-              onChange={handleChange}
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-              required
-            />
-          </div>
+              {/* Service Data Section */}
+              <div className="space-y-5">
+                {/* Karyawan */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Karyawan</label>
+                  <select
+                    id="karyawan"
+                    value={form.karyawan || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    required
+                  >
+                    <option value="">- Pilih Karyawan -</option>
+                    {karyawanOptions.map((nama) => (
+                      <option key={nama} value={nama}>
+                        {nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          {/* Nama Pasien */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Nama Pasien</label>
-            <input
-              id="pasien"
-              placeholder="Masukkan nama pasien"
-              value={form.pasien}
-              onChange={handleChange}
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-              required
-            />
-          </div>
+                {/* Tanggal */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal</label>
+                  <input
+                    type="date"
+                    id="tanggal"
+                    value={form.tanggal || ""}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    required
+                  />
+                </div>
 
-          {/* Alamat */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Alamat</label>
-            <input
-              id="alamat"
-              placeholder="Masukkan alamat"
-              value={form.alamat}
-              onChange={handleChange}
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-              required
-            />
-          </div>
+                {/* Nama Pasien */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Pasien</label>
+                  <input
+                    id="pasien"
+                    placeholder="Masukkan nama pasien"
+                    value={form.pasien}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700 placeholder-gray-400"
+                    required
+                  />
+                </div>
 
-          {/* Jenis Treatment */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Jenis Treatment</label>
-            <input
-              id="treatment"
-              placeholder="Masukkan jenis treatment"
-              value={form.treatment}
-              onChange={handleChange}
-              className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-              required
-            />
-          </div>
+                {/* Alamat */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Alamat</label>
+                  <textarea
+                    id="alamat"
+                    placeholder="Masukkan alamat pasien"
+                    value={form.alamat}
+                    onChange={handleChange}
+                    rows="2"
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700 placeholder-gray-400 resize-none"
+                    required
+                  />
+                </div>
 
-          {/* Harga & Fee */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Harga Treatment</label>
-              <input
-                type="number"
-                id="harga"
-                placeholder="Masukkan harga"
-                value={form.harga}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-                required
-              />
+                {/* Treatment */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Treatment</label>
+                  <input
+                    id="treatment"
+                    placeholder="Masukkan jenis treatment"
+                    value={form.treatment}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700 placeholder-gray-400"
+                    required
+                  />
+                </div>
+
+                {/* Harga & Fee */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Harga</label>
+                    <input
+                      type="number"
+                      id="harga"
+                      placeholder="0"
+                      min="0"
+                      value={form.harga}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                      required
+                    />
+                    <p className="text-xs text-gray-600 mt-1">{formatRupiah(form.harga || 0)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Fee (%)</label>
+                    <input
+                      type="number"
+                      id="fee"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      value={form.fee}
+                      onChange={handleChange}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                      required
+                    />
+                    <p className="text-xs text-gray-600 mt-1">{formatRupiah((Number(form.harga || 0) * Number(form.fee || 0)) / 100)}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Fee (%)</label>
-              <input
-                type="number"
-                id="fee"
-                placeholder="Masukkan fee"
-                value={form.fee}
-                onChange={handleChange}
-                className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors bg-white"
-                required
-              />
+
+            {/* ===== KOLOM KANAN - KOMPONEN GAJI ===== */}
+            <div className="space-y-5">
+              <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-300 pb-2">Komponen Gaji</h3>
+
+              {/* Salary Components */}
+              <div className="space-y-5">
+                {/* Gaji Pokok */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Gaji Pokok</label>
+                  <input
+                    type="number"
+                    id="gajiPokok"
+                    placeholder="0"
+                    min="0"
+                    value={kompGaji.gajiPokok || ''}
+                    onChange={(e) => onKompGajiChange({ ...kompGaji, gajiPokok: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.gajiPokok || 0)}</p>
+                </div>
+
+                {/* Tunjangan */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tunjangan</label>
+                  <input
+                    type="number"
+                    id="tunjangan"
+                    placeholder="0"
+                    min="0"
+                    value={kompGaji.tunjangan || ''}
+                    onChange={(e) => onKompGajiChange({ ...kompGaji, tunjangan: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.tunjangan || 0)}</p>
+                </div>
+
+                {/* Bonus */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bonus</label>
+                  <input
+                    type="number"
+                    id="bonus"
+                    placeholder="0"
+                    min="0"
+                    value={kompGaji.bonus || ''}
+                    onChange={(e) => onKompGajiChange({ ...kompGaji, bonus: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.bonus || 0)}</p>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 pt-3"></div>
+
+                {/* Fee Summary */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-700">Fee Tindakan</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(totalFeeTindakan)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-700">Fee Paket</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(totalFeePaket)}</span>
+                  </div>
+                </div>
+
+                {/* Tunjangan Transport */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tunjangan Transport</label>
+                  <input
+                    type="number"
+                    id="tunjanganTransport"
+                    placeholder="0"
+                    min="0"
+                    value={kompGaji.tunjanganTransport || ''}
+                    onChange={(e) => onKompGajiChange({ ...kompGaji, tunjanganTransport: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.tunjanganTransport || 0)}</p>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 pt-3"></div>
+
+                {/* Potongan BPJS */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Potongan BPJS/TK</label>
+                  <input
+                    type="number"
+                    id="potonganBPJS"
+                    placeholder="0"
+                    min="0"
+                    value={kompGaji.potonganBPJS || ''}
+                    onChange={(e) => onKompGajiChange({ ...kompGaji, potonganBPJS: parseFloat(e.target.value) || 0 })}
+                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                  />
+                  <p className="text-xs text-gray-600 mt-1">-{formatRupiah(kompGaji.potonganBPJS || 0)}</p>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t-2 border-gray-300 pt-3"></div>
+
+                {/* Total Gaji Bersih */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-xs text-gray-600 mb-1">Total Gaji Bersih</p>
+                  <p className="text-xl font-bold text-gray-900">{formatRupiah(totalGajiBersih)}</p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+          <div className="mt-8 pt-6 border-t border-gray-300 flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
@@ -286,6 +427,7 @@ function Gaji() {
   const absensiData = context?.absensiData || []; // Only used for filter options (karyawan names)
   const karyawanData = context?.karyawanData || []; // Get karyawan data from context
 
+  // No hardcoded salary/sample data - rely on AppContext/localStorage/backend
   const [gajiData, setGajiData] = useState(() => {
     try {
       const saved = localStorage.getItem("gajiData");
@@ -294,9 +436,6 @@ function Gaji() {
       return [];
     }
   });
-
-  // All gaji data comes from localStorage/backend API (no auto-generation)
-  // This useEffect is removed to prevent dummy data auto-creation
 
   const [feePaketData, setFeePaketData] = useState(() => {
     try {
@@ -314,6 +453,33 @@ function Gaji() {
   useEffect(() => {
     localStorage.setItem("feePaketData", JSON.stringify(feePaketData));
   }, [feePaketData]);
+
+  // State untuk komponen gaji
+  const [kompGaji, setKompGaji] = useState(() => {
+    try {
+      const saved = localStorage.getItem("kompGaji");
+      return saved ? JSON.parse(saved) : {
+        gajiPokok: 0,
+        tunjangan: 0,
+        bonus: 0,
+        tunjanganTransport: 0,
+        potonganBPJS: 0
+      };
+    } catch (e) {
+      return {
+        gajiPokok: 0,
+        tunjangan: 0,
+        bonus: 0,
+        tunjanganTransport: 0,
+        potonganBPJS: 0
+      };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("kompGaji", JSON.stringify(kompGaji));
+  }, [kompGaji]);
+
   const [showModalTindakan, setShowModalTindakan] = useState(false);
   const [showModalPaket, setShowModalPaket] = useState(false);
   const [editData, setEditData] = useState(null);
@@ -393,6 +559,25 @@ function Gaji() {
     }
   };
 
+  // Clear all data function
+  const handleClearAllData = () => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan.')) {
+      setGajiData([]);
+      setFeePaketData([]);
+      localStorage.removeItem('gajiData');
+      localStorage.removeItem('feePaketData');
+    }
+  };
+
+  // Handle change komponen gaji
+  const handleKompGajiChange = (e) => {
+    const { id, value } = e.target;
+    setKompGaji({
+      ...kompGaji,
+      [id]: parseFloat(value) || 0
+    });
+  };
+
   const formatRupiah = (angka) =>
     `Rp. ${Number(angka).toLocaleString('id-ID')}`;
 
@@ -468,15 +653,9 @@ function Gaji() {
     0
   );
 
-  const gajiPokok = 2000000;
-  const tunjangan = 1500000;
-  const bonus = 300000;
-  const feeTransport = 100000;
-  const potonganBPJSTK = 50000;
-
-  const grossFromFees = totalFeeTindakan + totalFeePaket + feeTransport;
-  const gross = gajiPokok + tunjangan + bonus + grossFromFees;
-  const totalGaji = gross - potonganBPJSTK;
+  // Hitung total gaji berdasarkan komponen
+  const totalGrossBriefing = kompGaji.gajiPokok + kompGaji.tunjangan + kompGaji.bonus + totalFeeTindakan + totalFeePaket + kompGaji.tunjanganTransport;
+  const totalGajiBersih = totalGrossBriefing - kompGaji.potonganBPJS;
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -495,6 +674,14 @@ function Gaji() {
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Gaji</h1>
           <p className="text-gray-600 text-sm">Kelola data gaji dan fee karyawan</p>
         </div>
+        {(gajiData.length > 0 || feePaketData.length > 0) && (
+          <button
+            onClick={handleClearAllData}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors text-sm"
+          >
+            Hapus Semua Data
+          </button>
+        )}
       </div>
 
       {/* Filter Section */}
@@ -558,116 +745,70 @@ function Gaji() {
         </div>
       </div>
 
-      {/* Tabel Gaji */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden card-hover animate-slide-up mb-8" style={{ animationDelay: '0.3s' }}>
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-bold text-gray-900">Gaji Tindakan ({filteredGajiData.length})</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {filterTanggal && `Tanggal: ${new Date(filterTanggal).toLocaleDateString('id-ID')} • `}
-            {filterBulan !== "Semua Bulan" && `Bulan: ${filterBulan} • `}
-            {filterTahun !== "Semua Tahun" && `Tahun: ${filterTahun} • `}
-            {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan}`}
-            {!filterTanggal && filterBulan === "Semua Bulan" && filterTahun === "Semua Tahun" && filterKaryawan === "Semua" && "Menampilkan Semua Data"}
-          </p>
-        </div>
-        
-        {filteredGajiData.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Karyawan</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Tanggal</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Pasien</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Alamat</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Treatment</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Harga</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Fee</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Total Fee</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGajiData.map((g, idx) => (
-                  <tr
-                    key={g.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition"
-                  >
-                    <td className="px-6 py-4 text-gray-800 font-semibold">{g.karyawan || g.pasien || "-"}</td>
-                    <td className="px-6 py-4 text-gray-600 text-sm">{g.tanggal ? new Date(g.tanggal).toLocaleDateString('id-ID') : "-"}</td>
-                    <td className="px-6 py-4 text-gray-700">{g.pasien}</td>
-                    <td className="px-6 py-4 text-gray-700">{g.alamat}</td>
-                    <td className="px-6 py-4 text-gray-700">{g.treatment}</td>
-                    <td className="px-6 py-4 text-gray-700">Rp {Number(g.harga).toLocaleString("id-ID")}</td>
-                    <td className="px-6 py-4 text-gray-700">{g.fee}%</td>
-                    <td className="px-6 py-4 text-gray-800 font-semibold">Rp {(Number(g.harga) * Number(g.fee) / 100).toLocaleString("id-ID")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            <p className="text-base">Tidak ada data gaji yang sesuai dengan filter yang dipilih</p>
-            <p className="text-sm text-gray-400 mt-2">Coba ubah filter atau pastikan ada data gaji</p>
-          </div>
-        )}
+      {/* Tabel Gaji & Komponen Gaji Side by Side */}
+      <div className="grid grid-cols-1 gap-6 mb-8">
+        {/* Kolom Tabel Gaji */}
+        <div>
+          <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden card-hover animate-slide-up" style={{ animationDelay: '0.3s' }}>
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-lg font-bold text-gray-900">Gaji Tindakan ({filteredGajiData.length})</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {filterTanggal && `Tanggal: ${new Date(filterTanggal).toLocaleDateString('id-ID')} • `}
+                {filterBulan !== "Semua Bulan" && `Bulan: ${filterBulan} • `}
+                {filterTahun !== "Semua Tahun" && `Tahun: ${filterTahun} • `}
+                {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan}`}
+                {!filterTanggal && filterBulan === "Semua Bulan" && filterTahun === "Semua Tahun" && filterKaryawan === "Semua" && "Menampilkan Semua Data"}
+              </p>
+            </div>
+            
+            {filteredGajiData.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Karyawan</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Tanggal</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Pasien</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Treatment</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Harga</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Fee</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Total Fee</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredGajiData.map((g, idx) => (
+                      <tr
+                        key={g.id}
+                        className="border-b border-gray-100 hover:bg-gray-50 transition"
+                      >
+                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{g.karyawan || g.pasien || "-"}</td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">{g.tanggal ? new Date(g.tanggal).toLocaleDateString('id-ID') : "-"}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">{g.pasien}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">{g.treatment}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">Rp {Number(g.harga).toLocaleString("id-ID")}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">{g.fee}%</td>
+                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">Rp {(Number(g.harga) * Number(g.fee) / 100).toLocaleString("id-ID")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <p className="text-base">Tidak ada data gaji yang sesuai dengan filter yang dipilih</p>
+                <p className="text-sm text-gray-400 mt-2">Coba ubah filter atau pastikan ada data gaji</p>
+              </div>
+            )}
 
-        {/* Tombol Tambah */}
-        <div className="flex justify-end px-6 py-4 border-t border-gray-200">
-          <button
-            onClick={() => { setEditData(null); setEditType("tindakan"); setShowModalTindakan(true); }}
-            className="px-6 py-2.5 border border-gray-300 text-gray-900 font-semibold rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
-          >
-            <span>+</span> Tambah Tindakan
-          </button>
-        </div>
-      </div>
-
-      {/* Komponen Gaji */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden card-hover animate-slide-up" style={{ animationDelay: '0.45s' }}>
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-bold text-gray-900">Komponen Gaji</h2>
-        </div>
-        
-        <div className="px-6 py-6 space-y-4">
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">Gaji Pokok</span>
-            <span className="font-semibold text-gray-900">{formatRupiah(gajiPokok)}</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">Tunjangan</span>
-            <span className="font-semibold text-gray-900">{formatRupiah(tunjangan)}</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">Bonus</span>
-            <span className="font-semibold text-gray-900">{formatRupiah(bonus)}</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">Total Fee Tindakan</span>
-            <span className="font-semibold text-gray-900">{formatRupiah(totalFeeTindakan)}</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">Total Fee Paket</span>
-            <span className="font-semibold text-gray-900">{formatRupiah(totalFeePaket)}</span>
-          </div>
-
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">Tunjangan Transport</span>
-            <span className="font-semibold text-gray-900">{formatRupiah(feeTransport)}</span>
-          </div>
-
-          <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-            <span className="text-gray-700 font-medium">Potongan BPJS/TK</span>
-            <span className="font-semibold text-gray-900">-{formatRupiah(potonganBPJSTK)}</span>
-          </div>
-
-          <div className="flex items-center justify-between pt-4 border-t-2 border-gray-300">
-            <span className="text-lg font-bold text-gray-900">Total Gaji Bersih</span>
-            <span className="text-lg font-bold text-gray-900">{formatRupiah(totalGaji)}</span>
+            {/* Tombol Tambah */}
+            <div className="flex justify-end px-6 py-4 border-t border-gray-200">
+              <button
+                onClick={() => { setEditData(null); setEditType("tindakan"); setShowModalTindakan(true); }}
+                className="px-6 py-2.5 border border-gray-300 text-gray-900 font-semibold rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
+              >
+                <span>+</span> Tambah Tindakan
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -680,6 +821,11 @@ function Gaji() {
           onSubmit={handleTindakanSubmit}
           initialData={editData}
           karyawanOptions={uniqueKaryawanNames}
+          kompGaji={kompGaji}
+          onKompGajiChange={setKompGaji}
+          totalFeeTindakan={totalFeeTindakan}
+          totalFeePaket={totalFeePaket}
+          formatRupiah={formatRupiah}
         />
       )}
       {editType === "paket" && (

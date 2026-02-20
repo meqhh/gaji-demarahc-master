@@ -24,8 +24,17 @@ function HeaderAdmin() {
   };
 
   const confirmLogout = () => {
+    // Clear ALL user data from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userProfile');
     localStorage.removeItem('adminLoggedIn');
     localStorage.removeItem('adminEmail');
+    localStorage.removeItem('karyawanLoggedIn');
+    localStorage.removeItem('karyawanUsername');
+    localStorage.removeItem('karyawanId');
+    localStorage.removeItem('karyawanEmail');
+    
     setShowLogoutModal(false);
     navigate('/login', { replace: true });
   };

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { getCurrentUser, getKaryawanList } from '../services/authService';
+import { getCurrentUser, getKaryawanList, createKaryawan, updateKaryawan as updateKaryawanApi, deleteKaryawan as deleteKaryawanApi, gajiApi, absensiApi, cutiApi, treatmentApi, slipGajiApi } from '../services/authService';
 
 export const AppContext = createContext();
 
@@ -77,17 +77,25 @@ export const AppContextProvider = ({ children }) => {
             const user = { ...res.data };
             if (user.nama && !user.name) user.name = user.nama;
             setUserProfile(user);
+            // Update localStorage userProfile dengan data fresh dari API
+            localStorage.setItem('userProfile', JSON.stringify(user));
             setUserError(null);
           }
         })
         .catch(err => {
           console.error('Failed to load user profile:', err);
           setUserError(err.message);
+          // Clear invalid data jika token tidak valid
+          setUserProfile(null);
+          localStorage.removeItem('userProfile');
         })
         .finally(() => {
           setUserLoading(false);
         });
     } else {
+      // Tidak ada token, pastikan userProfile kosong
+      setUserProfile(null);
+      localStorage.removeItem('userProfile');
       setUserLoading(false);
     }
   }, []);
@@ -104,16 +112,35 @@ export const AppContextProvider = ({ children }) => {
       .then(res => {
         // Support API shapes { success, data } or direct array
         if (!res) return;
-        if (res.success && res.data) {
-          setKaryawanData(Array.isArray(res.data) ? res.data : []);
-        } else if (Array.isArray(res)) {
-          setKaryawanData(res);
-        } else if (res.karyawan && Array.isArray(res.karyawan)) {
-          setKaryawanData(res.karyawan);
-        } else {
-          // fallback: try to set if object contains array-like fields
+        // Extract server array
+        let serverArr = [];
+        if (res.success && res.data) serverArr = Array.isArray(res.data) ? res.data : [];
+        else if (Array.isArray(res)) serverArr = res;
+        else if (res.karyawan && Array.isArray(res.karyawan)) serverArr = res.karyawan;
+        else {
           const arr = Object.values(res).find(v => Array.isArray(v));
-          if (Array.isArray(arr)) setKaryawanData(arr);
+          if (Array.isArray(arr)) serverArr = arr;
+        }
+
+        // Merge serverArr with any local-only entries stored in localStorage
+        try {
+          const localStr = localStorage.getItem('karyawanData');
+          const localArr = localStr ? JSON.parse(localStr) : [];
+          if (Array.isArray(localArr) && localArr.length > 0) {
+            const merged = [...serverArr];
+            const hasId = (id) => merged.some(m => m && (m.id === id || m.id === String(id)));
+            localArr.forEach(localItem => {
+              if (!localItem) return;
+              // if local item not present on server by id or email, add it
+              const exists = (localItem.id && hasId(localItem.id)) || merged.some(m => m.email && localItem.email && m.email === localItem.email);
+              if (!exists) merged.push(localItem);
+            });
+            setKaryawanData(merged);
+          } else {
+            setKaryawanData(serverArr);
+          }
+        } catch (e) {
+          setKaryawanData(serverArr);
         }
       })
       .catch(err => {
@@ -225,49 +252,298 @@ export const AppContextProvider = ({ children }) => {
     karyawanLoading,
     karyawanError,
     setKaryawanData,
-    addKaryawan: (karyawan) => setKaryawanData(prev => Array.isArray(prev) ? [...prev, { ...karyawan, id: karyawan.id || String(Date.now()) }] : [{ ...karyawan, id: karyawan.id || String(Date.now()) }]),
-    updateKaryawan: (id, updates) => setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => k.id === id ? { ...k, ...updates } : k) : []),
-    deleteKaryawan: (id) => setKaryawanData(prev => Array.isArray(prev) ? prev.filter(k => k.id !== id) : []),
+    addKaryawan: async (karyawan) => {
+      // optimistic add locally
+      const tempId = karyawan.id || `EMP${Date.now()}`;
+      const tempItem = { ...karyawan, id: tempId };
+      setKaryawanData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+
+      // if authenticated, try to persist to server
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await createKaryawan(token, karyawan);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) {
+            setKaryawanData(prev => Array.isArray(prev) ? prev.map(p => (p.id === tempId ? serverItem : p)) : [serverItem]);
+          }
+        } catch (e) {
+          console.error('Failed to create karyawan on server:', e);
+        }
+      }
+    },
+
+    updateKaryawan: async (id, updates) => {
+      // optimistic update locally
+      setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => k.id === id ? { ...k, ...updates } : k) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await updateKaryawanApi(token, id, updates);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) {
+            setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => k.id === id ? serverItem : k) : []);
+          }
+        } catch (e) {
+          console.error('Failed to update karyawan on server:', e);
+        }
+      }
+    },
+
+    deleteKaryawan: async (id) => {
+      // optimistic delete locally
+      const prevSnapshot = Array.isArray(karyawanData) ? karyawanData.slice() : [];
+      setKaryawanData(prev => Array.isArray(prev) ? prev.filter(k => k.id !== id) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await deleteKaryawanApi(token, id);
+        } catch (e) {
+          console.error('Failed to delete karyawan on server:', e);
+          // rollback on failure
+          setKaryawanData(prevSnapshot);
+        }
+      }
+    },
     getKaryawanById: (id) => karyawanData.find(k => k.id === id),
 
     // Absensi
     absensiData,
     setAbsensiData,
-    addAbsensi: (absensi) => setAbsensiData(prev => Array.isArray(prev) ? [...prev, { ...absensi, id: absensi.id || String(Date.now()) }] : [{ ...absensi, id: absensi.id || String(Date.now()) }]),
-    updateAbsensi: (id, updates) => setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => a.id === id ? { ...a, ...updates } : a) : []),
-    deleteAbsensi: (id) => setAbsensiData(prev => Array.isArray(prev) ? prev.filter(a => a.id !== id) : []),
+    addAbsensi: async (absensi) => {
+      const tempId = absensi.id || `ABS${Date.now()}`;
+      const tempItem = { ...absensi, id: tempId };
+      setAbsensiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await absensiApi.create(token, absensi);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setAbsensiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+        } catch (e) {
+          console.error('Failed to create absensi on server:', e);
+        }
+      }
+    },
+    updateAbsensi: async (id, updates) => {
+      const prevSnapshot = Array.isArray(absensiData) ? absensiData.slice() : [];
+      setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => a.id === id ? { ...a, ...updates } : a) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await absensiApi.update(token, id, updates);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => a.id === id ? serverItem : a) : []);
+        } catch (e) {
+          console.error('Failed to update absensi on server:', e);
+          setAbsensiData(prevSnapshot);
+        }
+      }
+    },
+    deleteAbsensi: async (id) => {
+      const prevSnapshot = Array.isArray(absensiData) ? absensiData.slice() : [];
+      setAbsensiData(prev => Array.isArray(prev) ? prev.filter(a => a.id !== id) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await absensiApi.delete(token, id);
+        } catch (e) {
+          console.error('Failed to delete absensi on server:', e);
+          setAbsensiData(prevSnapshot);
+        }
+      }
+    },
     getAbsensiByNama: (nama) => Array.isArray(absensiData) ? absensiData.filter(a => a.nama === nama) : [],
 
     // Gaji
     gajiData,
     setGajiData,
-    addGaji: (gaji) => setGajiData(prev => Array.isArray(prev) ? [...prev, { ...gaji, id: gaji.id || String(Date.now()) }] : [{ ...gaji, id: gaji.id || String(Date.now()) }]),
-    updateGaji: (id, updates) => setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? { ...g, ...updates } : g) : []),
-    deleteGaji: (id) => setGajiData(prev => Array.isArray(prev) ? prev.filter(g => g.id !== id) : []),
+    addGaji: async (gaji) => {
+      const tempId = gaji.id || `GAJI${Date.now()}`;
+      const tempItem = { ...gaji, id: tempId };
+      setGajiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await gajiApi.create(token, gaji);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+        } catch (e) {
+          console.error('Failed to create gaji on server:', e);
+        }
+      }
+    },
+    updateGaji: async (id, updates) => {
+      const prevSnapshot = Array.isArray(gajiData) ? gajiData.slice() : [];
+      setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? { ...g, ...updates } : g) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await gajiApi.update(token, id, updates);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? serverItem : g) : []);
+        } catch (e) {
+          console.error('Failed to update gaji on server:', e);
+          setGajiData(prevSnapshot);
+        }
+      }
+    },
+    deleteGaji: async (id) => {
+      const prevSnapshot = Array.isArray(gajiData) ? gajiData.slice() : [];
+      setGajiData(prev => Array.isArray(prev) ? prev.filter(g => g.id !== id) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await gajiApi.delete(token, id);
+        } catch (e) {
+          console.error('Failed to delete gaji on server:', e);
+          setGajiData(prevSnapshot);
+        }
+      }
+    },
     getGajiByKaryawan: (nama) => Array.isArray(gajiData) ? gajiData.find(g => g.nama === nama) : undefined,
 
     // Treatment
     treatmentData,
     setTreatmentData,
-    addTreatment: (treatment) => setTreatmentData(prev => Array.isArray(prev) ? [...prev, { ...treatment, id: treatment.id || String(Date.now()) }] : [{ ...treatment, id: treatment.id || String(Date.now()) }]),
-    updateTreatment: (id, updates) => setTreatmentData(prev => Array.isArray(prev) ? prev.map(t => t.id === id ? { ...t, ...updates } : t) : []),
-    deleteTreatment: (id) => setTreatmentData(prev => Array.isArray(prev) ? prev.filter(t => t.id !== id) : []),
+    addTreatment: async (treatment) => {
+      const tempId = treatment.id || `TR${Date.now()}`;
+      const tempItem = { ...treatment, id: tempId };
+      setTreatmentData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await treatmentApi.create(token, treatment);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setTreatmentData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+        } catch (e) {
+          console.error('Failed to create treatment on server:', e);
+        }
+      }
+    },
+    updateTreatment: async (id, updates) => {
+      const prevSnapshot = Array.isArray(treatmentData) ? treatmentData.slice() : [];
+      setTreatmentData(prev => Array.isArray(prev) ? prev.map(t => t.id === id ? { ...t, ...updates } : t) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await treatmentApi.update(token, id, updates);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setTreatmentData(prev => Array.isArray(prev) ? prev.map(t => t.id === id ? serverItem : t) : []);
+        } catch (e) {
+          console.error('Failed to update treatment on server:', e);
+          setTreatmentData(prevSnapshot);
+        }
+      }
+    },
+    deleteTreatment: async (id) => {
+      const prevSnapshot = Array.isArray(treatmentData) ? treatmentData.slice() : [];
+      setTreatmentData(prev => Array.isArray(prev) ? prev.filter(t => t.id !== id) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await treatmentApi.delete(token, id);
+        } catch (e) {
+          console.error('Failed to delete treatment on server:', e);
+          setTreatmentData(prevSnapshot);
+        }
+      }
+    },
     getTreatmentById: (id) => Array.isArray(treatmentData) ? treatmentData.find(t => t.id === id) : undefined,
 
     // Slip Gaji
     slipGajiData,
     setSlipGajiData,
-    addSlipGaji: (slip) => setSlipGajiData(prev => Array.isArray(prev) ? [...prev, { ...slip, id: slip.id || String(Date.now()) }] : [{ ...slip, id: slip.id || String(Date.now()) }]),
-    updateSlipGaji: (id, updates) => setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === id ? { ...s, ...updates } : s) : []),
-    deleteSlipGaji: (id) => setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => s.id !== id) : []),
-    getSlipGajiByKaryawan: (nama) => Array.isArray(slipGajiData) ? slipGajiData.filter(s => s.nama === nama) : [],
+    addSlipGaji: async (slip) => {
+      const tempId = slip.id || `SLIP${Date.now()}`;
+      const tempItem = { ...slip, id: tempId };
+      setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await slipGajiApi.create(token, slip);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setSlipGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+        } catch (e) {
+          console.error('Failed to create slip gaji on server:', e);
+        }
+      }
+    },
+    updateSlipGaji: async (id, updates) => {
+      const prevSnapshot = Array.isArray(slipGajiData) ? slipGajiData.slice() : [];
+      setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === id ? { ...s, ...updates } : s) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await slipGajiApi.update(token, id, updates);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === id ? serverItem : s) : []);
+        } catch (e) {
+          console.error('Failed to update slip gaji on server:', e);
+          setSlipGajiData(prevSnapshot);
+        }
+      }
+    },
+    deleteSlipGaji: async (id) => {
+      const prevSnapshot = Array.isArray(slipGajiData) ? slipGajiData.slice() : [];
+      setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => s.id !== id) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await slipGajiApi.delete(token, id);
+        } catch (e) {
+          console.error('Failed to delete slip gaji on server:', e);
+          setSlipGajiData(prevSnapshot);
+        }
+      }
+    },
 
     // Cuti
     cutiData,
     setCutiData,
-    addCuti: (cuti) => setCutiData(prev => Array.isArray(prev) ? [...prev, { ...cuti, id: cuti.id || String(Date.now()) }] : [{ ...cuti, id: cuti.id || String(Date.now()) }]),
-    updateCuti: (id, updates) => setCutiData(prev => Array.isArray(prev) ? prev.map(c => c.id === id ? { ...c, ...updates } : c) : []),
-    deleteCuti: (id) => setCutiData(prev => Array.isArray(prev) ? prev.filter(c => c.id !== id) : []),
+    addCuti: async (cuti) => {
+      const tempId = cuti.id || `CUTI${Date.now()}`;
+      const tempItem = { ...cuti, id: tempId };
+      setCutiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await cutiApi.create(token, cuti);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setCutiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+        } catch (e) {
+          console.error('Failed to create cuti on server:', e);
+        }
+      }
+    },
+    updateCuti: async (id, updates) => {
+      const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
+      setCutiData(prev => Array.isArray(prev) ? prev.map(c => c.id === id ? { ...c, ...updates } : c) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await cutiApi.update(token, id, updates);
+          const serverItem = res && res.data ? res.data : null;
+          if (serverItem) setCutiData(prev => Array.isArray(prev) ? prev.map(c => c.id === id ? serverItem : c) : []);
+        } catch (e) {
+          console.error('Failed to update cuti on server:', e);
+          setCutiData(prevSnapshot);
+        }
+      }
+    },
+    deleteCuti: async (id) => {
+      const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
+      setCutiData(prev => Array.isArray(prev) ? prev.filter(c => c.id !== id) : []);
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await cutiApi.delete(token, id);
+        } catch (e) {
+          console.error('Failed to delete cuti on server:', e);
+          setCutiData(prevSnapshot);
+        }
+      }
+    },
     getCutiByKaryawan: (nama) => Array.isArray(cutiData) ? cutiData.filter(c => c.nama === nama) : [],
   };
 

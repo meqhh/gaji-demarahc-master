@@ -69,6 +69,20 @@ function SlipGaji() {
     return `Rp ${parseInt(angka).toLocaleString("id-ID")}`;
   };
 
+  // Format number for input display (with Rp prefix)
+  const formatInputNumber = (num) => {
+    const n = parseInt(num) || 0;
+    return `Rp ${n.toLocaleString("id-ID")}`;
+  };
+
+  // Handle currency-like input where user types (allow manual typing)
+  const handleCurrencyChange = (name, rawValue) => {
+    // strip all non-digit characters
+    const digits = String(rawValue).replace(/[^0-9]/g, "");
+    const value = digits === "" ? 0 : parseInt(digits, 10);
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   // Stats
   const stats = useMemo(() => {
     const total = slipGajiData.length;
@@ -500,23 +514,55 @@ function SlipGaji() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-900 mb-1">Gaji Pokok</label>
-                      <input type="number" name="gajiPokok" value={formData.gajiPokok} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                      <div className="flex items-center">
+                        <input
+                          type="text"
+                          name="gajiPokok"
+                          value={formatInputNumber(formData.gajiPokok)}
+                          onChange={(e) => handleCurrencyChange('gajiPokok', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-900 mb-1">Tunjangan</label>
-                      <input type="number" name="tunjangan" value={formData.tunjangan} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                      <input
+                        type="text"
+                        name="tunjangan"
+                        value={formatInputNumber(formData.tunjangan)}
+                        onChange={(e) => handleCurrencyChange('tunjangan', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-900 mb-1">Bonus</label>
-                      <input type="number" name="bonus" value={formData.bonus} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                      <input
+                        type="text"
+                        name="bonus"
+                        value={formatInputNumber(formData.bonus)}
+                        onChange={(e) => handleCurrencyChange('bonus', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-900 mb-1">Potongan Asuransi</label>
-                      <input type="number" name="potonganAsuransi" value={formData.potonganAsuransi} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                      <input
+                        type="text"
+                        name="potonganAsuransi"
+                        value={formatInputNumber(formData.potonganAsuransi)}
+                        onChange={(e) => handleCurrencyChange('potonganAsuransi', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-900 mb-1">Potongan Pajak</label>
-                      <input type="number" name="potonganTax" value={formData.potonganTax} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600" />
+                      <input
+                        type="text"
+                        name="potonganTax"
+                        value={formatInputNumber(formData.potonganTax)}
+                        onChange={(e) => handleCurrencyChange('potonganTax', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-900 mb-1">Status</label>

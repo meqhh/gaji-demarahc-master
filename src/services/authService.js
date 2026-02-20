@@ -162,6 +162,95 @@ export const createKaryawan = async (token, karyawanData) => {
   }
 };
 
+// Update karyawan (admin only)
+export const updateKaryawan = async (token, karyawanId, karyawanData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/karyawan/${karyawanId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(karyawanData)
+    });
+
+    return await parseResponse(response);
+  } catch (error) {
+    throw new Error(networkErrorToMessage(error) || 'Gagal memperbarui data karyawan');
+  }
+};
+
+// Delete karyawan (admin only)
+export const deleteKaryawan = async (token, karyawanId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/karyawan/${karyawanId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    return await parseResponse(response);
+  } catch (error) {
+    throw new Error(networkErrorToMessage(error) || 'Gagal menghapus data karyawan');
+  }
+};
+
+// Generic resource helpers for gaji, absensi, cuti, treatment, slip-gaji
+const makeResourceHelpers = (resourcePath) => ({
+  create: async (token, data) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${resourcePath}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      return await parseResponse(response);
+    } catch (error) {
+      throw new Error(networkErrorToMessage(error) || `Gagal membuat data ${resourcePath}`);
+    }
+  },
+  update: async (token, id, data) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${resourcePath}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      });
+      return await parseResponse(response);
+    } catch (error) {
+      throw new Error(networkErrorToMessage(error) || `Gagal memperbarui data ${resourcePath}`);
+    }
+  },
+  delete: async (token, id) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/${resourcePath}/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return await parseResponse(response);
+    } catch (error) {
+      throw new Error(networkErrorToMessage(error) || `Gagal menghapus data ${resourcePath}`);
+    }
+  }
+});
+
+export const gajiApi = makeResourceHelpers('gaji');
+export const absensiApi = makeResourceHelpers('absensi');
+export const cutiApi = makeResourceHelpers('cuti');
+export const treatmentApi = makeResourceHelpers('treatment');
+export const slipGajiApi = makeResourceHelpers('slip-gaji');
+
 export default {
   loginUser,
   registerUser,
