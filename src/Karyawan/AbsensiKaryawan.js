@@ -1,11 +1,11 @@
- import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 // QR removed: using professional check-in ID instead of QR codes
 
 export default function AbsensiKaryawan() {
 	const navigate = useNavigate();
-	const { userProfile, addAbsensi } = useContext(AppContext);
+	const { userProfile, addAbsensi, updateAbsensi } = useContext(AppContext);
 
 	// No default dummy data - all data from backend API/localStorage
 	const storageKey = userProfile?.email ? `absensi_${userProfile.email}` : 'absensi_guest';
@@ -70,6 +70,18 @@ export default function AbsensiKaryawan() {
 		});
 	};
 
+	const getTodayItem = () => {
+		const today = new Date();
+		return absensi.find(a => {
+			try {
+				const aDate = new Date(a.tanggal);
+				return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
+			} catch (e) {
+				return a.tanggal && a.tanggal.includes(String(today.getDate()));
+			}
+		});
+	};
+
 	const getTodayKey = () => new Date().toISOString().slice(0,10); // YYYY-MM-DD
 
 	const didLoginToday = () => {
@@ -124,6 +136,34 @@ export default function AbsensiKaryawan() {
 		setTodayAbsensi(newItem);
 		setShowAbsensiModal(true);
 	};
+
+	 const handleCheckOut = () => {
+		const today = new Date();
+		const nowTime = formatTime(today);
+		const todayItem = absensi.find(a => {
+			try {
+				const aDate = new Date(a.tanggal);
+				return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
+			} catch (e) {
+				return a.tanggal && a.tanggal.includes(String(today.getDate()));
+			}
+		});
+		if (!todayItem) {
+			alert('Belum ada absen masuk hari ini.');
+			return;
+		}
+		if (todayItem.jamKeluar) {
+			alert('Anda sudah absen keluar hari ini.');
+			return;
+		}
+		const updated = absensi.map(a => a.id === todayItem.id ? { ...a, jamKeluar: nowTime } : a);
+		setAbsensi(updated);
+		if (updateAbsensi) {
+			updateAbsensi(todayItem.id, { jamKeluar: nowTime });
+		}
+		setTodayAbsensi({ ...todayItem, jamKeluar: nowTime });
+		setShowAbsensiModal(true);
+	 };
 
 	const getStatusColor = (status) => {
 		switch(status) {
@@ -307,6 +347,17 @@ export default function AbsensiKaryawan() {
 							}`}
 						>
 							{hasCheckedInToday() ? 'Sudah Absen Hari Ini' : 'Absen Masuk'}
+						</button>
+						<button
+							onClick={handleCheckOut}
+							disabled={!hasCheckedInToday() || (getTodayItem() && getTodayItem().jamKeluar)}
+							className={`font-medium text-sm px-6 py-3 rounded-md transition ${
+								!hasCheckedInToday() || (getTodayItem() && getTodayItem().jamKeluar)
+									? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+									: 'bg-amber-600 text-white hover:bg-amber-700'
+							}`}
+						>
+							Keluar
 						</button>
 						<button
 							onClick={handleAdd}

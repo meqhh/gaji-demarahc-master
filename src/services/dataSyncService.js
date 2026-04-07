@@ -50,7 +50,7 @@ class DataSyncService {
 
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${dataSource.endpoint}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5555'}${dataSource.endpoint}`,
         {
           method: dataSource.method,
           headers: {
@@ -117,7 +117,7 @@ class DataSyncService {
       const updateEndpoint = `${dataSource.endpoint}/${dataId}`;
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${updateEndpoint}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5555'}${updateEndpoint}`,
         {
           method: 'PUT',
           headers: {

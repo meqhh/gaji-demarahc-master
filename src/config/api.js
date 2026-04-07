@@ -10,7 +10,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 // API Base URL
 export const REACT_APP_API_URL =
   process.env.REACT_APP_API_URL ||
-  (isDevelopment ? 'http://localhost:5000' : window.location.origin);
+  (isDevelopment ? 'http://localhost:5555' : window.location.origin);
 
 // Feature Flags
 export const FEATURES = {

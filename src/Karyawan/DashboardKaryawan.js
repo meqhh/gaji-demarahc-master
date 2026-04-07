@@ -16,7 +16,7 @@ export default function DashboardKaryawan() {
   const [todayAbsensi, setTodayAbsensi] = useState(null);
   const [attendanceType, setAttendanceType] = useState("");
 
-  const { userProfile, addAbsensi } = useContext(require('../context/AppContext').AppContext);
+  const { userProfile, addAbsensi, updateAbsensi } = useContext(require('../context/AppContext').AppContext);
 
   const storageKey = userProfile?.email ? `absensi_${userProfile.email}` : 'absensi_guest';
 
@@ -110,6 +110,44 @@ export default function DashboardKaryawan() {
     setShowCheckInForm(false);
     setAttendanceType("");
     setTodayAbsensi(newItem);
+    setShowAbsensiModal(true);
+  };
+
+
+  const getTodayItemLocal = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const today = new Date();
+      return saved.find(a => {
+        try {
+          const aDate = new Date(a.tanggal);
+          return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
+        } catch (e) {
+          return a.tanggal && a.tanggal.includes(String(today.getDate()));
+        }
+      });
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const handleCheckOut = () => {
+    const today = new Date();
+    const nowTime = formatTime(today);
+    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const todayItem = getTodayItemLocal();
+    if (!todayItem) {
+      alert('Belum ada absen masuk hari ini.');
+      return;
+    }
+    if (todayItem.jamKeluar) {
+      alert('Anda sudah absen keluar hari ini.');
+      return;
+    }
+    const updated = saved.map(a => a.id === todayItem.id ? { ...a, jamKeluar: nowTime } : a);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    if (updateAbsensi) updateAbsensi(todayItem.id, { jamKeluar: nowTime });
+    setTodayAbsensi({ ...todayItem, jamKeluar: nowTime });
     setShowAbsensiModal(true);
   };
 
@@ -277,6 +315,18 @@ export default function DashboardKaryawan() {
               >
                 {hasCheckedInToday() ? 'Sudah Masuk' : 'Masuk'}
               </div>
+            </button>
+          </div>
+        </div>
+        {/* Keluar Button (visible when checked-in and not yet checked-out) */}
+        <div className="mb-6">
+          <div className="flex items-center justify-end">
+            <button
+              onClick={handleCheckOut}
+              disabled={!hasCheckedInToday() || (getTodayItemLocal() && getTodayItemLocal().jamKeluar)}
+              className={`px-4 py-2 rounded-md font-medium ${!hasCheckedInToday() || (getTodayItemLocal() && getTodayItemLocal().jamKeluar) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}
+            >
+              Keluar
             </button>
           </div>
         </div>

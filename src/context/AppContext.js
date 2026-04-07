@@ -100,6 +100,31 @@ export const AppContextProvider = ({ children }) => {
     }
   }, []);
 
+  useEffect(() => {
+    if (!userProfile || userProfile.role?.toString().toLowerCase() !== 'karyawan') return;
+
+    const exists = Array.isArray(karyawanData) && karyawanData.some(k =>
+      String(k.id) === String(userProfile.id) ||
+      (k.email && userProfile.email && k.email === userProfile.email) ||
+      (k.nama && userProfile.name && k.nama === userProfile.name)
+    );
+
+    if (exists) return;
+
+    const newKaryawan = {
+      id: userProfile.id || `EMP${Date.now()}`,
+      nama: userProfile.name || userProfile.nama,
+      email: userProfile.email || null,
+      jabatan: 'Karyawan',
+      gaji_pokok: 0,
+      tunjangan: 0,
+      no_hp: null,
+      alamat: null
+    };
+
+    setKaryawanData(prev => Array.isArray(prev) ? [...prev, newKaryawan] : [newKaryawan]);
+  }, [userProfile, karyawanData]);
+
   // Fetch karyawan list from backend when authenticated
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -155,7 +180,7 @@ export const AppContextProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:5000') + '/api';
+    const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:5555') + '/api';
 
     const endpoints = {
       absensi: `${API_BASE}/absensi`,

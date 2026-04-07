@@ -1,9 +1,9 @@
 // API Base URL - change this based on environment
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5555/api';
 
 // Derive a friendly server URL for error messages (strip trailing /api or slashes)
 function getServerUrl() {
-  const raw = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  const raw = process.env.REACT_APP_API_URL || 'http://localhost:5555/api';
   let base = String(raw).replace(/\/+$/, '');
   base = base.replace(/\/api$/i, '');
   return base;

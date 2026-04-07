@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { loginUser } from "../services/authService";
+import { AppContext } from "../context/AppContext";
 import Logo from "../Images/demaralogo.png";
 import Hero from "../Images/loginkaryawan.png";
 
 function Login() {
+  const appContext = useContext(AppContext);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +69,22 @@ function Login() {
           localStorage.setItem("karyawanUsername", user.nama);
           localStorage.setItem("karyawanId", user.id);
           localStorage.setItem("karyawanEmail", user.email);
+          // Also sync registered/known karyawan to admin table data so karyawan login relates to admin pages
+          if (appContext && typeof appContext.addKaryawan === 'function') {
+            const exists = Array.isArray(appContext.karyawanData) && appContext.karyawanData.some(k => k.email === user.email || k.nama === user.nama || String(k.id) === String(user.id));
+            if (!exists) {
+              appContext.addKaryawan({
+                id: user.id || `EMP${Date.now()}`,
+                nama: user.nama,
+                email: user.email,
+                jabatan: 'Karyawan',
+                gaji_pokok: 0,
+                tunjangan: 0,
+                no_hp: null,
+                alamat: null
+              });
+            }
+          }
           // Clear admin keys saat karyawan login
           localStorage.removeItem("adminLoggedIn");
           localStorage.removeItem("adminEmail");

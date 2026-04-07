@@ -79,15 +79,33 @@ function Register() {
         // If registering admin or karyawan, pre-fill userProfile so profile pages show name/email
         try {
           if (formData.role === 'admin' || formData.role === 'karyawan') {
-            const profile = registerResponse.data || { nama: formData.nama, email: formData.email, id: registerResponse.data?.id || String(Date.now()) };
+            const profileData = registerResponse.data?.user || { nama: formData.nama, email: formData.email, id: registerResponse.data?.user?.id || String(Date.now()) };
+            const profile = {
+              ...profileData,
+              name: profileData.nama || profileData.name,
+            };
+
             if (appContext && typeof appContext.setUserProfile === 'function') {
               appContext.setUserProfile(profile);
             }
             try { localStorage.setItem('userProfile', JSON.stringify(profile)); } catch (e) { /* ignore */ }
 
-            // For karyawan pages, also set expected localStorage keys
+            // For karyawan pages, also set expected localStorage keys and admin table relation
             if (formData.role === 'karyawan') {
-              try { localStorage.setItem('karyawanId', profile.id || profile._id || String(Date.now())); } catch (e) {}
+              const createdKaryawan = registerResponse.data?.karyawan || {
+                id: profile.id || String(Date.now()),
+                nama: profile.nama || profile.name,
+                email: profile.email,
+                jabatan: 'Karyawan',
+                gaji_pokok: 0,
+                tunjangan: 0,
+                no_hp: null,
+                alamat: null
+              };
+              if (appContext && typeof appContext.addKaryawan === 'function') {
+                appContext.addKaryawan(createdKaryawan);
+              }
+              try { localStorage.setItem('karyawanId', profile.id || String(Date.now())); } catch (e) {}
               try { localStorage.setItem('karyawanEmail', profile.email || formData.email); } catch (e) {}
             }
           }

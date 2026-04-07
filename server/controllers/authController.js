@@ -1,4 +1,4 @@
-import { usersDB } from '../database/fileDb.js';
+import { usersDB, karyawanDB } from '../database/mysqlDb.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
@@ -6,29 +6,24 @@ import bcrypt from 'bcryptjs';
 export const register = async (req, res) => {
   try {
     const { nama, email, password, role, adminKey } = req.body;
-    
+
     if (!nama || !email || !password) {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
-    
-    // Check if email already exists
-    const existingUser = usersDB.findOne({ email });
+
+    const existingUser = await usersDB.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email sudah terdaftar' });
     }
-    
-    // If attempting to register as admin, require admin registration key.
-    // Allow a fallback: if ADMIN_REGISTER_KEY is not set and no admin exists yet,
-    // permit creation of the first admin (useful for fresh clones/development machines).
+
     if (role && role.toString().toLowerCase() === 'admin') {
       const requiredKey = process.env.ADMIN_REGISTER_KEY;
-      const allUsers = usersDB.getAll();
+      const allUsers = await usersDB.getAll();
       const anyAdminExists = allUsers.some(u => u.role && u.role.toString().toLowerCase() === 'admin');
 
       if (!requiredKey) {
         if (!anyAdminExists) {
-          console.warn('⚠️ ADMIN_REGISTER_KEY not set — allowing first admin registration without key');
-          // allow creation of first admin
+          console.warn('?? ADMIN_REGISTER_KEY not set � allowing first admin registration without key');
         } else {
           return res.status(500).json({ success: false, message: 'Server not configured for admin registration' });
         }
@@ -39,29 +34,52 @@ export const register = async (req, res) => {
       }
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    
+
     const newUser = {
-      id: `USR${Date.now()}`,
-      nama,
+      name: nama,
       email,
       password: hashedPassword,
-      role: role || 'karyawan',
-      createdAt: new Date().toISOString(),
-      lastLogin: null
+      role: role || 'karyawan'
     };
-    
-    usersDB.save(newUser);
-    
-    res.status(201).json({
+
+    const savedUser = await usersDB.save(newUser);
+    let savedKaryawan = null;
+
+    if (savedUser.role && savedUser.role.toString().toLowerCase() === 'karyawan') {
+      const karyawanPayload = {
+        nama,
+        jabatan: 'Karyawan',
+        gaji_pokok: 0.00,
+        tunjangan: 0.00,
+        no_hp: null,
+        alamat: null
+      };
+      savedKaryawan = await karyawanDB.save(karyawanPayload);
+    }
+
+    return res.status(201).json({
       success: true,
-      message: 'User berhasil terdaftar'
+      message: 'User berhasil terdaftar',
+      data: {
+        user: {
+          id: savedUser.id,
+          nama: savedUser.name,
+          email: savedUser.email,
+          role: savedUser.role
+        },
+        karyawan: savedKaryawan
+      }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error('❌ Register error:', error.message || error);
+    console.error('Error stack:', error.stack);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error',
+      debug: error.message 
+    });
   }
 };
 
@@ -69,93 +87,121 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email dan password harus diisi' });
     }
-    
-    const user = usersDB.findOne({ email });
+
+    const user = await usersDB.findOne({ email });
     if (!user) {
       return res.status(401).json({ success: false, message: 'Email atau password salah' });
     }
-    
-    // Compare password
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Email atau password salah' });
     }
-    
-    // Update last login
-    user.lastLogin = new Date().toISOString();
-    usersDB.save(user);
-    
-    // Ensure JWT secret is set
+
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ success: false, message: 'Server configuration error: JWT_SECRET not set' });
     }
 
-    // Generate JWT
+    let karyawanInfo = null;
+    if (user.role && user.role.toString().toLowerCase() === 'karyawan') {
+      karyawanInfo = await karyawanDB.findOne({ nama: user.name });
+      if (!karyawanInfo) {
+        karyawanInfo = await karyawanDB.save({
+          nama: user.name,
+          jabatan: 'Karyawan',
+          gaji_pokok: 0.00,
+          tunjangan: 0.00,
+          no_hp: null,
+          alamat: null
+        });
+      }
+    }
+
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, nama: user.nama },
+      { id: user.id, email: user.email, role: user.role, nama: user.name },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    
-    res.json({
+
+    return res.json({
       success: true,
       message: 'Login berhasil',
       data: {
         token,
         user: {
           id: user.id,
-          nama: user.nama,
+          nama: user.name,
           email: user.email,
-          role: user.role
+          role: user.role,
+          karyawanId: karyawanInfo?.id || null,
+          karyawan: karyawanInfo ? {
+            id: karyawanInfo.id,
+            nama: karyawanInfo.nama,
+            jabatan: karyawanInfo.jabatan,
+            gaji_pokok: karyawanInfo.gaji_pokok,
+            tunjangan: karyawanInfo.tunjangan,
+            no_hp: karyawanInfo.no_hp,
+            alamat: karyawanInfo.alamat
+          } : null
         }
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
 // Get current user
 export const getCurrentUser = async (req, res) => {
   try {
-    const user = usersDB.findById(req.user.id);
+    const user = await usersDB.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
-    
+
     const { password, ...userWithoutPassword } = user;
-    res.json({
-      success: true,
-      data: userWithoutPassword
-    });
+
+    if (user.role && user.role.toString().toLowerCase() === 'karyawan') {
+      const karyawanInfo = await karyawanDB.findOne({ nama: user.name });
+      if (karyawanInfo) {
+        userWithoutPassword.karyawanId = karyawanInfo.id;
+        userWithoutPassword.karyawan = {
+          id: karyawanInfo.id,
+          nama: karyawanInfo.nama,
+          jabatan: karyawanInfo.jabatan,
+          gaji_pokok: karyawanInfo.gaji_pokok,
+          tunjangan: karyawanInfo.tunjangan,
+          no_hp: karyawanInfo.no_hp,
+          alamat: karyawanInfo.alamat
+        };
+      }
+    }
+
+    return res.json({ success: true, data: userWithoutPassword });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
 // Get all users (admin only)
 export const getAllUsers = async (req, res) => {
   try {
-    const users = usersDB.getAll();
+    const users = await usersDB.getAll();
     const usersWithoutPassword = users.map(u => {
       const { password, ...user } = u;
       return user;
     });
-    
-    res.json({
-      success: true,
-      message: 'Data user berhasil diambil',
-      data: usersWithoutPassword
-    });
+
+    return res.json({ success: true, message: 'Data user berhasil diambil', data: usersWithoutPassword });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -163,17 +209,14 @@ export const getAllUsers = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { nama, email, telepon, alamat, biografi, departemen } = req.body;
-    
-    const user = usersDB.findById(req.user.id);
+
+    const user = await usersDB.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
     }
-    
-    // Update basic info
-    if (nama) user.nama = nama;
+
+    if (nama) user.name = nama;
     if (email) user.email = email;
-    
-    // Update profile fields (if provided, null/empty string is valid)
     if (telepon !== undefined) user.telepon = telepon || null;
     if (alamat !== undefined) user.alamat = alamat || null;
     if (biografi !== undefined) user.biografi = biografi || null;
@@ -181,19 +224,14 @@ export const updateUser = async (req, res) => {
       const validDepartements = ['HR', 'Keuangan', 'IT', 'Operasional', 'Admin', 'Kesehatan', 'Pendidikan', 'Lainnya'];
       user.departemen = validDepartements.includes(departemen) ? departemen : null;
     }
-    
-    user.updatedAt = new Date().toISOString();
-    usersDB.save(user);
-    
+
+    await usersDB.save(user);
+
     const { password, ...userWithoutPassword } = user;
-    res.json({
-      success: true,
-      message: 'Profil berhasil diperbarui',
-      data: userWithoutPassword
-    });
+    return res.json({ success: true, message: 'Profil berhasil diperbarui', data: userWithoutPassword });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 

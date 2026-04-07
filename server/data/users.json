@@ -33,7 +33,7 @@
     "password": "$2a$10$L3GBYj6b7IyGEi9yTds39OXcVwqBaQJgV6.oUIxtv.bPCgWqmSOl2",
     "role": "karyawan",
     "createdAt": "2026-02-07T06:55:08.757Z",
-    "lastLogin": "2026-02-20T05:16:02.508Z"
+    "lastLogin": "2026-02-22T02:40:22.518Z"
   },
   {
     "id": "USR1770447508354",
@@ -129,5 +129,23 @@
     "role": "karyawan",
     "createdAt": "2026-02-17T02:31:28.347Z",
     "lastLogin": "2026-02-17T02:33:01.998Z"
+  },
+  {
+    "id": "USR1771727689886",
+    "nama": "Jeslyn",
+    "email": "Jesyln@gmail.com",
+    "password": "$2a$10$Vrgk6/toLGE0oZnrrob8huuQNOgDHs72HuhtQ9DpNDwHdgRXmbsDe",
+    "role": "admin",
+    "createdAt": "2026-02-22T02:34:49.886Z",
+    "lastLogin": null
+  },
+  {
+    "id": "USR1771727921153",
+    "nama": "Samuel",
+    "email": "Samuel@gmail.com",
+    "password": "$2a$10$j27B/9qCF3Rd6.8KfVudwOvt0YK5h1koo0F4Tw3U6vkp8H7Mftvey",
+    "role": "admin",
+    "createdAt": "2026-02-22T02:38:41.153Z",
+    "lastLogin": "2026-02-22T02:38:54.502Z"
   }
 ]

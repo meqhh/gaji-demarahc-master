@@ -1,9 +1,9 @@
-import { karyawanDB } from '../database/fileDb.js';
+import { karyawanDB } from '../database/mysqlDb.js';
 
 // Get all karyawan
 export const getAllKaryawan = async (req, res) => {
   try {
-    const karyawan = karyawanDB.getAll();
+    const karyawan = await karyawanDB.getAll();
     res.json({
       success: true,
       message: 'Data karyawan berhasil diambil',
@@ -17,7 +17,7 @@ export const getAllKaryawan = async (req, res) => {
 // Get karyawan by ID
 export const getKaryawanById = async (req, res) => {
   try {
-    const karyawan = karyawanDB.findById(req.params.id);
+    const karyawan = await karyawanDB.findById(req.params.id);
     if (!karyawan) {
       return res.status(404).json({ success: false, message: 'Karyawan tidak ditemukan' });
     }
@@ -38,24 +38,29 @@ export const createKaryawan = async (req, res) => {
     }
     
     // Cek email duplikat
-    const existingEmail = karyawanDB.findOne({ email });
+    const existingEmail = await karyawanDB.findOne({ email });
     if (existingEmail) {
       return res.status(400).json({ success: false, message: 'Email sudah digunakan' });
     }
     
     // Cek NIP duplikat
-    const existingNip = karyawanDB.findOne({ nip });
+    const existingNip = await karyawanDB.findOne({ nip });
     if (existingNip) {
       return res.status(400).json({ success: false, message: 'NIP sudah digunakan' });
     }
     
     const newKaryawan = {
-      id: `EMP${Date.now()}`,
       ...req.body,
-      createdAt: new Date().toISOString()
+      nama,
+      email,
+      nip,
+      posisi,
+      departemen,
+      tanggalMasuk,
+      gajiPokok
     };
     
-    karyawanDB.save(newKaryawan);
+    await karyawanDB.save(newKaryawan);
     
     res.status(201).json({
       success: true,
@@ -70,7 +75,7 @@ export const createKaryawan = async (req, res) => {
 // Update karyawan
 export const updateKaryawan = async (req, res) => {
   try {
-    const karyawan = karyawanDB.findById(req.params.id);
+    const karyawan = await karyawanDB.findById(req.params.id);
     
     if (!karyawan) {
       return res.status(404).json({ success: false, message: 'Karyawan tidak ditemukan' });
@@ -78,11 +83,10 @@ export const updateKaryawan = async (req, res) => {
     
     const updatedKaryawan = {
       ...karyawan,
-      ...req.body,
-      updatedAt: new Date().toISOString()
+      ...req.body
     };
     
-    karyawanDB.save(updatedKaryawan);
+    await karyawanDB.save(updatedKaryawan);
     
     res.json({
       success: true,
@@ -97,13 +101,13 @@ export const updateKaryawan = async (req, res) => {
 // Delete karyawan
 export const deleteKaryawan = async (req, res) => {
   try {
-    const karyawan = karyawanDB.findById(req.params.id);
+    const karyawan = await karyawanDB.findById(req.params.id);
     
     if (!karyawan) {
       return res.status(404).json({ success: false, message: 'Karyawan tidak ditemukan' });
     }
     
-    karyawanDB.delete(req.params.id);
+    await karyawanDB.delete(req.params.id);
     
     res.json({
       success: true,

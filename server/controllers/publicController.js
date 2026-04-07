@@ -1,8 +1,8 @@
-import { usersDB } from '../database/fileDb.js';
+import { usersDB } from '../database/mysqlDb.js';
 
-export const getPublicKaryawan = (req, res) => {
+export const getPublicKaryawan = async (req, res) => {
   try {
-    const users = usersDB.getAll();
+    const users = await usersDB.getAll();
     const karyawans = users
       .filter(u => u && u.role && String(u.role).toLowerCase() === 'karyawan')
       .map(u => {

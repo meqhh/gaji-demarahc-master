@@ -36,8 +36,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize file-based database
-console.log('✓ File-based database initialized');
+// Initialize MySQL database
+import pool from './database/mysql.js';
+
+console.log('✓ MySQL database initialized');
 
 // Routes
 app.get('/api', (req, res) => {
@@ -45,7 +47,7 @@ app.get('/api', (req, res) => {
     success: true,
     message: 'Gaji Demara API',
     version: '1.0.0',
-    database: 'File-based JSON storage',
+    database: 'MySQL storage',
     endpoints: {
       menus: '/api/menus',
       auth: '/api/auth',
