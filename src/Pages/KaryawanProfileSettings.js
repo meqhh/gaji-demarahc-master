@@ -1,14 +1,21 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { updateKaryawanProfile } from "../services/authService";
 import { AppContext } from "../context/AppContext";
 
 function KaryawanProfileSettings() {
   const { karyawanData, getKaryawanById, userProfile, updateKaryawan, updateUserProfile } = useContext(AppContext);
+  const navigate = useNavigate();
 
   // Identify logged-in karyawan by AppContext first, then localStorage
-  const loggedKaryawanId = userProfile?.id || localStorage.getItem("karyawanId");
+  const loggedKaryawanId = userProfile?.karyawanId || localStorage.getItem("karyawanId");
+  const loggedUserId = userProfile?.id || null;
   const storedEmail = userProfile?.email || localStorage.getItem("karyawanEmail") || "";
+  const storageIdentity = loggedUserId || loggedKaryawanId || storedEmail || "guest";
+  const profileStorageKey = `karyawanProfileData:${storageIdentity}`;
+  const photoStorageKey = `karyawanProfilePhoto:${storageIdentity}`;
 
-  const defaultProfile = {
+  const defaultProfile = useMemo(() => ({
     name: "",
     email: storedEmail || "",
     phone: "",
@@ -16,7 +23,7 @@ function KaryawanProfileSettings() {
     joinDate: "",
     position: "",
     department: "",
-    photo: (storedEmail && localStorage.getItem(`karyawan_photo_${storedEmail}`)) || (userProfile?.name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile.name)}&background=6B7280&color=fff` : `https://ui-avatars.com/api/?name=Karyawan&background=6B7280&color=fff`),
+    photo: localStorage.getItem(photoStorageKey) || (userProfile?.name ? `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile.name)}&background=6B7280&color=fff` : `https://ui-avatars.com/api/?name=Karyawan&background=6B7280&color=fff`),
     emergencyContact: {
       name: "",
       relation: "",
@@ -26,7 +33,7 @@ function KaryawanProfileSettings() {
       email: true,
       whatsapp: false
     }
-  };
+  }), [userProfile?.name, photoStorageKey, storedEmail]);
 
   const [profileData, setProfileData] = useState(defaultProfile);
 
@@ -49,49 +56,73 @@ function KaryawanProfileSettings() {
     setFormData({ ...formData, [section]: { ...formData[section], [key]: value } });
   };
 
-  const handleSave = () => {
-    setProfileData(formData);
-    // Save employee photo to localStorage (independent from admin)
-    localStorage.setItem(`karyawan_photo_${formData.email}`, formData.photo);
-    localStorage.setItem("karyawan_photo", formData.photo);
-    // Save profile data including position and department
-    localStorage.setItem("karyawanProfileData", JSON.stringify({
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
-      position: formData.position,
-      department: formData.department,
-      joinDate: formData.joinDate
-    }));
-
-    // Update context if available (no dummy data creation)
-    if (typeof updateKaryawan === 'function' && loggedKaryawanId) {
-      try {
-        updateKaryawan(loggedKaryawanId, {
-          nama: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          address: formData.address,
-          posisi: formData.position,
-          departemen: formData.department,
-          joinDate: formData.joinDate,
-          photo: formData.photo
-        });
-      } catch (e) {
-        console.error('Failed to update karyawan in context', e);
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        alert('Sesi login telah berakhir. Silakan login kembali.');
+        navigate('/login');
+        return;
       }
-    }
 
-    if (typeof updateUserProfile === 'function') {
-      updateUserProfile({
+      // Update karyawan data via API
+      if (loggedKaryawanId) {
+        await updateKaryawanProfile(token, loggedKaryawanId, {
+          nama: formData.name,
+          no_hp: formData.phone,
+          alamat: formData.address
+        });
+      }
+
+      // Update local state
+      setProfileData(formData);
+      
+      // Save profile per-account so one account never overrides another
+      localStorage.setItem(photoStorageKey, formData.photo);
+      localStorage.setItem(profileStorageKey, JSON.stringify({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
-      });
+        position: formData.position,
+        department: formData.department,
+        joinDate: formData.joinDate
+      }));
+
+      // Update context if available
+      if (typeof updateKaryawan === 'function' && loggedKaryawanId) {
+        try {
+          await updateKaryawan(loggedKaryawanId, {
+            nama: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            posisi: formData.position,
+            departemen: formData.department,
+            joinDate: formData.joinDate,
+            photo: formData.photo
+          });
+        } catch (e) {
+          console.error('Failed to update karyawan in context', e);
+        }
+      }
+
+      if (typeof updateUserProfile === 'function') {
+        updateUserProfile({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+        });
+      }
+
+      alert('Profil berhasil diperbarui!');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Gagal memperbarui profil: ' + error.message);
     }
-    setIsEditing(false);
   };
 
   const handlePhotoUpload = (e) => {
@@ -122,18 +153,29 @@ function KaryawanProfileSettings() {
       // Prefer AppContext lookup
       let k = typeof getKaryawanById === 'function' ? getKaryawanById(loggedKaryawanId) : undefined;
       if (!k && Array.isArray(karyawanData)) {
-        k = karyawanData.find(x => x.id === loggedKaryawanId || x.email === storedEmail || x.username === storedEmail);
+        k = karyawanData.find(x =>
+          String(x.id) === String(loggedKaryawanId) ||
+          (x.user_id && loggedUserId && String(x.user_id) === String(loggedUserId)) ||
+          x.username === storedEmail
+        );
       }
       if (k) {
+        let localProfile = null;
+        try {
+          const raw = localStorage.getItem(profileStorageKey);
+          localProfile = raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          localProfile = null;
+        }
         const mapped = {
-          name: k.nama || k.name || "",
-          email: k.email || storedEmail || "",
-          phone: k.phone || "",
-          address: k.address || "",
-          joinDate: k.createdAt ? (new Date(k.createdAt)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'}) : (k.joinDate || defaultProfile.joinDate),
-          position: k.posisi || k.position || defaultProfile.position,
-          department: k.departemen || k.department || defaultProfile.department,
-          photo: localStorage.getItem(`karyawan_photo_${k.email}`) || k.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(k.nama || k.username || '')}&background=6B7280&color=fff`,
+          name: localProfile?.name || k.nama || k.name || "",
+          email: localProfile?.email || k.email || storedEmail || "",
+          phone: localProfile?.phone || k.no_hp || k.phone || "",
+          address: localProfile?.address || k.alamat || k.address || "",
+          joinDate: localProfile?.joinDate || (k.createdAt ? (new Date(k.createdAt)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'}) : (k.joinDate || defaultProfile.joinDate)),
+          position: localProfile?.position || k.posisi || k.jabatan || k.position || defaultProfile.position,
+          department: localProfile?.department || k.departemen || k.department || defaultProfile.department,
+          photo: localStorage.getItem(photoStorageKey) || k.foto || k.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(k.nama || k.username || '')}&background=6B7280&color=fff`,
           emergencyContact: k.emergencyContact || defaultProfile.emergencyContact,
           notifications: k.notifications || defaultProfile.notifications
         };
@@ -142,7 +184,7 @@ function KaryawanProfileSettings() {
         setPhotoPreview(mapped.photo);
       }
     }
-  }, [loggedKaryawanId, karyawanData, getKaryawanById]);
+  }, [loggedKaryawanId, loggedUserId, karyawanData, getKaryawanById, storedEmail, defaultProfile, profileStorageKey, photoStorageKey]);
 
   return (
     <main className="min-h-screen bg-gray-50 p-6 md:p-8">

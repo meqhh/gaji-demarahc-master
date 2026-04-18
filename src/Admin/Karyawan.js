@@ -15,6 +15,34 @@ function Karyawan() {
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({});
 
+  const getFieldValue = (obj, ...keys) => {
+    if (!obj) return undefined;
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null && obj[key] !== "") {
+        return obj[key];
+      }
+    }
+    return undefined;
+  };
+
+  const normalizeKaryawan = (item) => {
+    if (!item) return item;
+    return {
+      ...item,
+      posisi: getFieldValue(item, "posisi", "jabatan"),
+      nohp: getFieldValue(item, "nohp", "no_hp", "noTelepon", "no_telepon"),
+      tglMasuk: getFieldValue(item, "tglMasuk", "tgl_masuk", "tanggalMasuk", "tanggal_masuk"),
+      tglKontrak: getFieldValue(item, "tglKontrak", "tgl_kontrak", "tanggalKontrak", "tanggal_kontrak"),
+      lamaKontrak: getFieldValue(item, "lamaKontrak", "lama_kontrak"),
+      tanggalLahir: getFieldValue(item, "tanggalLahir", "tanggal_lahir"),
+      tempatLahir: getFieldValue(item, "tempatLahir", "tempat_lahir", "tempatTanggalLahir", "tempat_tanggal_lahir"),
+      foto: getFieldValue(item, "foto", "photo"),
+      email: getFieldValue(item, "email", "user_email", "userEmail"),
+      alamat: getFieldValue(item, "alamat", "address"),
+      status: getFieldValue(item, "status") || "",
+    };
+  };
+
   // Initialize data on mount - only load from localStorage, no default data
   useEffect(() => {
     try {
@@ -119,6 +147,7 @@ function Karyawan() {
       id: getNextId(),
       nama: form.nama.value,
       posisi: form.posisi.value,
+      status: form.status?.value || "",
       nohp: form.nohp.value,
       email: form.email.value,
       alamat: form.alamat.value,
@@ -154,6 +183,7 @@ function Karyawan() {
       ...editData,
       nama: form.nama.value,
       posisi: form.posisi.value,
+      status: form.status?.value || "",
       nohp: form.nohp.value,
       email: form.email.value,
       alamat: form.alamat.value,
@@ -184,7 +214,7 @@ function Karyawan() {
       if (typeof deleteKaryawan === 'function') {
         deleteKaryawan(deleteData.id);
       } else if (typeof setKaryawanData === 'function') {
-        setKaryawanData((prev) => Array.isArray(prev) ? prev.filter((k) => k.id !== deleteData.id) : []);
+        setKaryawanData((prev) => Array.isArray(prev) ? prev.filter((k) => String(k.id) !== String(deleteData.id)) : []);
       }
       setShowDelete(false);
       setDeleteData(null);
@@ -288,12 +318,12 @@ function Karyawan() {
                     <td className="px-8 py-5 bg-gray-100 text-gray-800 font-semibold">{idx + 1}.</td>
                     <td className="px-8 py-5 bg-gray-100 text-gray-800">{k.id}</td>
                     <td className="px-8 py-5 bg-gray-100 text-gray-800 font-medium">{k.nama}</td>
-                    <td className="px-8 py-5 bg-gray-100 text-gray-800">{k.posisi}</td>
-                    <td className="px-8 py-5 bg-gray-100 text-gray-800">{formatTanggalDisplay(k.tglMasuk)}</td>
+                    <td className="px-8 py-5 bg-gray-100 text-gray-800">{getFieldValue(k, "posisi", "jabatan") || "—"}</td>
+                    <td className="px-8 py-5 bg-gray-100 text-gray-800">{formatTanggalDisplay(getFieldValue(k, "tglMasuk", "tgl_masuk", "tanggalMasuk", "tanggal_masuk"))}</td>
                     <td className="px-8 py-5 bg-gray-100 text-center space-x-2">
                       <button
                         onClick={() => {
-                          setDetailData(k);
+                          setDetailData(normalizeKaryawan(k));
                           setShowDetail(true);
                         }}
                         className="text-blue-600 font-bold hover:text-blue-700 transition-colors text-sm"
@@ -302,8 +332,9 @@ function Karyawan() {
                       </button>
                       <button
                         onClick={() => {
-                          setEditData(k);
-                          setPreview(k.foto);
+                          const normalized = normalizeKaryawan(k);
+                          setEditData(normalized);
+                          setPreview(normalized.foto);
                           setShowEdit(true);
                         }}
                         className="text-orange-600 font-bold hover:text-orange-700 transition-colors text-sm"
@@ -354,6 +385,7 @@ function Karyawan() {
                   {[
                     ["Nama", "nama"],
                     ["Posisi", "posisi"],
+                    ["Status", "status"],
                     ["Nomor HP", "nohp"],
                     ["Email", "email", "email"],
                     ["Tempat Lahir", "tempatLahir"],
@@ -450,7 +482,7 @@ function Karyawan() {
                   </div>
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900">{detailData.nama}</h3>
-                    <p className="text-gray-600">{detailData.posisi}</p>
+                    <p className="text-gray-600">{getFieldValue(detailData, "posisi", "jabatan") || "—"}</p>
                     <p className="text-xs text-gray-500 mt-1">ID: {detailData.id}</p>
                   </div>
                 </div>
@@ -460,8 +492,12 @@ function Karyawan() {
                   <h3 className="text-sm font-semibold text-gray-700 mb-4">Informasi Pribadi</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+                      <p className="text-gray-900">{detailData.status || '—'}</p>
+                    </div>
+                    <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Nomor HP</label>
-                      <p className="text-gray-900">{detailData.nohp || '—'}</p>
+                      <p className="text-gray-900">{getFieldValue(detailData, "nohp", "no_hp") || '—'}</p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Email</label>
@@ -566,7 +602,18 @@ function Karyawan() {
                   </div>
                 </div>
 
-                {/* Row 2: No HP & Email */}
+                {/* Row 2: Status */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                  <input
+                    name="status"
+                    defaultValue={editData.status}
+                    type="text"
+                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Row 3: No HP & Email */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">No. HP</label>
@@ -708,7 +755,7 @@ function Karyawan() {
               
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                 <p className="text-gray-900 font-medium">{deleteData.nama}</p>
-                <p className="text-sm text-gray-600 mt-1">{deleteData.posisi}</p>
+                <p className="text-sm text-gray-600 mt-1">{getFieldValue(deleteData, "posisi", "jabatan") || "—"}</p>
               </div>
               
               <p className="text-sm text-gray-600 mb-6 text-center">

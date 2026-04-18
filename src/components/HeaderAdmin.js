@@ -8,6 +8,15 @@ function HeaderAdmin() {
   const navigate = useNavigate();
   const { userProfile } = useContext(AppContext);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const userIdentity = userProfile?.id || userProfile?.email || "admin";
+  const adminPhotoKey = `adminProfilePhoto:${userIdentity}`;
+  const getInitials = (name) => {
+    const cleaned = String(name || "").trim();
+    if (!cleaned) return "U";
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+  };
 
   // User data dari context - tanpa data dummy
   const adminUser = {
@@ -15,8 +24,9 @@ function HeaderAdmin() {
     email: userProfile?.email || "",
     position: "Admin",
     department: userProfile?.department || "",
-    // Foto profil - dari context atau default
-    photo: userProfile?.photo || `https://ui-avatars.com/api/?name=${userProfile?.nama || "User"}&background=6366F1&color=fff&bold=true&size=128`
+    // Use uploaded photo when available, otherwise show initials.
+    photo: userProfile?.photo || userProfile?.avatar || localStorage.getItem(adminPhotoKey) || "",
+    initials: getInitials(userProfile?.nama || userProfile?.name || "User")
   };
 
   const handleLogout = () => {
@@ -71,12 +81,18 @@ function HeaderAdmin() {
           className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 transition-all duration-300 group"
           title={adminUser.name || "Admin Panel"}
         >
-          {/* Profile Avatar with Photo */}
-          <img 
-            src={adminUser.photo} 
-            alt={adminUser.name}
-            className="w-10 h-10 rounded-full object-cover border border-gray-300 group-hover:border-gray-400 transition-all shadow-sm"
-          />
+          {/* Profile Avatar with fallback initials */}
+          {adminUser.photo ? (
+            <img 
+              src={adminUser.photo} 
+              alt={adminUser.name}
+              className="w-10 h-10 rounded-full object-cover border border-gray-300 group-hover:border-gray-400 transition-all shadow-sm"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full border border-gray-300 group-hover:border-gray-400 transition-all shadow-sm bg-indigo-500 text-white font-bold text-sm flex items-center justify-center">
+              {adminUser.initials}
+            </div>
+          )}
           
           {/* Dropdown Icon */}
           <svg 
@@ -98,11 +114,17 @@ function HeaderAdmin() {
             {/* User Card Header - Enhanced */}
             <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-6">
               <div className="flex items-center gap-4">
-                <img 
-                  src={adminUser.photo}
-                  alt={adminUser.name}
-                  className="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-md"
-                />
+                {adminUser.photo ? (
+                  <img 
+                    src={adminUser.photo}
+                    alt={adminUser.name}
+                    className="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-md"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg border-2 border-white shadow-md bg-indigo-500 text-white font-bold text-2xl flex items-center justify-center">
+                    {adminUser.initials}
+                  </div>
+                )}
                 <div className="flex-1">
                   <p className="font-bold text-base text-gray-900">{adminUser.name}</p>
                   <p className="text-sm text-gray-600 mt-0.5">{adminUser.position}</p>
@@ -196,23 +218,62 @@ function HeaderAdmin() {
 
             {/* Logout Modal */}
             {showLogoutModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm" onClick={() => setShowLogoutModal(false)}>
-                <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-gray-100 rounded-full mb-3">
-                      <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7" />
+              <>
+                {/* Backdrop - Full Screen */}
+                <div 
+                  className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 z-40" 
+                  onClick={() => setShowLogoutModal(false)}
+                />
+                
+                {/* Dialog - Centered */}
+                <div className="fixed top-0 left-0 right-0 bottom-0 z-50 flex items-center justify-center p-4">
+                  <div 
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 transform"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Close Button */}
+                    <button
+                      onClick={() => setShowLogoutModal(false)}
+                      className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-2"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
+                    </button>
+
+                    {/* Icon */}
+                    <div className="flex justify-center mb-6">
+                      <div className="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full">
+                        <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">Keluar dari Admin</h3>
-                    <p className="text-sm text-gray-600 mt-2">Apakah Anda yakin ingin keluar dari panel admin?</p>
-                  </div>
-                  <div className="flex gap-3 justify-end">
-                    <button onClick={() => setShowLogoutModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700">Batal</button>
-                    <button onClick={confirmLogout} className="px-4 py-2 bg-gray-800 text-white rounded-lg">Keluar</button>
+
+                    {/* Content */}
+                    <div className="text-center mb-8">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-3">Keluar dari Admin</h3>
+                      <p className="text-gray-600 text-base leading-relaxed">Apakah Anda yakin ingin keluar dari panel admin?</p>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex gap-4 justify-center">
+                      <button 
+                        onClick={() => setShowLogoutModal(false)} 
+                        className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
+                      >
+                        Batal
+                      </button>
+                      <button 
+                        onClick={confirmLogout} 
+                        className="flex-1 px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors duration-200"
+                      >
+                        Keluar
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Footer Info */}

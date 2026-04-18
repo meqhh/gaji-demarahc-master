@@ -5,19 +5,21 @@ import { AppContext } from "../context/AppContext";
 
 export default function AbsensiKaryawan() {
 	const navigate = useNavigate();
-	const { userProfile, addAbsensi, updateAbsensi } = useContext(AppContext);
+	const { userProfile, absensiData = [], addAbsensi, updateAbsensi, deleteAbsensi } = useContext(AppContext);
 
-	// No default dummy data - all data from backend API/localStorage
-	const storageKey = userProfile?.email ? `absensi_${userProfile.email}` : 'absensi_guest';
+	const getCurrentUserName = () => userProfile?.name || userProfile?.nama || userProfile?.email || "Karyawan";
+	const getCurrentUserEmail = () => userProfile?.email || "";
+	const getCurrentUserId = () => userProfile?.karyawanId || userProfile?.id || null;
 
-	const [absensi, setAbsensi] = useState(() => {
-		const saved = localStorage.getItem(storageKey);
-		return saved ? JSON.parse(saved) : [];
-	});
-
-	useEffect(() => {
-		localStorage.setItem(storageKey, JSON.stringify(absensi));
-	}, [absensi, storageKey]);
+	const absensi = Array.isArray(absensiData)
+		? absensiData.filter((a) => {
+			if (!a) return false;
+			if (getCurrentUserId() && String(a.karyawan_id || a.karyawanId || a.user_id || a.id_user || "") === String(getCurrentUserId())) return true;
+			if (a.email && getCurrentUserEmail() && String(a.email).toLowerCase() === String(getCurrentUserEmail()).toLowerCase()) return true;
+			if (a.nama && getCurrentUserName() && String(a.nama).toLowerCase() === String(getCurrentUserName()).toLowerCase()) return true;
+			return false;
+		})
+		: [];
 
 	const [selected, setSelected] = useState(null);
 	const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -58,28 +60,25 @@ export default function AbsensiKaryawan() {
 		return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 	};
 
-	const hasCheckedInToday = () => {
-		const today = new Date();
-		return absensi.some(a => {
-			try {
-				const aDate = new Date(a.tanggal);
-				return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
-			} catch (e) {
-				return a.tanggal.includes(today.getDate().toString()) && a.bulan.includes(today.getFullYear());
+	const isSameAttendanceDay = (record, targetDate = new Date()) => {
+		if (!record) return false;
+		const targetKey = targetDate.toISOString().slice(0, 10);
+		if (record.date && String(record.date).slice(0, 10) === targetKey) return true;
+		if (record.tanggal) {
+			const parsed = new Date(record.tanggal);
+			if (!isNaN(parsed.getTime())) {
+				return parsed.toISOString().slice(0, 10) === targetKey;
 			}
-		});
+		}
+		return false;
+	};
+
+	const hasCheckedInToday = () => {
+		return absensi.some((a) => isSameAttendanceDay(a));
 	};
 
 	const getTodayItem = () => {
-		const today = new Date();
-		return absensi.find(a => {
-			try {
-				const aDate = new Date(a.tanggal);
-				return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
-			} catch (e) {
-				return a.tanggal && a.tanggal.includes(String(today.getDate()));
-			}
-		});
+		return absensi.find((a) => isSameAttendanceDay(a));
 	};
 
 	const getTodayKey = () => new Date().toISOString().slice(0,10); // YYYY-MM-DD
@@ -93,17 +92,7 @@ export default function AbsensiKaryawan() {
 		// Allow manual check-in - removed login restriction for manual attendance
 		if (hasCheckedInToday()) {
 			// Show today's attendance info
-			const today = new Date();
-			const todayItem = absensi.find(a => {
-				try {
-					const aDate = new Date(a.tanggal);
-					return aDate.getFullYear() === today.getFullYear() && 
-						   aDate.getMonth() === today.getMonth() && 
-						   aDate.getDate() === today.getDate();
-				} catch (e) {
-					return a.tanggal && a.tanggal.includes(String(today.getDate()));
-				}
-			});
+			const todayItem = getTodayItem();
 			if (todayItem) {
 				setTodayAbsensi(todayItem);
 				setShowAbsensiModal(true);
@@ -120,13 +109,13 @@ export default function AbsensiKaryawan() {
 			jamMasuk: formatTime(now),
 			checkInId
 		};
-		setAbsensi(prev => [newItem, ...prev]);
-		// Also add to global absensi (visible in admin panel)
+		// Save to global absensi (visible in admin panel)
 		if (addAbsensi) {
 			addAbsensi({
 				...newItem,
-				nama: userProfile?.name || userProfile?.email || 'Karyawan',
-				email: userProfile?.email || 'guest',
+				karyawan_id: getCurrentUserId(),
+				nama: getCurrentUserName(),
+				email: getCurrentUserEmail(),
 				posisi: userProfile?.position || userProfile?.role || 'Staff',
 				date: now.toISOString().slice(0, 10),
 				jamKeluar: ''
@@ -140,14 +129,7 @@ export default function AbsensiKaryawan() {
 	 const handleCheckOut = () => {
 		const today = new Date();
 		const nowTime = formatTime(today);
-		const todayItem = absensi.find(a => {
-			try {
-				const aDate = new Date(a.tanggal);
-				return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
-			} catch (e) {
-				return a.tanggal && a.tanggal.includes(String(today.getDate()));
-			}
-		});
+		const todayItem = getTodayItem();
 		if (!todayItem) {
 			alert('Belum ada absen masuk hari ini.');
 			return;
@@ -156,8 +138,6 @@ export default function AbsensiKaryawan() {
 			alert('Anda sudah absen keluar hari ini.');
 			return;
 		}
-		const updated = absensi.map(a => a.id === todayItem.id ? { ...a, jamKeluar: nowTime } : a);
-		setAbsensi(updated);
 		if (updateAbsensi) {
 			updateAbsensi(todayItem.id, { jamKeluar: nowTime });
 		}
@@ -251,22 +231,14 @@ export default function AbsensiKaryawan() {
 					}
 					return a;
 				});
-				setAbsensi(updatedAbsensi);
-				
-				// Update global absensi
-				if (addAbsensi) {
-					const globalData = {
-						id: editData.id,
-						nama: userProfile?.name || userProfile?.email || 'Karyawan',
-						email: userProfile?.email || 'guest',
-						posisi: userProfile?.position || userProfile?.role || 'Staff',
-						date: formData.tanggal,
+				if (updateAbsensi) {
+					updateAbsensi(editData.id, {
+						tanggal: tanggalFormatted,
+						bulan: bulanFormatted,
 						jamMasuk: formData.jamMasuk,
 						jamKeluar: formData.jamKeluar || "",
 						status: formData.status
-					};
-					// Note: We need updateAbsensi from context, but for now we'll use addAbsensi
-					// In a real app, you'd want to use updateAbsensi
+					});
 				}
 			} else {
 				// Add new
@@ -279,14 +251,13 @@ export default function AbsensiKaryawan() {
 					jamKeluar: formData.jamKeluar || "",
 					checkInId: checkInId
 				};
-				setAbsensi(prev => [newItem, ...prev]);
-				
 				// Add to global absensi
 				if (addAbsensi) {
 					addAbsensi({
 						...newItem,
-						nama: userProfile?.name || userProfile?.email || 'Karyawan',
-						email: userProfile?.email || 'guest',
+						karyawan_id: getCurrentUserId(),
+						nama: getCurrentUserName(),
+						email: getCurrentUserEmail(),
 						posisi: userProfile?.position || userProfile?.role || 'Staff',
 						date: formData.tanggal
 					});
@@ -315,7 +286,9 @@ export default function AbsensiKaryawan() {
 
 	const confirmDelete = () => {
 		if (deleteData) {
-			setAbsensi(prev => prev.filter(a => a.id !== deleteData.id));
+			if (deleteAbsensi) {
+				deleteAbsensi(deleteData.id);
+			}
 			setShowDelete(false);
 			setDeleteData(null);
 		}

@@ -180,6 +180,24 @@ export const updateKaryawan = async (token, karyawanId, karyawanData) => {
   }
 };
 
+// Update karyawan profile (karyawan can update their own profile)
+export const updateKaryawanProfile = async (token, karyawanId, karyawanData) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/karyawan/profile/${karyawanId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(karyawanData)
+    });
+
+    return await parseResponse(response);
+  } catch (error) {
+    throw new Error(networkErrorToMessage(error) || 'Gagal memperbarui profil karyawan');
+  }
+};
+
 // Delete karyawan (admin only)
 export const deleteKaryawan = async (token, karyawanId) => {
   try {
@@ -194,6 +212,23 @@ export const deleteKaryawan = async (token, karyawanId) => {
     return await parseResponse(response);
   } catch (error) {
     throw new Error(networkErrorToMessage(error) || 'Gagal menghapus data karyawan');
+  }
+};
+
+// Get profile dropdown options
+export const getProfileOptions = async (token) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/karyawan/options/profile`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    return await parseResponse(response);
+  } catch (error) {
+    throw new Error(networkErrorToMessage(error) || 'Gagal mengambil opsi dropdown');
   }
 };
 
@@ -251,12 +286,18 @@ export const cutiApi = makeResourceHelpers('cuti');
 export const treatmentApi = makeResourceHelpers('treatment');
 export const slipGajiApi = makeResourceHelpers('slip-gaji');
 
-export default {
+const authService = {
   loginUser,
   registerUser,
   getCurrentUser,
   updateUserProfile,
   getKaryawanList,
   getKaryawanById,
-  createKaryawan
+  createKaryawan,
+  updateKaryawan,
+  updateKaryawanProfile,
+  deleteKaryawan,
+  getProfileOptions
 };
+
+export default authService;

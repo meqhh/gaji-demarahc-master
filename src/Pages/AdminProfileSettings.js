@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
-import { updateUserProfile } from "../services/authService";
+import { updateUserProfile, registerUser } from "../services/authService";
 
 function AdminProfileSettings() {
   const context = useContext(AppContext);
@@ -20,6 +20,17 @@ function AdminProfileSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [createForm, setCreateForm] = useState({
+    nama: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    role: "karyawan",
+    adminKey: ""
+  });
+  const [isCreating, setIsCreating] = useState(false);
+  const [createMessage, setCreateMessage] = useState("");
+  const [createError, setCreateError] = useState("");
 
   // Departemen options
   const departemenOptions = [
@@ -49,6 +60,11 @@ function AdminProfileSettings() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleCreateChange = (e) => {
+    const { name, value } = e.target;
+    setCreateForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -82,6 +98,61 @@ function AdminProfileSettings() {
       setSaveError(error.message || "Gagal menyimpan profil");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    try {
+      setCreateError("");
+      setCreateMessage("");
+
+      if (!createForm.nama || !createForm.email || !createForm.password) {
+        setCreateError("Nama, email, dan password wajib diisi.");
+        return;
+      }
+
+      if (createForm.password.length < 8) {
+        setCreateError("Password minimal 8 karakter.");
+        return;
+      }
+
+      if (createForm.password !== createForm.confirmPassword) {
+        setCreateError("Konfirmasi password tidak cocok.");
+        return;
+      }
+
+      setIsCreating(true);
+
+      const payload = {
+        nama: createForm.nama,
+        email: createForm.email,
+        password: createForm.password,
+        role: createForm.role
+      };
+
+      if (createForm.role === "admin" && createForm.adminKey) {
+        payload.adminKey = createForm.adminKey;
+      }
+
+      const response = await registerUser(payload);
+      if (response?.success) {
+        setCreateMessage(`Akun ${createForm.role} berhasil dibuat.`);
+        setCreateForm({
+          nama: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          role: "karyawan",
+          adminKey: ""
+        });
+        setTimeout(() => setCreateMessage(""), 4000);
+      } else {
+        setCreateError("Gagal membuat akun.");
+      }
+    } catch (error) {
+      setCreateError(error.message || "Gagal membuat akun.");
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -369,6 +440,113 @@ function AdminProfileSettings() {
             <li>✓ Isi kolom lainnya sesuai data aktual</li>
             <li>✓ Perubahan langsung tersimpan ke database</li>
           </ul>
+        </div>
+      </div>
+
+      {/* Create Account */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-8 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+        <div className="flex items-center gap-3 mb-4">
+          <svg className="w-5 h-5 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 00-6 6h12a6 6 0 00-6-6z" />
+            <path d="M16 7a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1V8a1 1 0 011-1z" />
+          </svg>
+          <h3 className="font-bold text-gray-900">Buat Akun Baru</h3>
+        </div>
+        <p className="text-sm text-gray-600 mb-6">
+          Admin dapat membuat akun untuk karyawan maupun admin yang tidak bisa mendaftar sendiri.
+        </p>
+
+        {createMessage && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+            {createMessage}
+          </div>
+        )}
+        {createError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            {createError}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Nama</label>
+            <input
+              type="text"
+              name="nama"
+              value={createForm.nama}
+              onChange={handleCreateChange}
+              placeholder="Nama lengkap akun"
+              className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={createForm.email}
+              onChange={handleCreateChange}
+              placeholder="email@contoh.com"
+              className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Password</label>
+            <input
+              type="password"
+              name="password"
+              value={createForm.password}
+              onChange={handleCreateChange}
+              placeholder="Minimal 8 karakter"
+              className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Konfirmasi Password</label>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={createForm.confirmPassword}
+              onChange={handleCreateChange}
+              placeholder="Ulangi password"
+              className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Role</label>
+            <select
+              name="role"
+              value={createForm.role}
+              onChange={handleCreateChange}
+              className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+            >
+              <option value="karyawan">Karyawan</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+              Kunci Admin {createForm.role === "admin" ? "(wajib jika server mengaktifkan)" : "(opsional)"}
+            </label>
+            <input
+              type="text"
+              name="adminKey"
+              value={createForm.adminKey}
+              onChange={handleCreateChange}
+              placeholder="Isi jika membuat akun admin"
+              className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-900 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 pt-5 border-t border-gray-200 flex justify-end">
+          <button
+            onClick={handleCreateAccount}
+            disabled={isCreating}
+            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-all disabled:bg-indigo-300 disabled:cursor-not-allowed"
+          >
+            {isCreating ? "Membuat akun..." : "Buat Akun"}
+          </button>
         </div>
       </div>
     </main>

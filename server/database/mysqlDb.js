@@ -1,5 +1,23 @@
 import pool from './mysql.js';
 
+const tableColumnsCache = new Map();
+
+const getTableColumns = async (tableName) => {
+  if (tableColumnsCache.has(tableName)) {
+    return tableColumnsCache.get(tableName);
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.query(`SHOW COLUMNS FROM ${tableName}`);
+    const columns = new Set(rows.map((row) => row.Field));
+    tableColumnsCache.set(tableName, columns);
+    return columns;
+  } finally {
+    conn.release();
+  }
+};
+
 // Users Database Operations
 const usersDB = {
   getAll: async () => {
@@ -31,6 +49,27 @@ const usersDB = {
     } catch (err) {
       console.error('Error in usersDB.findOne:', err);
       return null;
+    }
+  },
+
+  findMany: async (query = {}) => {
+    try {
+      const conn = await pool.getConnection();
+      let sql = 'SELECT * FROM users WHERE 1=1';
+      const values = [];
+
+      for (const [key, value] of Object.entries(query)) {
+        sql += ` AND ${key} = ?`;
+        values.push(value);
+      }
+
+      sql += ' ORDER BY id DESC';
+      const [rows] = await conn.query(sql, values);
+      conn.release();
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      console.error('Error in usersDB.findMany:', err);
+      return [];
     }
   },
 
@@ -106,13 +145,22 @@ const karyawanDB = {
 
   findOne: async (query) => {
     try {
+      const columns = await getTableColumns('karyawan');
       const conn = await pool.getConnection();
       let sql = 'SELECT * FROM karyawan WHERE 1=1';
       const values = [];
       
       for (const [key, value] of Object.entries(query)) {
+        if (!columns.has(key)) {
+          continue;
+        }
         sql += ` AND ${key} = ?`;
         values.push(value);
+      }
+
+      if (values.length === 0) {
+        conn.release();
+        return null;
       }
       
       const [rows] = await conn.query(sql, values);
@@ -138,21 +186,32 @@ const karyawanDB = {
 
   save: async (karyawan) => {
     try {
+      const columns = await getTableColumns('karyawan');
       const conn = await pool.getConnection();
       
       if (karyawan.id) {
         // Update existing
-        const fields = Object.keys(karyawan).filter(k => k !== 'id');
+        const fields = Object.keys(karyawan).filter(k => k !== 'id' && columns.has(k));
         const values = fields.map(k => karyawan[k]);
         values.push(karyawan.id);
+
+        if (fields.length === 0) {
+          conn.release();
+          return karyawan;
+        }
         
         const setClause = fields.map(f => `${f} = ?`).join(', ');
         await conn.query(`UPDATE karyawan SET ${setClause} WHERE id = ?`, values);
       } else {
         // Create new - exclude created_at (use SQL DEFAULT)
-        const keys = Object.keys(karyawan).filter(k => k !== 'created_at');
+        const keys = Object.keys(karyawan).filter(k => k !== 'created_at' && columns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
         const values = keys.map(k => karyawan[k]);
+
+        if (keys.length === 0) {
+          conn.release();
+          return karyawan;
+        }
         
         const [result] = await conn.query(
           `INSERT INTO karyawan (${keys.join(', ')}) VALUES (${placeholders})`,
@@ -176,6 +235,48 @@ const karyawanDB = {
       conn.release();
     } catch (err) {
       console.error('Error in karyawanDB.delete:', err);
+      throw err;
+    }
+  },
+
+  deleteById: async (id) => {
+    return karyawanDB.delete(id);
+  },
+
+  deleteWithAccountAndRelations: async (id) => {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      const [rows] = await conn.query('SELECT * FROM karyawan WHERE id = ? LIMIT 1', [id]);
+      const karyawan = rows[0];
+      if (!karyawan) {
+        throw new Error('Karyawan tidak ditemukan');
+      }
+
+      // If linked account exists, delete user first.
+      // FK `karyawan.user_id -> users.id ON DELETE CASCADE` ensures karyawan row is removed,
+      // then FK on child tables referencing karyawan will also be cleaned up.
+      if (karyawan.user_id) {
+        await conn.query('DELETE FROM users WHERE id = ?', [karyawan.user_id]);
+      } else {
+        // Legacy rows may not have user_id link yet.
+        // Remove matching karyawan account by role+name so deleted employee cannot log in again.
+        await conn.query(
+          'DELETE FROM users WHERE role = ? AND name = ?',
+          ['karyawan', karyawan.nama]
+        );
+        await conn.query('DELETE FROM karyawan WHERE id = ?', [id]);
+      }
+
+      await conn.commit();
+      return { deleted: true, karyawan };
+    } catch (err) {
+      await conn.rollback();
+      console.error('Error in karyawanDB.deleteWithAccountAndRelations:', err);
+      throw err;
+    } finally {
+      conn.release();
     }
   }
 };

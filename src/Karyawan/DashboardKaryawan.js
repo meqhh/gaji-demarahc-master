@@ -9,18 +9,40 @@ export default function DashboardKaryawan() {
   const navigate = useNavigate();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [absensiData, setAbsensiData] = useState([]);
   const chartRef = useRef(null);
   const [showAbsensiModal, setShowAbsensiModal] = useState(false);
   const [showCheckInForm, setShowCheckInForm] = useState(false);
   const [todayAbsensi, setTodayAbsensi] = useState(null);
   const [attendanceType, setAttendanceType] = useState("");
 
-  const { userProfile, addAbsensi, updateAbsensi } = useContext(require('../context/AppContext').AppContext);
+  const { userProfile, absensiData = [], addAbsensi, updateAbsensi } = useContext(require('../context/AppContext').AppContext);
+  const getCurrentUserName = () => userProfile?.name || userProfile?.nama || userProfile?.email || "Karyawan";
+  const getCurrentUserEmail = () => userProfile?.email || "";
+  const getCurrentUserId = () => userProfile?.karyawanId || userProfile?.id || null;
 
-  const storageKey = userProfile?.email ? `absensi_${userProfile.email}` : 'absensi_guest';
+  const myAbsensi = Array.isArray(absensiData)
+    ? absensiData.filter((a) => {
+        if (!a) return false;
+        if (getCurrentUserId() && String(a.karyawan_id || a.karyawanId || a.user_id || a.id_user || "") === String(getCurrentUserId())) return true;
+        if (a.email && getCurrentUserEmail() && String(a.email).toLowerCase() === String(getCurrentUserEmail()).toLowerCase()) return true;
+        if (a.nama && getCurrentUserName() && String(a.nama).toLowerCase() === String(getCurrentUserName()).toLowerCase()) return true;
+        return false;
+      })
+    : [];
 
   const getTodayKey = () => new Date().toISOString().slice(0,10);
+  const isSameAttendanceDay = (record, targetDate = new Date()) => {
+    if (!record) return false;
+    const targetKey = targetDate.toISOString().slice(0, 10);
+    if (record.date && String(record.date).slice(0, 10) === targetKey) return true;
+    if (record.tanggal) {
+      const parsed = new Date(record.tanggal);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().slice(0, 10) === targetKey;
+      }
+    }
+    return false;
+  };
 
   const didLoginToday = () => {
     const lastLogin = localStorage.getItem('karyawanLastLogin');
@@ -28,20 +50,7 @@ export default function DashboardKaryawan() {
   };
 
   const hasCheckedInToday = () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      const today = new Date();
-      return saved.some(a => {
-        try {
-          const aDate = new Date(a.tanggal);
-          return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
-        } catch (e) {
-          return a.tanggal && a.tanggal.includes(String(today.getDate()));
-        }
-      });
-    } catch (e) {
-      return false;
-    }
+    return myAbsensi.some((a) => isSameAttendanceDay(a));
   };
 
   const formatDate = (d) => d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -52,18 +61,7 @@ export default function DashboardKaryawan() {
     // Allow manual check-in - removed login restriction
     if (hasCheckedInToday()) {
       // Show today's attendance info
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      const today = new Date();
-      const todayItem = saved.find(a => {
-        try {
-          const aDate = new Date(a.tanggal);
-          return aDate.getFullYear() === today.getFullYear() && 
-                 aDate.getMonth() === today.getMonth() && 
-                 aDate.getDate() === today.getDate();
-        } catch (e) {
-          return a.tanggal && a.tanggal.includes(String(today.getDate()));
-        }
-      });
+      const todayItem = myAbsensi.find((a) => isSameAttendanceDay(a));
       if (todayItem) {
         setTodayAbsensi(todayItem);
         setShowAbsensiModal(true);
@@ -92,14 +90,12 @@ export default function DashboardKaryawan() {
       checkInId
     };
 
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    localStorage.setItem(storageKey, JSON.stringify([newItem, ...saved]));
-
     if (addAbsensi) {
       addAbsensi({ 
         ...newItem, 
-        nama: userProfile?.name || userProfile?.email || 'Karyawan', 
-        email: userProfile?.email || 'guest',
+        karyawan_id: getCurrentUserId(),
+        nama: getCurrentUserName(), 
+        email: getCurrentUserEmail(),
         posisi: userProfile?.position || userProfile?.role || 'Staff',
         date: now.toISOString().slice(0, 10),
         jamKeluar: ''
@@ -115,26 +111,12 @@ export default function DashboardKaryawan() {
 
 
   const getTodayItemLocal = () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      const today = new Date();
-      return saved.find(a => {
-        try {
-          const aDate = new Date(a.tanggal);
-          return aDate.getFullYear() === today.getFullYear() && aDate.getMonth() === today.getMonth() && aDate.getDate() === today.getDate();
-        } catch (e) {
-          return a.tanggal && a.tanggal.includes(String(today.getDate()));
-        }
-      });
-    } catch (e) {
-      return null;
-    }
+    return myAbsensi.find((a) => isSameAttendanceDay(a));
   };
 
   const handleCheckOut = () => {
     const today = new Date();
     const nowTime = formatTime(today);
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const todayItem = getTodayItemLocal();
     if (!todayItem) {
       alert('Belum ada absen masuk hari ini.');
@@ -144,10 +126,9 @@ export default function DashboardKaryawan() {
       alert('Anda sudah absen keluar hari ini.');
       return;
     }
-    const updated = saved.map(a => a.id === todayItem.id ? { ...a, jamKeluar: nowTime } : a);
-    localStorage.setItem(storageKey, JSON.stringify(updated));
+    const updatedTodayItem = { ...todayItem, jamKeluar: nowTime };
     if (updateAbsensi) updateAbsensi(todayItem.id, { jamKeluar: nowTime });
-    setTodayAbsensi({ ...todayItem, jamKeluar: nowTime });
+    setTodayAbsensi(updatedTodayItem);
     setShowAbsensiModal(true);
   };
 
@@ -161,27 +142,12 @@ export default function DashboardKaryawan() {
   };
 
   useEffect(() => {
-    // Load absensi data from localStorage
-    const data = JSON.parse(localStorage.getItem("absensiData") || "[]");
-    setAbsensiData(data);
-    
     // Load today's attendance if exists
-    const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-    const today = new Date();
-    const todayItem = saved.find(a => {
-      try {
-        const aDate = new Date(a.tanggal);
-        return aDate.getFullYear() === today.getFullYear() && 
-               aDate.getMonth() === today.getMonth() && 
-               aDate.getDate() === today.getDate();
-      } catch (e) {
-        return a.tanggal && a.tanggal.includes(String(today.getDate()));
-      }
-    });
+    const todayItem = myAbsensi.find((a) => isSameAttendanceDay(a));
     if (todayItem) {
       setTodayAbsensi(todayItem);
     }
-  }, [storageKey]);
+  }, [myAbsensi]);
 
   // Get today's date
   const today = new Date();

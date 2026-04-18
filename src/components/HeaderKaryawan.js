@@ -7,16 +7,47 @@ function HeaderKaryawan() {
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const getSessionUser = () => {
+    try {
+      const raw = localStorage.getItem("userProfile") || localStorage.getItem("user");
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const getKaryawanIdentity = () => {
+    const sessionUser = getSessionUser();
+    return sessionUser?.id || sessionUser?.karyawanId || localStorage.getItem("karyawanId") || localStorage.getItem("karyawanEmail") || "karyawan";
+  };
+
+  const getInitials = (name) => {
+    const cleaned = String(name || "").trim();
+    if (!cleaned) return "KR";
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+  };
+
+  const getKaryawanPhoto = () => {
+    const sessionUser = getSessionUser();
+    const identity = getKaryawanIdentity();
+    const email = sessionUser?.email || localStorage.getItem("karyawanEmail");
+    return (
+      localStorage.getItem(`karyawanProfilePhoto:${identity}`) ||
+      (email ? localStorage.getItem(`karyawan_photo_${email}`) : "") ||
+      localStorage.getItem("karyawan_photo") ||
+      ""
+    );
+  };
+
   // Use localStorage for employee-specific profile (independent from admin)
-  const [currentPhoto, setCurrentPhoto] = useState(() => {
-    const userEmail = localStorage.getItem("karyawanEmail");
-    return localStorage.getItem(`karyawan_photo_${userEmail}`) || localStorage.getItem("karyawan_photo") || "https://ui-avatars.com/api/?name=Portal+Karyawan&background=8B5CF6&color=fff&bold=true&size=128";
-  });
+  const [currentPhoto, setCurrentPhoto] = useState(() => getKaryawanPhoto());
 
   // Load position and department from localStorage
   const [userPosition, setUserPosition] = useState(() => {
     try {
-      const profileData = localStorage.getItem("karyawanProfileData");
+      const profileData = localStorage.getItem(`karyawanProfileData:${getKaryawanIdentity()}`) || localStorage.getItem("karyawanProfileData");
       if (profileData) {
         const data = JSON.parse(profileData);
         return data.position || "";
@@ -29,7 +60,7 @@ function HeaderKaryawan() {
 
   const [userDepartment, setUserDepartment] = useState(() => {
     try {
-      const profileData = localStorage.getItem("karyawanProfileData");
+      const profileData = localStorage.getItem(`karyawanProfileData:${getKaryawanIdentity()}`) || localStorage.getItem("karyawanProfileData");
       if (profileData) {
         const data = JSON.parse(profileData);
         return data.department || "";
@@ -40,27 +71,30 @@ function HeaderKaryawan() {
     return "";
   });
 
+  const sessionUser = getSessionUser();
   const karyawanUser = {
-    name: "Portal Karyawan",
+    name: sessionUser?.nama || sessionUser?.name || localStorage.getItem("karyawanUsername") || "Karyawan",
     role: "Employee",
-    email: localStorage.getItem("karyawanEmail") || "karyawan@demara.com",
+    email: sessionUser?.email || localStorage.getItem("karyawanEmail") || "karyawan@demara.com",
     position: userPosition,
     department: userDepartment,
-    photo: currentPhoto
+    photo: currentPhoto,
+    initials: getInitials(sessionUser?.nama || sessionUser?.name || localStorage.getItem("karyawanUsername") || "Karyawan")
   };
 
   // Monitor localStorage changes to update photo, position, and department dynamically
   useEffect(() => {
     const interval = setInterval(() => {
       const userEmail = localStorage.getItem("karyawanEmail");
-      const newPhoto = localStorage.getItem(`karyawan_photo_${userEmail}`) || localStorage.getItem("karyawan_photo");
-      if (newPhoto && newPhoto !== currentPhoto) {
+      const identity = getKaryawanIdentity();
+      const newPhoto = localStorage.getItem(`karyawanProfilePhoto:${identity}`) || (userEmail ? localStorage.getItem(`karyawan_photo_${userEmail}`) : "") || localStorage.getItem("karyawan_photo") || "";
+      if (newPhoto !== currentPhoto) {
         setCurrentPhoto(newPhoto);
       }
 
       // Update position and department from profile data
       try {
-        const profileData = localStorage.getItem("karyawanProfileData");
+        const profileData = localStorage.getItem(`karyawanProfileData:${identity}`) || localStorage.getItem("karyawanProfileData");
         if (profileData) {
           const data = JSON.parse(profileData);
           if (data.position !== userPosition) {
@@ -116,11 +150,17 @@ function HeaderKaryawan() {
           title={`${karyawanUser.name} - ${karyawanUser.role}`}
         >
           {/* Profile Avatar with Photo */}
-          <img 
-            src={karyawanUser.photo} 
-            alt={karyawanUser.name}
-            className="w-10 h-10 rounded-full object-cover border border-gray-300 group-hover:border-gray-400 transition-all shadow-sm"
-          />
+          {karyawanUser.photo ? (
+            <img 
+              src={karyawanUser.photo} 
+              alt={karyawanUser.name}
+              className="w-10 h-10 rounded-full object-cover border border-gray-300 group-hover:border-gray-400 transition-all shadow-sm"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full border border-gray-300 group-hover:border-gray-400 transition-all shadow-sm bg-indigo-500 text-white font-bold text-sm flex items-center justify-center">
+              {karyawanUser.initials}
+            </div>
+          )}
           
           {/* Dropdown Icon */}
           <svg 
@@ -142,11 +182,17 @@ function HeaderKaryawan() {
             {/* User Card Header - Enhanced */}
             <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-b border-gray-200 px-6 py-6">
               <div className="flex items-center gap-4">
-                <img 
-                  src={karyawanUser.photo}
-                  alt={karyawanUser.name}
-                  className="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-md"
-                />
+                {karyawanUser.photo ? (
+                  <img 
+                    src={karyawanUser.photo}
+                    alt={karyawanUser.name}
+                    className="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-md"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-lg border-2 border-white shadow-md bg-indigo-500 text-white font-bold text-2xl flex items-center justify-center">
+                    {karyawanUser.initials}
+                  </div>
+                )}
                 <div className="flex-1">
                   <p className="font-bold text-base text-gray-900">{karyawanUser.name}</p>
                   <p className="text-sm text-gray-600 mt-0.5">{karyawanUser.position}</p>

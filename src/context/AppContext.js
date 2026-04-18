@@ -3,7 +3,67 @@ import { getCurrentUser, getKaryawanList, createKaryawan, updateKaryawan as upda
 
 export const AppContext = createContext();
 
+const saveToLocalStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    const isQuotaError = error && (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED' || error.code === 22 || error.code === 1014);
+    if (isQuotaError) {
+      console.warn(`LocalStorage quota exceeded for ${key}, skipping persistence.`);
+    } else {
+      console.error(`Failed to persist ${key} to localStorage.`, error);
+    }
+  }
+};
+
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+const isSameKaryawanRecord = (left, right) => {
+  if (!left || !right) return false;
+
+  const leftId = left.id;
+  const rightId = right.id;
+  if (leftId !== undefined && rightId !== undefined && String(leftId) === String(rightId)) return true;
+
+  const leftUserId = left.user_id ?? left.userId;
+  const rightUserId = right.user_id ?? right.userId;
+  if (leftUserId !== undefined && rightUserId !== undefined && String(leftUserId) === String(rightUserId)) return true;
+
+  const leftEmail = normalizeText(left.email);
+  const rightEmail = normalizeText(right.email);
+  if (leftEmail && rightEmail && leftEmail === rightEmail) return true;
+
+  const leftNama = normalizeText(left.nama || left.name);
+  const rightNama = normalizeText(right.nama || right.name);
+  if (leftNama && rightNama && leftNama === rightNama) return true;
+
+  return false;
+};
+
+const dedupeKaryawanList = (items) => {
+  if (!Array.isArray(items)) return [];
+  const deduped = [];
+  for (const item of items) {
+    if (!item) continue;
+    const exists = deduped.some((existing) => isSameKaryawanRecord(existing, item));
+    if (!exists) deduped.push(item);
+  }
+  return deduped;
+};
+
 export const AppContextProvider = ({ children }) => {
+  const getCurrentRole = () => {
+    const contextRole = userProfile?.role;
+    if (contextRole) return String(contextRole).toLowerCase();
+    try {
+      const rawUser = localStorage.getItem('user');
+      if (!rawUser) return '';
+      const parsedUser = JSON.parse(rawUser);
+      return String(parsedUser?.role || '').toLowerCase();
+    } catch (e) {
+      return '';
+    }
+  };
   // User Profile Data - Load from API if authenticated
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -61,7 +121,7 @@ export const AppContextProvider = ({ children }) => {
 
   // Simpan user profile ke localStorage
   useEffect(() => {
-    localStorage.setItem('userProfile', JSON.stringify(userProfile));
+    saveToLocalStorage('userProfile', userProfile);
   }, [userProfile]);
 
   // Load user profile dari API jika ada token
@@ -78,7 +138,7 @@ export const AppContextProvider = ({ children }) => {
             if (user.nama && !user.name) user.name = user.nama;
             setUserProfile(user);
             // Update localStorage userProfile dengan data fresh dari API
-            localStorage.setItem('userProfile', JSON.stringify(user));
+            saveToLocalStorage('userProfile', user);
             setUserError(null);
           }
         })
@@ -99,31 +159,6 @@ export const AppContextProvider = ({ children }) => {
       setUserLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    if (!userProfile || userProfile.role?.toString().toLowerCase() !== 'karyawan') return;
-
-    const exists = Array.isArray(karyawanData) && karyawanData.some(k =>
-      String(k.id) === String(userProfile.id) ||
-      (k.email && userProfile.email && k.email === userProfile.email) ||
-      (k.nama && userProfile.name && k.nama === userProfile.name)
-    );
-
-    if (exists) return;
-
-    const newKaryawan = {
-      id: userProfile.id || `EMP${Date.now()}`,
-      nama: userProfile.name || userProfile.nama,
-      email: userProfile.email || null,
-      jabatan: 'Karyawan',
-      gaji_pokok: 0,
-      tunjangan: 0,
-      no_hp: null,
-      alamat: null
-    };
-
-    setKaryawanData(prev => Array.isArray(prev) ? [...prev, newKaryawan] : [newKaryawan]);
-  }, [userProfile, karyawanData]);
 
   // Fetch karyawan list from backend when authenticated
   useEffect(() => {
@@ -147,25 +182,37 @@ export const AppContextProvider = ({ children }) => {
           if (Array.isArray(arr)) serverArr = arr;
         }
 
-        // Merge serverArr with any local-only entries stored in localStorage
+        // Merge serverArr with any local-only or locally updated entries stored in localStorage.
+        // Local changes should override the server values for the same karyawan record.
         try {
           const localStr = localStorage.getItem('karyawanData');
           const localArr = localStr ? JSON.parse(localStr) : [];
           if (Array.isArray(localArr) && localArr.length > 0) {
             const merged = [...serverArr];
-            const hasId = (id) => merged.some(m => m && (m.id === id || m.id === String(id)));
+            const findMatchIndex = (item) => merged.findIndex(m => {
+              if (!m || !item) return false;
+              if (m.id !== undefined && item.id !== undefined && String(m.id) === String(item.id)) return true;
+              if (m.user_id !== undefined && item.user_id !== undefined && String(m.user_id) === String(item.user_id)) return true;
+              if (m.email && item.email && String(m.email).toLowerCase() === String(item.email).toLowerCase()) return true;
+              return false;
+            });
+
             localArr.forEach(localItem => {
               if (!localItem) return;
-              // if local item not present on server by id or email, add it
-              const exists = (localItem.id && hasId(localItem.id)) || merged.some(m => m.email && localItem.email && m.email === localItem.email);
-              if (!exists) merged.push(localItem);
+              const index = findMatchIndex(localItem);
+              if (index > -1) {
+                merged[index] = { ...merged[index], ...localItem };
+              } else {
+                merged.push(localItem);
+              }
             });
-            setKaryawanData(merged);
+
+            setKaryawanData(dedupeKaryawanList(merged));
           } else {
-            setKaryawanData(serverArr);
+            setKaryawanData(dedupeKaryawanList(serverArr));
           }
         } catch (e) {
-          setKaryawanData(serverArr);
+          setKaryawanData(dedupeKaryawanList(serverArr));
         }
       })
       .catch(err => {
@@ -236,32 +283,32 @@ export const AppContextProvider = ({ children }) => {
 
   // Simpan karyawan data ke localStorage
   useEffect(() => {
-    localStorage.setItem('karyawanData', JSON.stringify(karyawanData));
+    saveToLocalStorage('karyawanData', karyawanData);
   }, [karyawanData]);
 
   // Simpan absensi data ke localStorage
   useEffect(() => {
-    localStorage.setItem('absensiData', JSON.stringify(absensiData));
+    saveToLocalStorage('absensiData', absensiData);
   }, [absensiData]);
 
   // Simpan gaji data ke localStorage
   useEffect(() => {
-    localStorage.setItem('gajiData', JSON.stringify(gajiData));
+    saveToLocalStorage('gajiData', gajiData);
   }, [gajiData]);
 
   // Simpan treatment data ke localStorage
   useEffect(() => {
-    localStorage.setItem('treatmentData', JSON.stringify(treatmentData));
+    saveToLocalStorage('treatmentData', treatmentData);
   }, [treatmentData]);
 
   // Simpan slip gaji data ke localStorage
   useEffect(() => {
-    localStorage.setItem('slipGajiData', JSON.stringify(slipGajiData));
+    saveToLocalStorage('slipGajiData', slipGajiData);
   }, [slipGajiData]);
 
   // Simpan cuti data ke localStorage
   useEffect(() => {
-    localStorage.setItem('cutiData', JSON.stringify(cutiData));
+    saveToLocalStorage('cutiData', cutiData);
   }, [cutiData]);
 
   const value = {
@@ -300,14 +347,14 @@ export const AppContextProvider = ({ children }) => {
 
     updateKaryawan: async (id, updates) => {
       // optimistic update locally
-      setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => k.id === id ? { ...k, ...updates } : k) : []);
+      setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => String(k.id) === String(id) ? { ...k, ...updates } : k) : []);
       const token = localStorage.getItem('token');
       if (token) {
         try {
           const res = await updateKaryawanApi(token, id, updates);
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
-            setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => k.id === id ? serverItem : k) : []);
+            setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => String(k.id) === String(id) ? serverItem : k) : []);
           }
         } catch (e) {
           console.error('Failed to update karyawan on server:', e);
@@ -316,21 +363,65 @@ export const AppContextProvider = ({ children }) => {
     },
 
     deleteKaryawan: async (id) => {
-      // optimistic delete locally
-      const prevSnapshot = Array.isArray(karyawanData) ? karyawanData.slice() : [];
-      setKaryawanData(prev => Array.isArray(prev) ? prev.filter(k => k.id !== id) : []);
+      const target = Array.isArray(karyawanData)
+        ? karyawanData.find(k => String(k?.id) === String(id))
+        : null;
+      const targetNama = (target?.nama || '').toString().trim().toLowerCase();
+      const targetEmail = (target?.email || '').toString().trim().toLowerCase();
+
+      const hasMatchByKaryawan = (item) => {
+        if (!item || typeof item !== 'object') return false;
+        const itemKaryawanId = item.karyawan_id ?? item.karyawanId ?? item.id_karyawan ?? item.user_id;
+        const itemNama = (item.nama || '').toString().trim().toLowerCase();
+        const itemEmail = (item.email || '').toString().trim().toLowerCase();
+        return (
+          (itemKaryawanId !== undefined && itemKaryawanId !== null && String(itemKaryawanId) === String(id)) ||
+          (targetNama && itemNama && itemNama === targetNama) ||
+          (targetEmail && itemEmail && itemEmail === targetEmail)
+        );
+      };
+
+      // optimistic delete locally + sync related admin datasets
+      const prevSnapshot = {
+        karyawanData: Array.isArray(karyawanData) ? karyawanData.slice() : [],
+        absensiData: Array.isArray(absensiData) ? absensiData.slice() : [],
+        gajiData: Array.isArray(gajiData) ? gajiData.slice() : [],
+        treatmentData: Array.isArray(treatmentData) ? treatmentData.slice() : [],
+        slipGajiData: Array.isArray(slipGajiData) ? slipGajiData.slice() : [],
+        cutiData: Array.isArray(cutiData) ? cutiData.slice() : []
+      };
+
+      setKaryawanData(prev => Array.isArray(prev)
+        ? prev.filter(k => !(String(k.id) === String(id) || (target && isSameKaryawanRecord(k, target))))
+        : []
+      );
+      setAbsensiData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
+      setGajiData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
+      setTreatmentData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
+      setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
+      setCutiData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
+
       const token = localStorage.getItem('token');
       if (token) {
         try {
           await deleteKaryawanApi(token, id);
         } catch (e) {
           console.error('Failed to delete karyawan on server:', e);
-          // rollback on failure
-          setKaryawanData(prevSnapshot);
+          const message = String(e?.message || '').toLowerCase();
+          const isNotFound = message.includes('tidak ditemukan') || message.includes('not found');
+          if (!isNotFound) {
+            // rollback only when server truly fails; keep local delete for stale/non-server records
+            setKaryawanData(prevSnapshot.karyawanData);
+            setAbsensiData(prevSnapshot.absensiData);
+            setGajiData(prevSnapshot.gajiData);
+            setTreatmentData(prevSnapshot.treatmentData);
+            setSlipGajiData(prevSnapshot.slipGajiData);
+            setCutiData(prevSnapshot.cutiData);
+          }
         }
       }
     },
-    getKaryawanById: (id) => karyawanData.find(k => k.id === id),
+    getKaryawanById: (id) => karyawanData.find(k => String(k.id) === String(id)),
 
     // Absensi
     absensiData,
@@ -340,7 +431,8 @@ export const AppContextProvider = ({ children }) => {
       const tempItem = { ...absensi, id: tempId };
       setAbsensiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
       const token = localStorage.getItem('token');
-      if (token) {
+      const canWriteAbsensiApi = getCurrentRole() === 'admin';
+      if (token && canWriteAbsensiApi) {
         try {
           const res = await absensiApi.create(token, absensi);
           const serverItem = res && res.data ? res.data : null;
@@ -352,13 +444,14 @@ export const AppContextProvider = ({ children }) => {
     },
     updateAbsensi: async (id, updates) => {
       const prevSnapshot = Array.isArray(absensiData) ? absensiData.slice() : [];
-      setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => a.id === id ? { ...a, ...updates } : a) : []);
+      setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => String(a.id) === String(id) ? { ...a, ...updates } : a) : []);
       const token = localStorage.getItem('token');
-      if (token) {
+      const canWriteAbsensiApi = getCurrentRole() === 'admin';
+      if (token && canWriteAbsensiApi) {
         try {
           const res = await absensiApi.update(token, id, updates);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => a.id === id ? serverItem : a) : []);
+          if (serverItem) setAbsensiData(prev => Array.isArray(prev) ? prev.map(a => String(a.id) === String(id) ? serverItem : a) : []);
         } catch (e) {
           console.error('Failed to update absensi on server:', e);
           setAbsensiData(prevSnapshot);
@@ -367,9 +460,10 @@ export const AppContextProvider = ({ children }) => {
     },
     deleteAbsensi: async (id) => {
       const prevSnapshot = Array.isArray(absensiData) ? absensiData.slice() : [];
-      setAbsensiData(prev => Array.isArray(prev) ? prev.filter(a => a.id !== id) : []);
+      setAbsensiData(prev => Array.isArray(prev) ? prev.filter(a => String(a.id) !== String(id)) : []);
       const token = localStorage.getItem('token');
-      if (token) {
+      const canWriteAbsensiApi = getCurrentRole() === 'admin';
+      if (token && canWriteAbsensiApi) {
         try {
           await absensiApi.delete(token, id);
         } catch (e) {

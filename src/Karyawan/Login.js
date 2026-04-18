@@ -56,6 +56,9 @@ function Login() {
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("userProfile", JSON.stringify(user));
+        if (appContext && typeof appContext.setUserProfile === 'function') {
+          appContext.setUserProfile(user);
+        }
         
         // Simpan juga dengan prefix sesuai role untuk compatibility
         if (user.role === 'admin') {
@@ -67,24 +70,8 @@ function Login() {
         } else {
           localStorage.setItem("karyawanLoggedIn", "true");
           localStorage.setItem("karyawanUsername", user.nama);
-          localStorage.setItem("karyawanId", user.id);
+          localStorage.setItem("karyawanId", user.karyawanId || user.id);
           localStorage.setItem("karyawanEmail", user.email);
-          // Also sync registered/known karyawan to admin table data so karyawan login relates to admin pages
-          if (appContext && typeof appContext.addKaryawan === 'function') {
-            const exists = Array.isArray(appContext.karyawanData) && appContext.karyawanData.some(k => k.email === user.email || k.nama === user.nama || String(k.id) === String(user.id));
-            if (!exists) {
-              appContext.addKaryawan({
-                id: user.id || `EMP${Date.now()}`,
-                nama: user.nama,
-                email: user.email,
-                jabatan: 'Karyawan',
-                gaji_pokok: 0,
-                tunjangan: 0,
-                no_hp: null,
-                alamat: null
-              });
-            }
-          }
           // Clear admin keys saat karyawan login
           localStorage.removeItem("adminLoggedIn");
           localStorage.removeItem("adminEmail");

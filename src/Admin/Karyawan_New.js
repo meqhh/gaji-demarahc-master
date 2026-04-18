@@ -20,7 +20,7 @@ function Karyawan() {
       : [];
     
     setData(savedData);
-  }, []);
+  }, [karyawanData]);
 
   const toBase64 = (file) =>
     new Promise((resolve, reject) => {
@@ -77,7 +77,11 @@ function Karyawan() {
     const updatedData = [...data, newKaryawan];
     setData(updatedData);
     addKaryawan(newKaryawan);
-    localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+    try {
+      localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+    } catch (error) {
+      console.warn('LocalStorage quota exceeded while saving karyawanData after add, skipping persistence.', error);
+    }
     form.reset();
     setPreview(null);
     setShowTambah(false);
@@ -108,16 +112,24 @@ function Karyawan() {
     const updatedData = data.map(k => k.id === updated.id ? updated : k);
     setData(updatedData);
     updateKaryawan(updated.id, updated);
-    localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+    try {
+      localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+    } catch (error) {
+      console.warn('LocalStorage quota exceeded while saving karyawanData after edit, skipping persistence.', error);
+    }
     setShowEdit(false);
   };
 
   const handleHapus = (id) => {
     if (window.confirm("Yakin ingin menghapus karyawan ini?")) {
-      const updatedData = data.filter(k => k.id !== id);
+      const updatedData = data.filter(k => String(k.id) !== String(id));
       setData(updatedData);
       deleteKaryawan(id);
-      localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+      try {
+        localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+      } catch (error) {
+        console.warn('LocalStorage quota exceeded while saving karyawanData after delete, skipping persistence.', error);
+      }
     }
   };
 

@@ -11,11 +11,6 @@ export const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
 
-    const existingUser = await usersDB.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'Email sudah terdaftar' });
-    }
-
     if (role && role.toString().toLowerCase() === 'admin') {
       const requiredKey = process.env.ADMIN_REGISTER_KEY;
       const allUsers = await usersDB.getAll();
@@ -49,6 +44,7 @@ export const register = async (req, res) => {
 
     if (savedUser.role && savedUser.role.toString().toLowerCase() === 'karyawan') {
       const karyawanPayload = {
+        user_id: savedUser.id, // Link to users table
         nama,
         jabatan: 'Karyawan',
         gaji_pokok: 0.00,
@@ -92,13 +88,21 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email dan password harus diisi' });
     }
 
-    const user = await usersDB.findOne({ email });
-    if (!user) {
+    const candidates = await usersDB.findMany({ email });
+    if (!Array.isArray(candidates) || candidates.length === 0) {
       return res.status(401).json({ success: false, message: 'Email atau password salah' });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
+    let user = null;
+    for (const candidate of candidates) {
+      const isPasswordValid = await bcrypt.compare(password, candidate.password);
+      if (isPasswordValid) {
+        user = candidate;
+        break;
+      }
+    }
+
+    if (!user) {
       return res.status(401).json({ success: false, message: 'Email atau password salah' });
     }
 
@@ -108,15 +112,17 @@ export const login = async (req, res) => {
 
     let karyawanInfo = null;
     if (user.role && user.role.toString().toLowerCase() === 'karyawan') {
-      karyawanInfo = await karyawanDB.findOne({ nama: user.name });
+      // Prefer stable link by user_id; fallback by name only for legacy rows.
+      karyawanInfo = await karyawanDB.findOne({ user_id: user.id });
       if (!karyawanInfo) {
-        karyawanInfo = await karyawanDB.save({
-          nama: user.name,
-          jabatan: 'Karyawan',
-          gaji_pokok: 0.00,
-          tunjangan: 0.00,
-          no_hp: null,
-          alamat: null
+        karyawanInfo = await karyawanDB.findOne({ nama: user.name });
+      }
+
+      // If employee profile is deleted, block login for that karyawan account.
+      if (!karyawanInfo) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akun karyawan sudah dinonaktifkan atau dihapus. Silakan hubungi admin.'
         });
       }
     }
@@ -167,7 +173,10 @@ export const getCurrentUser = async (req, res) => {
     const { password, ...userWithoutPassword } = user;
 
     if (user.role && user.role.toString().toLowerCase() === 'karyawan') {
-      const karyawanInfo = await karyawanDB.findOne({ nama: user.name });
+      let karyawanInfo = await karyawanDB.findOne({ user_id: user.id });
+      if (!karyawanInfo) {
+        karyawanInfo = await karyawanDB.findOne({ nama: user.name });
+      }
       if (karyawanInfo) {
         userWithoutPassword.karyawanId = karyawanInfo.id;
         userWithoutPassword.karyawan = {
