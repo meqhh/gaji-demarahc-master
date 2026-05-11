@@ -42,15 +42,26 @@ export default function CutiKaryawan() {
     return matchStatus && matchSearch;
   });
 
+  // Set nama otomatis saat modal dibuka
+  const openTambahModal = () => {
+    setFormData({ nama: userProfile?.name || "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
+    setShowTambahModal(true);
+  };
+
   // Tambah data cuti
   const handleTambahCuti = (e) => {
     e.preventDefault();
-    if (!formData.nama.trim()) {
+    const namaAkun = userProfile?.name || "";
+    if (!namaAkun.trim()) {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
 
-    const newCuti = { ...formData };
+    const newCuti = {
+      ...formData,
+      nama: namaAkun,
+    };
+
     // If tanggalAkhir provided and lama empty, compute lama (inclusive)
     if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
       try {
@@ -70,26 +81,31 @@ export default function CutiKaryawan() {
 
   // Edit data cuti
   const handleEdit = (item) => {
+    const namaAkun = userProfile?.name || item.nama || "";
     setFormData({
-      nama: item.nama || "",
+      nama: namaAkun,
       tanggal: item.tanggal || "",
       tanggalAkhir: item.tanggalAkhir || "",
       lama: item.lama || "",
       alasan: item.alasan || "",
       status: item.status || "Pending",
     });
-    setSelectedCuti(item);
+    setSelectedCuti({ ...item, id: item.id || item._id });
     setShowEditModal(true);
   };
 
   const handleUpdateCuti = (e) => {
     e.preventDefault();
-    if (!formData.nama.trim()) {
+    const namaAkun = userProfile?.name || formData.nama || "";
+    if (!namaAkun.trim()) {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
     if (selectedCuti) {
-      const updates = { ...formData };
+      const updates = {
+        ...formData,
+        nama: namaAkun,
+      };
       if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
         try {
           const start = new Date(formData.tanggal);
@@ -100,7 +116,8 @@ export default function CutiKaryawan() {
           updates.lama = formData.lama || 1;
         }
       }
-      updateCuti(selectedCuti.id, updates);
+      const targetId = selectedCuti.id || selectedCuti._id;
+      updateCuti(targetId, updates);
       setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
       setShowEditModal(false);
       setSelectedCuti(null);
@@ -203,7 +220,7 @@ export default function CutiKaryawan() {
           </div>
           <div className="flex items-end">
               <button
-              onClick={() => setShowTambahModal(true)}
+              onClick={openTambahModal}
               className="w-full bg-gray-800 text-white px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:bg-gray-700 transition-all"
             >
               + Ajukan Cuti
@@ -232,7 +249,7 @@ export default function CutiKaryawan() {
             </thead>
             <tbody>
               {filteredData.map((item, index) => (
-                <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-all animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                <tr key={item.id || item._id} className="border-b border-gray-100 hover:bg-gray-50 transition-all animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
                   <td className="px-6 py-4 text-gray-800 font-semibold">{index + 1}</td>
                   <td className="px-6 py-4 text-gray-800 font-medium">{item.tanggal}</td>
                   <td className="px-6 py-4 text-gray-800 font-medium">{item.tanggalAkhir || '-'}</td>
@@ -329,9 +346,17 @@ export default function CutiKaryawan() {
               </div>
             </div>
 
-            <div className="text-center">
+            <div className="flex gap-3 text-center">
+              {selectedCuti.status === "Pending" && (
+                <button
+                  className="flex-1 px-6 py-3 bg-gray-800 text-white rounded-lg font-semibold hover:bg-gray-700 transition-all"
+                  onClick={() => handleEdit(selectedCuti)}
+                >
+                  Edit
+                </button>
+              )}
               <button
-                className="px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-all"
                 onClick={() => setSelectedCuti(null)}
               >
                 Tutup
@@ -352,20 +377,9 @@ export default function CutiKaryawan() {
             <form onSubmit={handleTambahCuti} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <input
-                  list="karyawan-list"
-                  name="nama"
-                  value={formData.nama}
-                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                  required
-                  placeholder="Pilih atau ketik nama karyawan"
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
-                />
-                <datalist id="karyawan-list">
-                  {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
-                    <option key={idx} value={karyawan.nama || ""} />
-                  ))}
-                </datalist>
+                <div className="bg-gray-100 border-2 border-gray-300 px-4 py-2 rounded-lg text-gray-700 font-medium">
+                  {formData.nama || "—"}
+                </div>
               </div>
 
               <div>
@@ -444,20 +458,9 @@ export default function CutiKaryawan() {
             <form onSubmit={handleUpdateCuti} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                  <input
-                    list="karyawan-list"
-                    name="nama"
-                    value={formData.nama}
-                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                    required
-                    placeholder="Pilih atau ketik nama karyawan"
-                    className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
-                  />
-                  <datalist id="karyawan-list">
-                    {Array.isArray(karyawanData) && karyawanData.map((karyawan, idx) => (
-                      <option key={idx} value={karyawan.nama || ""} />
-                    ))}
-                  </datalist>
+                  <div className="bg-gray-100 border-2 border-gray-300 px-4 py-2 rounded-lg text-gray-700 font-medium">
+                    {formData.nama || "—"}
+                  </div>
                 </div>
 
               <div>

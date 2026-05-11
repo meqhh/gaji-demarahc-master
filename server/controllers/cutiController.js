@@ -63,6 +63,51 @@ export const createCuti = async (req, res) => {
   }
 };
 
+// Update cuti data (karyawan bisa edit saat status masih Pending, admin bisa update status)
+export const updateCuti = async (req, res) => {
+  try {
+    const cuti = await Cuti.findById(req.params.id);
+    if (!cuti) {
+      return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
+    }
+
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin) {
+      if (cuti.nama !== req.user?.name) {
+        return res.status(403).json({ success: false, message: 'Tidak memiliki izin untuk mengubah cuti ini' });
+      }
+      if (cuti.status !== 'Pending') {
+        return res.status(400).json({ success: false, message: 'Pengajuan cuti hanya dapat diedit saat status Pending' });
+      }
+    }
+
+    const updates = {};
+    if (req.body.tanggal !== undefined) updates.tanggal = req.body.tanggal;
+    if (req.body.lama !== undefined) updates.lama = req.body.lama;
+    if (req.body.alasan !== undefined) updates.alasan = req.body.alasan;
+    if (req.body.nama !== undefined) updates.nama = req.body.nama;
+
+    if (isAdmin && req.body.status !== undefined) {
+      updates.status = req.body.status;
+    }
+    if (isAdmin && req.body.rejectionReason !== undefined) {
+      updates.rejectionReason = req.body.rejectionReason;
+    }
+
+    if (!isAdmin) {
+      updates.nama = req.user?.name || updates.nama;
+    }
+
+    updates.updatedBy = req.user?.name || req.user?.email || 'System';
+    updates.updatedAt = new Date();
+
+    const updatedCuti = await Cuti.findByIdAndUpdate(req.params.id, updates, { new: true });
+    res.json({ success: true, message: 'Pengajuan cuti berhasil diperbarui', data: updatedCuti });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Update cuti status
 export const updateCutiStatus = async (req, res) => {
   try {

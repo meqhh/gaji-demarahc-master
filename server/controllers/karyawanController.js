@@ -218,14 +218,8 @@ export const getProfileOptions = async (req, res) => {
         { value: 'kontrak_selesai', label: 'Kontrak Selesai' }
       ],
       posisi: [
-        { value: 'manager', label: 'Manager' },
-        { value: 'supervisor', label: 'Supervisor' },
-        { value: 'staff', label: 'Staff' },
-        { value: 'karyawan', label: 'Karyawan' },
-        { value: 'magang', label: 'Magang' },
-        { value: 'konsultan', label: 'Konsultan' },
-        { value: 'direktur', label: 'Direktur' },
-        { value: 'kepala_departemen', label: 'Kepala Departemen' }
+        { value: 'admin', label: 'Admin' },
+        { value: 'karyawan', label: 'Karyawan' }
       ],
       tempatLahir: [
         { value: 'jakarta', label: 'Jakarta' },

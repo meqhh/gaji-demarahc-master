@@ -197,8 +197,10 @@ export default function SlipgajiKaryawan() {
 			justify-content: center;
 		}
 		.logo-container img {
-			width: 60px;
-			height: 60px;
+			max-width: 100%;
+			max-height: 100%;
+			width: auto;
+			height: auto;
 		}
 		.company-header {
 			flex: 1;
@@ -319,27 +321,6 @@ export default function SlipgajiKaryawan() {
 			font-weight: 600;
 			color: #1a1a1a;
 		}
-		.signature-section {
-			display: grid;
-			grid-template-columns: 1fr 1fr 1fr;
-			gap: 20px;
-			margin-top: 30px;
-			text-align: center;
-			font-size: 10px;
-		}
-		.signature-box {
-			padding-top: 30px;
-		}
-		.signature-box p {
-			margin-bottom: 3px;
-		}
-		.signature-line {
-			border-top: 1px solid #333;
-			margin-top: 30px;
-			padding-top: 5px;
-			font-weight: 600;
-			min-height: 20px;
-		}
 		.footer-section {
 			text-align: center;
 			font-size: 9px;
@@ -363,7 +344,7 @@ export default function SlipgajiKaryawan() {
 		<!-- Header -->
 		<div class="header-section">
 			<div class="logo-container">
-				<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" alt="Logo">
+				<img src="${Logo}" alt="Demara Logo">
 			</div>
 			<div class="company-header">
 				<h1>DEMARA HEALTH CARE</h1>
@@ -468,25 +449,6 @@ export default function SlipgajiKaryawan() {
 					<span class="summary-label">TOTAL GAJI</span>
 					<span class="summary-value">${slip.amount}</span>
 				</div>
-			</div>
-		</div>
-
-		<!-- Signature Section -->
-		<div class="signature-section">
-			<div class="signature-box">
-				<p style="font-weight: 600;">Diketahui oleh,</p>
-				<p style="font-size: 9px; color: #999; margin-top: 2px;">Manager</p>
-				<div class="signature-line"></div>
-			</div>
-			<div class="signature-box">
-				<p style="font-weight: 600;">Disetujui oleh,</p>
-				<p style="font-size: 9px; color: #999; margin-top: 2px;">Human Resources</p>
-				<div class="signature-line"></div>
-			</div>
-			<div class="signature-box">
-				<p style="font-weight: 600;">Diterima oleh,</p>
-				<p style="font-size: 9px; color: #999; margin-top: 2px;">Karyawan</p>
-				<div class="signature-line"></div>
 			</div>
 		</div>
 

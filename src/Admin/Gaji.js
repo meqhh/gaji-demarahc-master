@@ -31,7 +31,7 @@ function FeeTindakanModal({
   };
 
   // Hitung total gaji
-  const totalGross = (kompGaji.gajiPokok || 0) + (kompGaji.tunjangan || 0) + (kompGaji.bonus || 0) + totalFeeTindakan + totalFeePaket + (kompGaji.tunjanganTransport || 0);
+  const totalGross = (kompGaji.gajiPokok || 0) + totalFeeTindakan + totalFeePaket + (kompGaji.tunjanganTransport || 0);
   const totalGajiBersih = totalGross - (kompGaji.potonganBPJS || 0);
 
   if (!show) return null;
@@ -190,36 +190,6 @@ function FeeTindakanModal({
                     className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
                   />
                   <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.gajiPokok || 0)}</p>
-                </div>
-
-                {/* Tunjangan */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tunjangan</label>
-                  <input
-                    type="number"
-                    id="tunjangan"
-                    placeholder="0"
-                    min="0"
-                    value={kompGaji.tunjangan || ''}
-                    onChange={(e) => onKompGajiChange({ ...kompGaji, tunjangan: parseFloat(e.target.value) || 0 })}
-                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
-                  />
-                  <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.tunjangan || 0)}</p>
-                </div>
-
-                {/* Bonus */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bonus</label>
-                  <input
-                    type="number"
-                    id="bonus"
-                    placeholder="0"
-                    min="0"
-                    value={kompGaji.bonus || ''}
-                    onChange={(e) => onKompGajiChange({ ...kompGaji, bonus: parseFloat(e.target.value) || 0 })}
-                    className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
-                  />
-                  <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.bonus || 0)}</p>
                 </div>
 
                 {/* Divider */}
@@ -460,16 +430,12 @@ function Gaji() {
       const saved = localStorage.getItem("kompGaji");
       return saved ? JSON.parse(saved) : {
         gajiPokok: 0,
-        tunjangan: 0,
-        bonus: 0,
         tunjanganTransport: 0,
         potonganBPJS: 0
       };
     } catch (e) {
       return {
         gajiPokok: 0,
-        tunjangan: 0,
-        bonus: 0,
         tunjanganTransport: 0,
         potonganBPJS: 0
       };
@@ -519,10 +485,10 @@ function Gaji() {
     return ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   }, []);
 
-  // Get all years (2010 - 2025)
+  // Get all years (2010 - current year)
   const uniqueYears = useMemo(() => {
     const years = [];
-    for (let year = 2025; year >= 2010; year--) {
+    for (let year = 2030; year >= 2010; year--) {
       years.push(year.toString());
     }
     return years;
@@ -654,7 +620,7 @@ function Gaji() {
   );
 
   // Hitung total gaji berdasarkan komponen
-  const totalGrossBriefing = kompGaji.gajiPokok + kompGaji.tunjangan + kompGaji.bonus + totalFeeTindakan + totalFeePaket + kompGaji.tunjanganTransport;
+  const totalGrossBriefing = kompGaji.gajiPokok + totalFeeTindakan + totalFeePaket + kompGaji.tunjanganTransport;
   const totalGajiBersih = totalGrossBriefing - kompGaji.potonganBPJS;
 
   return (

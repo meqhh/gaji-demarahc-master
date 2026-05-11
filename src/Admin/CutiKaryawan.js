@@ -4,28 +4,41 @@ import { AppContext } from "../context/AppContext";
 function CutiKaryawan() {
   const { userProfile, cutiData = [], setCutiData, addCuti, updateCuti, absensiData = [], karyawanData = [] } = useContext(AppContext);
   
-  // Get unique karyawan names - prioritize from karyawanData, then from absensi data
-  const uniqueKaryawanNames = useMemo(() => {
-    // First, get names from karyawanData if available
-    const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
-      ? karyawanData
-          .map((k) => k?.nama)
-          .filter((name) => name && name.trim() !== "")
+  const normalizeKaryawanDisplayName = (value) => {
+    if (!value) return "";
+    const text = String(value).trim();
+    if (text.includes("@")) {
+      return text.split("@")[0] || text;
+    }
+    return text;
+  };
+
+  // Get unique karyawan names/options - prioritize from karyawanData, then from absensi data
+  const uniqueKaryawanOptions = useMemo(() => {
+    const rawNames = Array.isArray(karyawanData) && karyawanData.length > 0
+      ? karyawanData.map((k) => k?.nama)
       : [];
-    
-    // Then get names from absensi data
-    const absensi = Array.isArray(absensiData) ? absensiData : [];
-    const absensiNames = absensi
-      .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "");
-    
-    // Combine and get unique names
-    const allNames = [...karyawanNames, ...absensiNames];
-    const uniqueNames = allNames
-      .filter((name, index, self) => self.indexOf(name) === index) // Get unique names
-      .sort(); // Sort alphabetically
-    
-    return uniqueNames;
+
+    const absensiNames = Array.isArray(absensiData)
+      ? absensiData.map((a) => a?.nama)
+      : [];
+
+    const allNames = [...rawNames, ...absensiNames]
+      .map((name) => {
+        const value = String(name || "").trim();
+        const label = normalizeKaryawanDisplayName(value);
+        return value && label ? { value, label } : null;
+      })
+      .filter(Boolean);
+
+    const uniqueMap = new Map();
+    allNames.forEach((item) => {
+      if (!uniqueMap.has(item.value)) {
+        uniqueMap.set(item.value, item);
+      }
+    });
+
+    return Array.from(uniqueMap.values()).sort((a, b) => a.label.localeCompare(b.label));
   }, [absensiData, karyawanData]);
   
   // All cuti data comes from localStorage/backend API (no auto-generation)
@@ -229,9 +242,9 @@ function CutiKaryawan() {
                 onChange={(e) => setFilterKaryawan(e.target.value)}
               >
                 <option value="Semua">Semua Karyawan</option>
-                {uniqueKaryawanNames.map((nama) => (
-                  <option key={nama} value={nama}>
-                    {nama}
+                {uniqueKaryawanOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -458,9 +471,9 @@ function CutiKaryawan() {
                     className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                   >
                     <option value="">Pilih Karyawan</option>
-                    {uniqueKaryawanNames.map((nama) => (
-                      <option key={nama} value={nama}>
-                        {nama}
+                    {uniqueKaryawanOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
                       </option>
                     ))}
                   </select>

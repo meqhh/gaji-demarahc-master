@@ -6,7 +6,7 @@ function SlipGaji() {
   
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
-  const [bulan, setBulan] = useState("Januari 2026");
+  const [bulan, setBulan] = useState(`Januari ${new Date().getFullYear()}`);
   const [filterKaryawan, setFilterKaryawan] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
@@ -36,7 +36,7 @@ function SlipGaji() {
       "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     ];
     const options = [];
-    for (let year = 2024; year <= 2026; year++) {
+    for (let year = 2024; year <= 2030; year++) {
       for (let month = 0; month < 12; month++) {
         options.push(`${monthNames[month]} ${year}`);
       }

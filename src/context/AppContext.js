@@ -629,7 +629,10 @@ export const AppContextProvider = ({ children }) => {
         try {
           const res = await cutiApi.create(token, cuti);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setCutiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+          if (serverItem) {
+            const normalized = { ...serverItem, id: serverItem.id || serverItem._id || tempId };
+            setCutiData(prev => Array.isArray(prev) ? prev.map(p => (p.id === tempId ? normalized : p)) : [normalized]);
+          }
         } catch (e) {
           console.error('Failed to create cuti on server:', e);
         }
@@ -637,13 +640,16 @@ export const AppContextProvider = ({ children }) => {
     },
     updateCuti: async (id, updates) => {
       const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
-      setCutiData(prev => Array.isArray(prev) ? prev.map(c => c.id === id ? { ...c, ...updates } : c) : []);
+      setCutiData(prev => Array.isArray(prev) ? prev.map(c => (String(c.id) === String(id) || String(c._id) === String(id) ? { ...c, ...updates } : c)) : []);
       const token = localStorage.getItem('token');
       if (token) {
         try {
           const res = await cutiApi.update(token, id, updates);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setCutiData(prev => Array.isArray(prev) ? prev.map(c => c.id === id ? serverItem : c) : []);
+          if (serverItem) {
+            const normalized = { ...serverItem, id: serverItem.id || serverItem._id || id };
+            setCutiData(prev => Array.isArray(prev) ? prev.map(c => (String(c.id) === String(id) || String(c._id) === String(id) ? normalized : c)) : []);
+          }
         } catch (e) {
           console.error('Failed to update cuti on server:', e);
           setCutiData(prevSnapshot);
@@ -652,7 +658,7 @@ export const AppContextProvider = ({ children }) => {
     },
     deleteCuti: async (id) => {
       const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
-      setCutiData(prev => Array.isArray(prev) ? prev.filter(c => c.id !== id) : []);
+      setCutiData(prev => Array.isArray(prev) ? prev.filter(c => String(c.id) !== String(id) && String(c._id) !== String(id)) : []);
       const token = localStorage.getItem('token');
       if (token) {
         try {
