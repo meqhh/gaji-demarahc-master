@@ -42,17 +42,17 @@ export default function CutiKaryawan() {
     return matchStatus && matchSearch;
   });
 
-  // Set nama otomatis saat modal dibuka
+  // Set modal data saat modal dibuka; nama diisi manual oleh user
   const openTambahModal = () => {
-    setFormData({ nama: userProfile?.name || "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
+    setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
     setShowTambahModal(true);
   };
 
   // Tambah data cuti
   const handleTambahCuti = (e) => {
     e.preventDefault();
-    const namaAkun = userProfile?.name || "";
-    if (!namaAkun.trim()) {
+    const namaAkun = String(formData.nama || "").trim();
+    if (!namaAkun) {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
@@ -96,8 +96,8 @@ export default function CutiKaryawan() {
 
   const handleUpdateCuti = (e) => {
     e.preventDefault();
-    const namaAkun = userProfile?.name || formData.nama || "";
-    if (!namaAkun.trim()) {
+    const namaAkun = String(formData.nama || "").trim();
+    if (!namaAkun) {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
@@ -377,9 +377,15 @@ export default function CutiKaryawan() {
             <form onSubmit={handleTambahCuti} className="space-y-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <div className="bg-gray-100 border-2 border-gray-300 px-4 py-2 rounded-lg text-gray-700 font-medium">
-                  {formData.nama || "—"}
-                </div>
+                <input
+                  type="text"
+                  value={formData.nama}
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                  placeholder="Ketik nama karyawan"
+                  required
+                  autoComplete="off"
+                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                />
               </div>
 
               <div>
@@ -458,9 +464,15 @@ export default function CutiKaryawan() {
             <form onSubmit={handleUpdateCuti} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                  <div className="bg-gray-100 border-2 border-gray-300 px-4 py-2 rounded-lg text-gray-700 font-medium">
-                    {formData.nama || "—"}
-                  </div>
+                  <input
+                    type="text"
+                    value={formData.nama}
+                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                    placeholder="Ketik nama karyawan"
+                    required
+                    autoComplete="off"
+                    className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                  />
                 </div>
 
               <div>

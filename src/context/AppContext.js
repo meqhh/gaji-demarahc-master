@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { REACT_APP_API_URL } from '../config/api';
 import { getCurrentUser, getKaryawanList, createKaryawan, updateKaryawan as updateKaryawanApi, deleteKaryawan as deleteKaryawanApi, gajiApi, absensiApi, cutiApi, treatmentApi, slipGajiApi } from '../services/authService';
 
 export const AppContext = createContext();
@@ -227,7 +228,7 @@ export const AppContextProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:5555') + '/api';
+    const API_BASE = `${REACT_APP_API_URL.replace(/\/+$/, '')}/api`;
 
     const endpoints = {
       absensi: `${API_BASE}/absensi`,
@@ -273,7 +274,34 @@ export const AppContextProvider = ({ children }) => {
         if (Array.isArray(absensiRes)) setAbsensiData(absensiRes);
         if (Array.isArray(gajiRes)) setGajiData(gajiRes);
         if (Array.isArray(slipRes)) setSlipGajiData(slipRes);
-        if (Array.isArray(cutiRes)) setCutiData(cutiRes);
+
+        if (Array.isArray(cutiRes)) {
+          try {
+            const savedLocalCuti = JSON.parse(localStorage.getItem('cutiData')) || [];
+            const mergedCuti = Array.isArray(cutiRes) ? [...cutiRes] : [];
+
+            savedLocalCuti.forEach((localItem) => {
+              if (!localItem) return;
+              const matchIndex = mergedCuti.findIndex((serverItem) => {
+                if (!serverItem) return false;
+                if (serverItem.id !== undefined && localItem.id !== undefined && String(serverItem.id) === String(localItem.id)) return true;
+                if (serverItem._id !== undefined && localItem._id !== undefined && String(serverItem._id) === String(localItem._id)) return true;
+                return false;
+              });
+              if (matchIndex > -1) {
+                mergedCuti[matchIndex] = { ...mergedCuti[matchIndex], ...localItem };
+              } else {
+                mergedCuti.push(localItem);
+              }
+            });
+
+            setCutiData(mergedCuti);
+          } catch (mergeError) {
+            console.warn('Could not merge server and local cuti data, using server data only.', mergeError);
+            setCutiData(cutiRes);
+          }
+        }
+
         if (Array.isArray(treatmentRes)) setTreatmentData(treatmentRes);
       } catch (e) {
         console.error('Failed to fetch additional datasets', e);

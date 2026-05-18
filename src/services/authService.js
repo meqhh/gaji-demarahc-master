@@ -1,9 +1,11 @@
+import { REACT_APP_API_URL } from '../config/api';
+
 // API Base URL - change this based on environment
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5555/api';
+const API_BASE_URL = `${REACT_APP_API_URL.replace(/\/+$/, '')}/api`;
 
 // Derive a friendly server URL for error messages (strip trailing /api or slashes)
 function getServerUrl() {
-  const raw = process.env.REACT_APP_API_URL || 'http://localhost:5555/api';
+  const raw = `${REACT_APP_API_URL.replace(/\/+$/, '')}/api`;
   let base = String(raw).replace(/\/+$/, '');
   base = base.replace(/\/api$/i, '');
   return base;

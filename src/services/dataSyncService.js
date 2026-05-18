@@ -4,6 +4,7 @@
  */
 
 import menuConfig from '../config/menu_config.json';
+import { REACT_APP_API_URL } from '../config/api';
 
 class DataSyncService {
   constructor() {
@@ -49,8 +50,9 @@ class DataSyncService {
     }
 
     try {
+      const baseUrl = REACT_APP_API_URL.replace(/\/+$/, '');
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5555'}${dataSource.endpoint}`,
+        `${baseUrl}${dataSource.endpoint}`,
         {
           method: dataSource.method,
           headers: {
@@ -116,8 +118,9 @@ class DataSyncService {
       // Determinate endpoint untuk update
       const updateEndpoint = `${dataSource.endpoint}/${dataId}`;
 
+      const baseUrl = REACT_APP_API_URL.replace(/\/+$/, '');
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5555'}${updateEndpoint}`,
+        `${baseUrl}${updateEndpoint}`,
         {
           method: 'PUT',
           headers: {

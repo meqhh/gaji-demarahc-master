@@ -30,6 +30,16 @@ import KaryawanProfileSettings from "./Pages/KaryawanProfileSettings";
 import KaryawanSecurity from "./Pages/KaryawanSecurity";
 import KaryawanHelp from "./Pages/KaryawanHelp";
 
+const NotFoundPage = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="max-w-xl w-full bg-white rounded-3xl shadow-xl p-10 text-center">
+      <h1 className="text-4xl font-bold text-gray-900 mb-4">Halaman tidak ditemukan</h1>
+      <p className="text-gray-600 mb-6">URL yang Anda tuju tidak tersedia. Silakan kembali ke halaman login atau pilih menu yang benar.</p>
+      <a href="/login" className="inline-flex items-center justify-center rounded-full bg-gray-900 px-6 py-3 text-white font-semibold hover:bg-gray-800 transition">Kembali ke Login</a>
+    </div>
+  </div>
+);
+
 function App() {
   return (
     <AppContextProvider>
@@ -79,6 +89,8 @@ function App() {
             <Route path="help" element={<KaryawanHelp />} />
 
           </Route>
+
+          <Route path="*" element={<NotFoundPage />} />
 
         </Routes>
       </Router>

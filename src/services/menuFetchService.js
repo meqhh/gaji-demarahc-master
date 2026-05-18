@@ -1,6 +1,6 @@
 import { REACT_APP_API_URL } from '../config/api';
 
-const API_BASE = `${REACT_APP_API_URL || 'http://localhost:5555'}/api`;
+const API_BASE = `${REACT_APP_API_URL.replace(/\/+$/, '')}/api`;
 
 /**
  * Menu Service - Frontend

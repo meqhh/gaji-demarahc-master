@@ -464,19 +464,15 @@ function CutiKaryawan() {
               <form onSubmit={handleTambahCuti} className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                  <select
+                  <input
+                    type="text"
                     value={formData.nama}
                     onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                    placeholder="Ketik nama karyawan"
                     required
+                    autoComplete="off"
                     className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
-                  >
-                    <option value="">Pilih Karyawan</option>
-                    {uniqueKaryawanOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div>
