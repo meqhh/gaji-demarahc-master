@@ -1,63 +1,72 @@
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
-// Create connection pool
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'demara_gaji',
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DB_HOST = process.env.DB_HOST || 'localhost';
+const DB_USER = process.env.DB_USER || 'root';
+const DB_PASSWORD = process.env.DB_PASSWORD || '';
+const DB_PORT = process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306;
+const DB_NAME = process.env.DB_NAME || 'demara_gaji';
+const SQL_DUMP_PATH = path.resolve(__dirname, '..', '..', 'demara_gaji.sql');
+
+const adminConfig = {
+  host: DB_HOST,
+  port: DB_PORT,
+  user: DB_USER,
+  password: DB_PASSWORD,
+  multipleStatements: true,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   enableKeepAlive: true
-});
+};
 
-// Test connection
-pool.getConnection()
-  .then(conn => {
-    console.log('✓ MySQL database connected');
-    const ensureKaryawanColumns = async () => {
-      const columnQueries = [
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS email VARCHAR(150) NULL",
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS tempat_lahir VARCHAR(150) NULL",
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS tanggal_lahir DATE NULL",
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS tgl_masuk DATE NULL",
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS tgl_kontrak DATE NULL",
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS lama_kontrak VARCHAR(100) NULL",
-        "ALTER TABLE karyawan ADD COLUMN IF NOT EXISTS foto LONGTEXT NULL"
-      ];
+const createAndSeedDatabase = async () => {
+  const conn = await mysql.createConnection(adminConfig);
+  try {
+    await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\``);
+    await conn.query(`USE \`${DB_NAME}\``);
 
-      for (const query of columnQueries) {
-        try {
-          await conn.query(query);
-        } catch (err) {
-          console.warn('⚠️ Could not apply karyawan schema update:', err.message);
-        }
+    const [tables] = await conn.query(
+      'SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = ?',
+      [DB_NAME]
+    );
+
+    if (tables[0] && tables[0].count === 0) {
+      if (!fs.existsSync(SQL_DUMP_PATH)) {
+        throw new Error(`SQL seed file not found: ${SQL_DUMP_PATH}`);
       }
-    };
 
-    // Allow multiple accounts using same email by removing unique index when present.
-    conn.query("SHOW INDEX FROM users WHERE Key_name = 'email'")
-      .then(([rows]) => {
-        if (Array.isArray(rows) && rows.length > 0) {
-          return conn.query('ALTER TABLE users DROP INDEX email')
-            .then(() => console.log('✓ Dropped unique index users.email'));
-        }
-        return null;
-      })
-      .then(() => ensureKaryawanColumns())
-      .then(() => console.log('✓ Karyawan profile columns ready'))
-      .catch(err => {
-        // Keep app running even if index operation is not needed/possible.
-        console.warn('⚠️ Could not adjust users.email index:', err.message);
-      })
-      .finally(() => conn.release());
-  })
-  .catch(err => {
-    console.error('❌ MySQL connection failed:', err.message);
+      const sqlContent = fs.readFileSync(SQL_DUMP_PATH, 'utf8');
+      await conn.query(sqlContent);
+      console.log(`✓ Database ${DB_NAME} created and seeded from SQL dump`);
+    }
+  } finally {
+    await conn.end();
+  }
+};
+
+const createPool = async () => {
+  await createAndSeedDatabase();
+
+  const pool = mysql.createPool({
+    ...adminConfig,
+    database: DB_NAME,
+    multipleStatements: false
   });
 
+  const conn = await pool.getConnection();
+  conn.release();
+  console.log('✓ MySQL database connected');
+
+  return pool;
+};
+
+const pool = await createPool();
 export default pool;

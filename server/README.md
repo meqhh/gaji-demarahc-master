@@ -47,28 +47,61 @@ cd server
 npm install
 ```
 
-### 2. Setup MongoDB
+### 2. Setup MySQL
 
-**Option A: Local MongoDB**
-```bash
-# Make sure MongoDB is running
-mongod
+**Option A: Local MySQL (Windows)**
+- Buka Laragon, XAMPP, atau layanan MySQL lainnya dan jalankan MySQL.
+- Jika MySQL diinstall sebagai service Windows, gunakan:
+```powershell
+net start mysql
 ```
 
-**Option B: MongoDB Atlas (Cloud)**
-1. Buat akun di https://www.mongodb.com/cloud/atlas
-2. Create cluster
-3. Get connection string
-4. Update `MONGODB_URI` di `.env`
+**Option A: Local MySQL (Mac/Linux)**
+```bash
+mysql.server start
+```
+
+**Option B: Remote MySQL**
+1. Gunakan layanan MySQL yang tersedia.
+2. Catat host, port, user, password, dan nama database.
+3. Update variabel database di `server/.env`.
 
 ### 3. Configure Environment
 
-Buat file `.env`:
+Buat file `server/.env` dari contoh `server/.env.example`:
+```bash
+cd server
+copy .env.example .env
+```
+
+Kemudian edit `server/.env`:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/gaji-demara
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=demara_gaji
 NODE_ENV=development
 JWT_SECRET=your_secure_jwt_secret_key_here_minimum_32_characters
+ADMIN_REGISTER_KEY=change_this_to_secret_key
+```
+
+### 4. Setup Database
+
+Jalankan:
+```bash
+cd server
+npm run setup-db
+```
+
+Perintah ini akan membuat database `demara_gaji` dan tabel-tabel yang dibutuhkan secara otomatis.
+
+### 5. Start Server
+
+**Development Mode:**
+```bash
+npm run dev
 ```
 
 ### 4. Start Server
@@ -213,10 +246,10 @@ const response = await fetch(`${API_URL}/karyawan`, {
 
 ## Troubleshooting
 
-### MongoDB Connection Error
-- Pastikan MongoDB sudah running
-- Cek `MONGODB_URI` di `.env`
-- Untuk MongoDB Atlas, pastikan IP Anda di whitelist
+### MySQL Connection Error
+- Pastikan MySQL sudah running di laptop tersebut.
+- Cek nilai `DB_HOST`, `DB_USER`, `DB_PASSWORD`, dan `DB_NAME` di `server/.env`.
+- Pastikan database `demara_gaji` dibuat dengan `npm run setup-db`.
 
 ### Port Already in Use
 ```bash
@@ -232,7 +265,7 @@ kill -9 <PID>
 
 ### JWT Token Error
 - Pastikan token ada di header: `Authorization: Bearer <token>`
-- Pastikan `JWT_SECRET` sama di `.env`
+- Pastikan `JWT_SECRET` sama di `server/.env`
 - Token memiliki expiry 7 hari
 
 ## Production Deployment
@@ -241,7 +274,11 @@ kill -9 <PID>
 ```env
 NODE_ENV=production
 JWT_SECRET=generate_new_strong_key
-MONGODB_URI=production_mongodb_uri
+DB_HOST=your_db_host
+DB_PORT=3306
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=demara_gaji
 ```
 
 ### Recommendations
@@ -254,7 +291,8 @@ MONGODB_URI=production_mongodb_uri
 
 ## Development Notes
 
-- Models: Menggunakan Mongoose untuk MongoDB
+- Models: Menggunakan MySQL untuk database
+
 - Routes: Express Router untuk modular routing
 - Controllers: Separation of concerns
 - Middleware: Custom auth middleware untuk JWT

@@ -90,7 +90,7 @@ function App() {
 
           </Route>
 
-          <Route path="*" element={<NotFoundPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
 
         </Routes>
       </Router>

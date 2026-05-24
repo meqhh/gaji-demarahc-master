@@ -7,10 +7,22 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Helper to normalize the configured API URL
+const normalizeApiUrl = (url) => {
+  if (!url) return url;
+  const normalized = String(url)
+    .trim()
+    .replace(/\/api(?:\/+)?$/i, '')
+    .replace(/\/+$/,'');
+  return normalized;
+};
+
 // API Base URL
 export const REACT_APP_API_URL =
-  process.env.REACT_APP_API_URL ||
+  normalizeApiUrl(process.env.REACT_APP_API_URL) ||
   (isDevelopment ? 'http://localhost:5000' : window.location.origin);
+
+export const API_BASE_URL = `${REACT_APP_API_URL.replace(/\/+$/, '')}/api`;
 
 // Feature Flags
 export const FEATURES = {
