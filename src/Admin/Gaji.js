@@ -619,9 +619,15 @@ function Gaji() {
     0
   );
 
-  // Hitung total gaji berdasarkan komponen
-  const totalGrossBriefing = kompGaji.gajiPokok + totalFeeTindakan + totalFeePaket + kompGaji.tunjanganTransport;
-  const totalGajiBersih = totalGrossBriefing - kompGaji.potonganBPJS;
+  // Hitung total gaji
+const totalGross =
+  (kompGaji.gajiPokok || 0) +
+  totalFeeTindakan +
+  totalFeePaket +
+  (kompGaji.tunjanganTransport || 0);
+
+const totalGajiBersih =
+  totalGross - (kompGaji.potonganBPJS || 0);
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -751,9 +757,9 @@ function Gaji() {
                         <td className="px-6 py-4 text-gray-600 text-sm">{g.tanggal ? new Date(g.tanggal).toLocaleDateString('id-ID') : "-"}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.pasien}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.treatment}</td>
-                        <td className="px-6 py-4 text-gray-700 text-sm">Rp {Number(g.harga).toLocaleString("id-ID")}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">{formatRupiah(g.harga)}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.fee}%</td>
-                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">Rp {(Number(g.harga) * Number(g.fee) / 100).toLocaleString("id-ID")}</td>
+                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">Rp  {formatRupiah((Number(g.harga) * Number(g.fee)) / 100)}</td>
                       </tr>
                     ))}
                   </tbody>
