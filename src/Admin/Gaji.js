@@ -18,6 +18,15 @@ function FeeTindakanModal({
     initialData || { karyawan: "", pasien: "", alamat: "", treatment: "", harga: "", fee: "", tanggal: "" }
   );
 
+  // Update form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setForm(initialData);
+    } else {
+      setForm({ karyawan: "", pasien: "", alamat: "", treatment: "", harga: "", fee: "", tanggal: "" });
+    }
+  }, [initialData, show]);
+
   const handleChange = (e) => {
     const { id, value } = e.target;
     setForm({ ...form, [id]: value });
@@ -280,6 +289,15 @@ function FeePaketModal({ show, onClose, onSubmit, initialData }) {
     initialData || { pasien: "", paket: "", hargaPaket: "", fee: "" }
   );
 
+  // Update form when initialData changes (for edit mode)
+  useEffect(() => {
+    if (initialData) {
+      setForm(initialData);
+    } else {
+      setForm({ pasien: "", paket: "", hargaPaket: "", fee: "" });
+    }
+  }, [initialData, show]);
+
   const handleChange = (e) => {
     const { id, value } = e.target;
     setForm({ ...form, [id]: value });
@@ -394,18 +412,12 @@ function FeePaketModal({ show, onClose, onSubmit, initialData }) {
 // === Halaman Gaji === //
 function Gaji() {
   const context = useContext(AppContext);
-  const absensiData = context?.absensiData || []; // Only used for filter options (karyawan names)
-  const karyawanData = context?.karyawanData || []; // Get karyawan data from context
-
-  // No hardcoded salary/sample data - rely on AppContext/localStorage/backend
-  const [gajiData, setGajiData] = useState(() => {
-    try {
-      const saved = localStorage.getItem("gajiData");
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const absensiData = context?.absensiData || []; 
+  const karyawanData = context?.karyawanData || [];
+  const gajiData = context?.gajiData || [];
+  const addGaji = context?.addGaji;
+  const updateGaji = context?.updateGaji;
+  const deleteGaji = context?.deleteGaji;
 
   const [feePaketData, setFeePaketData] = useState(() => {
     try {
@@ -415,10 +427,6 @@ function Gaji() {
       return [];
     }
   });
-
-  useEffect(() => {
-    localStorage.setItem("gajiData", JSON.stringify(gajiData));
-  }, [gajiData]);
 
   useEffect(() => {
     localStorage.setItem("feePaketData", JSON.stringify(feePaketData));
@@ -450,6 +458,9 @@ function Gaji() {
   const [showModalPaket, setShowModalPaket] = useState(false);
   const [editData, setEditData] = useState(null);
   const [editType, setEditType] = useState(null);
+  const [deleteData, setDeleteData] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteType, setDeleteType] = useState(null);
   
   // Filter state
   const [filterTanggal, setFilterTanggal] = useState("");
@@ -497,11 +508,13 @@ function Gaji() {
   // Tambah atau Edit Tindakan
   const handleTindakanSubmit = (data) => {
     if (editData) {
-      setGajiData(gajiData.map((g) => (g.id === editData.id ? { ...data, id: g.id } : g)));
+      // Edit existing
+      updateGaji(editData.id, data);
       setEditData(null);
       setEditType(null);
     } else {
-      setGajiData([...gajiData, { ...data, id: Date.now() }]);
+      // Add new
+      addGaji({ ...data, id: Date.now() });
     }
   };
 
@@ -516,24 +529,27 @@ function Gaji() {
     }
   };
 
-  // Delete
-  const handleDelete = (id, type) => {
-    if (type === "tindakan") {
-      setGajiData(gajiData.filter((g) => g.id !== id));
-    } else {
-      setFeePaketData(feePaketData.filter((f) => f.id !== id));
+  // Delete with confirmation
+  const handleDelete = (item, type) => {
+    setDeleteData(item);
+    setDeleteType(type);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteData && deleteType) {
+      if (deleteType === "tindakan") {
+        deleteGaji(deleteData.id);
+      } else {
+        setFeePaketData(feePaketData.filter((f) => f.id !== deleteData.id));
+      }
+      setDeleteData(null);
+      setDeleteType(null);
+      setShowDeleteConfirm(false);
     }
   };
 
-  // Clear all data function
-  const handleClearAllData = () => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus semua data? Tindakan ini tidak dapat dibatalkan.')) {
-      setGajiData([]);
-      setFeePaketData([]);
-      localStorage.removeItem('gajiData');
-      localStorage.removeItem('feePaketData');
-    }
-  };
+
 
   // Handle change komponen gaji
   const handleKompGajiChange = (e) => {
@@ -619,9 +635,15 @@ function Gaji() {
     0
   );
 
-  // Hitung total gaji berdasarkan komponen
-  const totalGrossBriefing = kompGaji.gajiPokok + totalFeeTindakan + totalFeePaket + kompGaji.tunjanganTransport;
-  const totalGajiBersih = totalGrossBriefing - kompGaji.potonganBPJS;
+  // Hitung total gaji
+const totalGross =
+  (kompGaji.gajiPokok || 0) +
+  totalFeeTindakan +
+  totalFeePaket +
+  (kompGaji.tunjanganTransport || 0);
+
+const totalGajiBersih =
+  totalGross - (kompGaji.potonganBPJS || 0);
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -640,14 +662,6 @@ function Gaji() {
           <h1 className="text-3xl font-bold text-gray-900 mb-1">Gaji</h1>
           <p className="text-gray-600 text-sm">Kelola data gaji dan fee karyawan</p>
         </div>
-        {(gajiData.length > 0 || feePaketData.length > 0) && (
-          <button
-            onClick={handleClearAllData}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors text-sm"
-          >
-            Hapus Semua Data
-          </button>
-        )}
       </div>
 
       {/* Filter Section */}
@@ -739,6 +753,7 @@ function Gaji() {
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Harga</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Fee</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Total Fee</th>
+                      <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wide">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -754,6 +769,20 @@ function Gaji() {
                         <td className="px-6 py-4 text-gray-700 text-sm">{formatRupiah(Number(g.harga) || 0)}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.fee}%</td>
                         <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{formatRupiah((Number(g.harga) * Number(g.fee || 0)) / 100)}</td>
+                        <td className="px-6 py-4 text-center text-sm space-x-2 flex items-center justify-center">
+                          <button
+                            onClick={() => { setEditData(g); setEditType("tindakan"); setShowModalTindakan(true); }}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(g, "tindakan")}
+                            className="px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition"
+                          >
+                            Hapus
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -801,6 +830,32 @@ function Gaji() {
           onSubmit={handlePaketSubmit}
           initialData={editData}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Hapus Data</h3>
+            <p className="text-gray-600 mb-6">
+              Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+              >
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
