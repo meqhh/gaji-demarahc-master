@@ -12,7 +12,7 @@ function FeeTindakanModal({
   onKompGajiChange = () => {},
   totalFeeTindakan = 0,
   totalFeePaket = 0,
-  formatRupiah = (n) => `Rp. ${Number(n).toLocaleString('id-ID')}`
+  formatRupiah = (n) => `Rp ${Number(n).toLocaleString('id-ID')}`
 }) {
   const [form, setForm] = useState(
     initialData || { karyawan: "", pasien: "", alamat: "", treatment: "", harga: "", fee: "", tanggal: "" }
@@ -545,7 +545,7 @@ function Gaji() {
   };
 
   const formatRupiah = (angka) =>
-    `Rp. ${Number(angka).toLocaleString('id-ID')}`;
+    `Rp ${Number(angka).toLocaleString('id-ID')}`;
 
   // Filter gaji data based on selected filters
   const filteredGajiData = useMemo(() => {
@@ -751,9 +751,9 @@ function Gaji() {
                         <td className="px-6 py-4 text-gray-600 text-sm">{g.tanggal ? new Date(g.tanggal).toLocaleDateString('id-ID') : "-"}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.pasien}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.treatment}</td>
-                        <td className="px-6 py-4 text-gray-700 text-sm">Rp {Number(g.harga).toLocaleString("id-ID")}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">{formatRupiah(Number(g.harga) || 0)}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.fee}%</td>
-                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">Rp {(Number(g.harga) * Number(g.fee) / 100).toLocaleString("id-ID")}</td>
+                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{formatRupiah((Number(g.harga) * Number(g.fee || 0)) / 100)}</td>
                       </tr>
                     ))}
                   </tbody>

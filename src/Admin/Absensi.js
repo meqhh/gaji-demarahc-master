@@ -383,15 +383,17 @@ function Absensi() {
           ...formData,
           id: newId,
         };
-        // Use setAbsensiData directly to ensure ID stays as number
-        if (setAbsensiData) {
+
+        if (addAbsensi) {
+          // Use context addAbsensi for optimistic render + server sync
+          addAbsensi(newAbsensi);
+        } else if (setAbsensiData) {
           setAbsensiData(prev => {
             const current = Array.isArray(prev) ? prev : [];
             return [...current, newAbsensi];
           });
-        } else {
-          addAbsensi(newAbsensi);
         }
+
         console.log("Data absensi berhasil ditambahkan:", newAbsensi);
       }
       

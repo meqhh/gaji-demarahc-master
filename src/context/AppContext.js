@@ -339,6 +339,24 @@ export const AppContextProvider = ({ children }) => {
     saveToLocalStorage('cutiData', cutiData);
   }, [cutiData]);
 
+  // Sync cutiData across tabs/windows so admin view updates when karyawan submit di tab lain
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== 'cutiData') return;
+      try {
+        const updated = event.newValue ? JSON.parse(event.newValue) : [];
+        if (Array.isArray(updated)) {
+          setCutiData(updated);
+        }
+      } catch (e) {
+        console.error('Failed to sync cutiData from storage event:', e);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const value = {
     // User Profile
     userProfile,

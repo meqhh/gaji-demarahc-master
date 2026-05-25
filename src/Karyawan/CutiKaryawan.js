@@ -2,7 +2,7 @@ import React, { useState, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
 export default function CutiKaryawan() {
-  const { userProfile, karyawanData = [], cutiData = [], addCuti, updateCuti, deleteCuti } = useContext(AppContext);
+  const { userProfile, karyawanData = [], cutiData = [], setCutiData, addCuti, updateCuti, deleteCuti } = useContext(AppContext);
 
   // Filter cuti berdasarkan nama karyawan yang login
   const myCutiData = useMemo(() => {
@@ -49,9 +49,9 @@ export default function CutiKaryawan() {
   };
 
   // Tambah data cuti
-  const handleTambahCuti = (e) => {
+  const handleTambahCuti = async (e) => {
     e.preventDefault();
-    const namaAkun = String(formData.nama || "").trim();
+    const namaAkun = String(formData.nama || userProfile?.name || "").trim();
     if (!namaAkun) {
       alert("Nama karyawan tidak boleh kosong");
       return;
@@ -60,6 +60,7 @@ export default function CutiKaryawan() {
     const newCuti = {
       ...formData,
       nama: namaAkun,
+      id: formData.id || `CUTI${Date.now()}`,
     };
 
     // If tanggalAkhir provided and lama empty, compute lama (inclusive)
@@ -74,7 +75,12 @@ export default function CutiKaryawan() {
       }
     }
 
-    addCuti(newCuti);
+    if (addCuti) {
+      await addCuti(newCuti);
+    } else if (setCutiData) {
+      setCutiData(prev => Array.isArray(prev) ? [...prev, newCuti] : [newCuti]);
+    }
+
     setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
     setShowTambahModal(false);
   };
