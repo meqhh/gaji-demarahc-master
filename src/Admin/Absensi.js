@@ -35,28 +35,16 @@ function Absensi() {
   // Use absensiData from context - ensure it's always an array
   const absensi = Array.isArray(absensiData) ? absensiData : [];
 
-  // Get unique karyawan names - prioritize from karyawanData, then from absensi - must be before early return
+  // Get unique karyawan names from karyawanData only
   const uniqueKaryawanNames = useMemo(() => {
-    // First, get names from karyawanData if available
     const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
       ? karyawanData
           .map((k) => k?.nama)
           .filter((name) => name && name.trim() !== "")
       : [];
-    
-    // Then get names from absensi data
-    const absensiNames = absensi
-      .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "");
-    
-    // Combine and get unique names
-    const allNames = [...karyawanNames, ...absensiNames];
-    const uniqueNames = allNames
-      .filter((name, index, self) => self.indexOf(name) === index) // Get unique names
-      .sort(); // Sort alphabetically
-    
-    return uniqueNames;
-  }, [absensi, karyawanData]);
+
+    return [...new Set(karyawanNames)].sort();
+  }, [karyawanData]);
 
   // No default dummy data - all data from backend API
 
@@ -617,14 +605,22 @@ function Absensi() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="text-sm font-bold text-gray-700 block mb-2">Nama Karyawan</label>
-                <input
-                  type="text"
+                <select
                   value={formData.nama}
-                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                  placeholder="Masukkan nama"
+                  onChange={(e) => {
+                    const nama = e.target.value;
+                    // find posisi from karyawanData if available
+                    const match = Array.isArray(karyawanData) ? karyawanData.find(k => k && k.nama === nama) : null;
+                    setFormData({ ...formData, nama, posisi: match ? (match.posisi || "") : "" });
+                  }}
                   className="w-full border border-gray-200 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10 transition"
                   required
-                />
+                >
+                  <option value="">Pilih Karyawan</option>
+                  {uniqueKaryawanNames.map((nama) => (
+                    <option key={nama} value={nama}>{nama}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-sm font-bold text-gray-700 block mb-2">Posisi</label>

@@ -44,7 +44,7 @@ export default function CutiKaryawan() {
 
   // Set modal data saat modal dibuka; nama diisi manual oleh user
   const openTambahModal = () => {
-    setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
+    setFormData({ nama: userProfile?.name || "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
     setShowTambahModal(true);
   };
 
@@ -385,12 +385,12 @@ export default function CutiKaryawan() {
                 <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
                 <input
                   type="text"
-                  value={formData.nama}
-                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                  placeholder="Ketik nama karyawan"
+                  value={formData.nama || userProfile?.name || ""}
+                  readOnly
+                  placeholder="Nama akan terisi otomatis"
                   required
                   autoComplete="off"
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                  className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg focus:outline-none transition-all"
                 />
               </div>
 
@@ -472,12 +472,12 @@ export default function CutiKaryawan() {
                   <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
                   <input
                     type="text"
-                    value={formData.nama}
-                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                    placeholder="Ketik nama karyawan"
+                    value={formData.nama || userProfile?.name || ""}
+                    readOnly
+                    placeholder="Nama akan terisi otomatis"
                     required
                     autoComplete="off"
-                    className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                    className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg focus:outline-none transition-all"
                   />
                 </div>
 

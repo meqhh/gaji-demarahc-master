@@ -12,7 +12,11 @@ function FeeTindakanModal({
   onKompGajiChange = () => {},
   totalFeeTindakan = 0,
   totalFeePaket = 0,
-  formatRupiah = (n) => `Rp ${Number(n).toLocaleString('id-ID')}`
+  formatRupiah = (n) => {
+    const value = Number(n);
+    if (Number.isNaN(value)) return 'Rp 0';
+    return `Rp ${Math.round(value * 1000).toLocaleString('id-ID')}`;
+  }
 }) {
   const [form, setForm] = useState(
     initialData || { karyawan: "", pasien: "", alamat: "", treatment: "", harga: "", fee: "", tanggal: "" }
@@ -464,46 +468,18 @@ function Gaji() {
   
   // Filter state
   const [filterTanggal, setFilterTanggal] = useState("");
-  const [filterBulan, setFilterBulan] = useState("Semua Bulan");
-  const [filterTahun, setFilterTahun] = useState("Semua Tahun");
   const [filterKaryawan, setFilterKaryawan] = useState("Semua");
 
-  // Get unique karyawan names - prioritize from karyawanData, then from absensi data
+  // Get unique karyawan names from active karyawan data only
   const uniqueKaryawanNames = useMemo(() => {
-    // First, get names from karyawanData if available
     const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
       ? karyawanData
           .map((k) => k?.nama)
           .filter((name) => name && name.trim() !== "")
       : [];
-    
-    // Then get names from absensi data
-    const absensiNames = absensiData
-      .map((a) => a?.nama)
-      .filter((name) => name && name.trim() !== "");
-    
-    // Combine and get unique names
-    const allNames = [...karyawanNames, ...absensiNames];
-    const uniqueNames = allNames
-      .filter((name, index, self) => self.indexOf(name) === index) // Get unique names
-      .sort(); // Sort alphabetically
-    
-    return uniqueNames;
-  }, [absensiData, karyawanData]);
 
-  // Get all months (Januari - Desember)
-  const uniqueMonths = useMemo(() => {
-    return ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-  }, []);
-
-  // Get all years (2010 - current year)
-  const uniqueYears = useMemo(() => {
-    const years = [];
-    for (let year = 2030; year >= 2010; year--) {
-      years.push(year.toString());
-    }
-    return years;
-  }, []);
+    return [...new Set(karyawanNames)].sort();
+  }, [karyawanData]);
 
   // Tambah atau Edit Tindakan
   const handleTindakanSubmit = (data) => {
@@ -560,16 +536,16 @@ function Gaji() {
     });
   };
 
-  const formatRupiah = (angka) =>
-    `Rp ${Number(angka).toLocaleString('id-ID')}`;
+  const formatRupiah = (angka) => {
+    const value = Number(angka);
+    if (Number.isNaN(value)) return 'Rp 0';
+    return `Rp ${Math.round(value * 1000).toLocaleString('id-ID')}`;
+  };
 
   // Filter gaji data based on selected filters
   const filteredGajiData = useMemo(() => {
     // If no filters are active, show all data
-    const hasActiveFilters = filterTanggal || 
-                            (filterBulan && filterBulan !== "Semua Bulan") || 
-                            (filterTahun && filterTahun !== "Semua Tahun") || 
-                            (filterKaryawan && filterKaryawan !== "Semua");
+    const hasActiveFilters = filterTanggal || (filterKaryawan && filterKaryawan !== "Semua");
     
     if (!hasActiveFilters) {
       return gajiData || [];
@@ -588,42 +564,17 @@ function Gaji() {
         }
       }
 
-      // Filter by month (if gaji data has date field)
-      if (filterBulan && filterBulan !== "Semua Bulan" && g.tanggal) {
-        try {
-          const d = new Date(g.tanggal);
-          if (isNaN(d.getTime())) return false;
-          const monthName = d.toLocaleDateString('id-ID', { month: 'long' });
-          if (monthName !== filterBulan) return false;
-        } catch (e) {
-          return false;
-        }
-      }
-
-      // Filter by year (if gaji data has date field)
-      if (filterTahun && filterTahun !== "Semua Tahun" && g.tanggal) {
-        try {
-          const d = new Date(g.tanggal);
-          if (isNaN(d.getTime())) return false;
-          const year = d.getFullYear().toString();
-          if (year !== filterTahun) return false;
-        } catch (e) {
-          return false;
-        }
-      }
-
       // Filter by karyawan (match with karyawan field first, then pasien)
       if (filterKaryawan && filterKaryawan !== "Semua") {
         const karyawanName = g.karyawan ? g.karyawan.toLowerCase() : '';
         const pasienName = g.pasien ? g.pasien.toLowerCase() : '';
         const filterName = filterKaryawan.toLowerCase();
-        // Match with karyawan field (primary) or pasien field (fallback)
         if (karyawanName !== filterName && pasienName !== filterName) return false;
       }
 
       return true;
     });
-  }, [gajiData, filterTanggal, filterBulan, filterTahun, filterKaryawan]);
+  }, [gajiData, filterTanggal, filterKaryawan]);
 
   // Hitung total dari filtered data
   const totalFeeTindakan = filteredGajiData.reduce(
@@ -676,38 +627,6 @@ const totalGajiBersih =
           />
         </div>
 
-        <div className="animate-slide-up" style={{ animationDelay: '0.15s' }}>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Bulan</label>
-          <select 
-            value={filterBulan}
-            onChange={(e) => setFilterBulan(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
-          >
-            <option>Semua Bulan</option>
-            {uniqueMonths.map((month) => (
-              <option key={month} value={month}>
-                {month}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Tahun</label>
-          <select 
-            value={filterTahun}
-            onChange={(e) => setFilterTahun(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
-          >
-            <option>Semua Tahun</option>
-            {uniqueYears.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div className="animate-slide-up" style={{ animationDelay: '0.25s' }}>
           <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Karyawan</label>
           <select 
@@ -734,10 +653,8 @@ const totalGajiBersih =
               <h2 className="text-lg font-bold text-gray-900">Gaji Tindakan ({filteredGajiData.length})</h2>
               <p className="text-sm text-gray-600 mt-1">
                 {filterTanggal && `Tanggal: ${new Date(filterTanggal).toLocaleDateString('id-ID')} • `}
-                {filterBulan !== "Semua Bulan" && `Bulan: ${filterBulan} • `}
-                {filterTahun !== "Semua Tahun" && `Tahun: ${filterTahun} • `}
                 {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan}`}
-                {!filterTanggal && filterBulan === "Semua Bulan" && filterTahun === "Semua Tahun" && filterKaryawan === "Semua" && "Menampilkan Semua Data"}
+                {!filterTanggal && filterKaryawan === "Semua" && "Menampilkan Semua Data"}
               </p>
             </div>
             
@@ -814,7 +731,9 @@ const totalGajiBersih =
           show={showModalTindakan}
           onClose={() => setShowModalTindakan(false)}
           onSubmit={handleTindakanSubmit}
-          initialData={editData}
+          initialData={
+            editData || (filterKaryawan && filterKaryawan !== "Semua" ? { karyawan: filterKaryawan } : null)
+          }
           karyawanOptions={uniqueKaryawanNames}
           kompGaji={kompGaji}
           onKompGajiChange={setKompGaji}
