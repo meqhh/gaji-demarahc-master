@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
+
 // === Modal Tambah/Edit Tindakan === //
 function FeeTindakanModal({ 
   show, 
@@ -415,13 +416,13 @@ function FeePaketModal({ show, onClose, onSubmit, initialData }) {
 
 // === Halaman Gaji === //
 function Gaji() {
-  const context = useContext(AppContext);
-  const absensiData = context?.absensiData || []; 
-  const karyawanData = context?.karyawanData || [];
-  const gajiData = context?.gajiData || [];
-  const addGaji = context?.addGaji;
-  const updateGaji = context?.updateGaji;
-  const deleteGaji = context?.deleteGaji;
+  const {
+  absensiData = [],
+  karyawanData = [],
+  treatmentData = [],
+  gajiData = []
+  } = useContext(AppContext);
+  console.log("treatmentData:", treatmentData);
 
   const [feePaketData, setFeePaketData] = useState(() => {
     try {
@@ -481,19 +482,6 @@ function Gaji() {
     return [...new Set(karyawanNames)].sort();
   }, [karyawanData]);
 
-  // Tambah atau Edit Tindakan
-  const handleTindakanSubmit = (data) => {
-    if (editData) {
-      // Edit existing
-      updateGaji(editData.id, data);
-      setEditData(null);
-      setEditType(null);
-    } else {
-      // Add new
-      addGaji({ ...data, id: Date.now() });
-    }
-  };
-
   // Tambah atau Edit Fee Paket
   const handlePaketSubmit = (data) => {
     if (editData) {
@@ -513,19 +501,18 @@ function Gaji() {
   };
 
   const confirmDelete = () => {
-    if (deleteData && deleteType) {
-      if (deleteType === "tindakan") {
-        deleteGaji(deleteData.id);
-      } else {
-        setFeePaketData(feePaketData.filter((f) => f.id !== deleteData.id));
-      }
-      setDeleteData(null);
-      setDeleteType(null);
-      setShowDeleteConfirm(false);
+  if (deleteData && deleteType) {
+    if (deleteType === "paket") {
+      setFeePaketData(
+        feePaketData.filter((f) => f.id !== deleteData.id)
+      );
     }
+
+    setDeleteData(null);
+    setDeleteType(null);
+    setShowDeleteConfirm(false);
+  }
   };
-
-
 
   // Handle change komponen gaji
   const handleKompGajiChange = (e) => {
@@ -544,37 +531,22 @@ function Gaji() {
 
   // Filter gaji data based on selected filters
   const filteredGajiData = useMemo(() => {
-    // If no filters are active, show all data
-    const hasActiveFilters = filterTanggal || (filterKaryawan && filterKaryawan !== "Semua");
-    
-    if (!hasActiveFilters) {
-      return gajiData || [];
-    }
+  let data = [...gajiData];
 
-    return (gajiData || []).filter((g) => {
-      if (!g) return false;
+  if (filterTanggal) {
+    data = data.filter(
+      (item) => item.tanggal === filterTanggal
+    );
+  }
 
-      // Filter by date (if gaji data has date field)
-      if (filterTanggal && g.tanggal) {
-        try {
-          const gajiDate = new Date(g.tanggal).toISOString().split('T')[0];
-          if (gajiDate !== filterTanggal) return false;
-        } catch (e) {
-          return false;
-        }
-      }
+  if (filterKaryawan !== "Semua") {
+    data = data.filter(
+      (item) => item.karyawan === filterKaryawan
+    );
+  }
 
-      // Filter by karyawan (match with karyawan field first, then pasien)
-      if (filterKaryawan && filterKaryawan !== "Semua") {
-        const karyawanName = g.karyawan ? g.karyawan.toLowerCase() : '';
-        const pasienName = g.pasien ? g.pasien.toLowerCase() : '';
-        const filterName = filterKaryawan.toLowerCase();
-        if (karyawanName !== filterName && pasienName !== filterName) return false;
-      }
-
-      return true;
-    });
-  }, [gajiData, filterTanggal, filterKaryawan]);
+  return data;
+}, [treatmentData, filterTanggal, filterKaryawan]);
 
   // Hitung total dari filtered data
   const totalFeeTindakan = filteredGajiData.reduce(
@@ -687,18 +659,21 @@ const totalGajiBersih =
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.fee}%</td>
                         <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{formatRupiah((Number(g.harga) * Number(g.fee || 0)) / 100)}</td>
                         <td className="px-6 py-4 text-center text-sm space-x-2 flex items-center justify-center">
-                          <button
-                            onClick={() => { setEditData(g); setEditType("tindakan"); setShowModalTindakan(true); }}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(g, "tindakan")}
-                            className="px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition"
-                          >
-                            Hapus
-                          </button>
+                          {/*
+                            <button
+                              onClick={() => { setEditData(g); setEditType("tindakan"); setShowModalTindakan(true); }}
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() => handleDelete(g, "tindakan")}
+                              className="px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition"
+                            >
+                              Hapus
+                            </button>
+                          */}
                         </td>
                       </tr>
                     ))}
@@ -711,37 +686,10 @@ const totalGajiBersih =
                 <p className="text-sm text-gray-400 mt-2">Coba ubah filter atau pastikan ada data gaji</p>
               </div>
             )}
+              </div> {/* bg-white shadow-sm */}
+          </div>   {/* Kolom Tabel Gaji */}
+        </div>     {/* Grid */}
 
-            {/* Tombol Tambah */}
-            <div className="flex justify-end px-6 py-4 border-t border-gray-200">
-              <button
-                onClick={() => { setEditData(null); setEditType("tindakan"); setShowModalTindakan(true); }}
-                className="px-6 py-2.5 border border-gray-300 text-gray-900 font-semibold rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
-              >
-                <span>+</span> Tambah Tindakan
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* === Modal === */}
-      {editType === "tindakan" && (
-        <FeeTindakanModal
-          show={showModalTindakan}
-          onClose={() => setShowModalTindakan(false)}
-          onSubmit={handleTindakanSubmit}
-          initialData={
-            editData || (filterKaryawan && filterKaryawan !== "Semua" ? { karyawan: filterKaryawan } : null)
-          }
-          karyawanOptions={uniqueKaryawanNames}
-          kompGaji={kompGaji}
-          onKompGajiChange={setKompGaji}
-          totalFeeTindakan={totalFeeTindakan}
-          totalFeePaket={totalFeePaket}
-          formatRupiah={formatRupiah}
-        />
-      )}
       {editType === "paket" && (
         <FeePaketModal
           show={showModalPaket}

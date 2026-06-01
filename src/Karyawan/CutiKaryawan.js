@@ -42,6 +42,17 @@ export default function CutiKaryawan() {
     return matchStatus && matchSearch;
   });
 
+  // Jatah cuti tahunan
+  const totalJatahCuti = 12;
+
+  // Total cuti yang sudah disetujui
+  const cutiTerpakai = myCutiData
+    .filter(item => item.status === "Disetujui")
+    .reduce((total, item) => total + Number(item.lama || 0), 0);
+
+  // Sisa cuti
+  const sisaCuti = totalJatahCuti - cutiTerpakai;
+
   // Set modal data saat modal dibuka; nama diisi manual oleh user
   const openTambahModal = () => {
     setFormData({ nama: userProfile?.name || "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
@@ -51,17 +62,17 @@ export default function CutiKaryawan() {
   // Tambah data cuti
   const handleTambahCuti = async (e) => {
     e.preventDefault();
-    const namaAkun = String(formData.nama || userProfile?.name || "").trim();
+    const namaAkun = userProfile?.name;
     if (!namaAkun) {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
 
     const newCuti = {
-      ...formData,
-      nama: namaAkun,
-      id: formData.id || `CUTI${Date.now()}`,
-    };
+        ...formData,
+        nama: namaAkun,
+        id: formData.id || `CUTI${Date.now()}`,
+      };
 
     // If tanggalAkhir provided and lama empty, compute lama (inclusive)
     if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
@@ -196,6 +207,26 @@ export default function CutiKaryawan() {
             <span className="text-gray-500">Kelola Pengajuan Cuti</span>
           </div>
         </div>
+      </div>
+
+      {/* INFO CUTI */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-slide-up">
+
+        <div className="bg-white shadow-md rounded-xl p-5">
+          <p className="text-gray-500 font-medium">Total Jatah Cuti</p>
+          <p className="text-2xl font-bold text-gray-900">{totalJatahCuti} hari</p>
+        </div>
+
+        <div className="bg-white shadow-md rounded-xl p-5">
+          <p className="text-gray-500 font-medium">Cuti Terpakai</p>
+          <p className="text-2xl font-bold text-gray-900">{cutiTerpakai} hari</p>
+        </div>
+
+        <div className="bg-white shadow-md rounded-xl p-5">
+          <p className="text-gray-500 font-medium">Sisa Cuti</p>
+          <p className="text-2xl font-bold text-gray-900">{sisaCuti} hari</p>
+        </div>
+
       </div>
 
       {/* Filter & Search Section */}
@@ -381,17 +412,8 @@ export default function CutiKaryawan() {
               <button onClick={() => setShowTambahModal(false)} className="text-2xl text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleTambahCuti} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
-                <input
-                  type="text"
-                  value={formData.nama || userProfile?.name || ""}
-                  readOnly
-                  placeholder="Nama akan terisi otomatis"
-                  required
-                  autoComplete="off"
-                  className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg focus:outline-none transition-all"
-                />
+              <div className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg">
+                {userProfile?.name || "-"}
               </div>
 
               <div>

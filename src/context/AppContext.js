@@ -54,17 +54,13 @@ const dedupeKaryawanList = (items) => {
 
 export const AppContextProvider = ({ children }) => {
   const getCurrentRole = () => {
-    const contextRole = userProfile?.role;
-    if (contextRole) return String(contextRole).toLowerCase();
-    try {
-      const rawUser = localStorage.getItem('user');
-      if (!rawUser) return '';
-      const parsedUser = JSON.parse(rawUser);
-      return String(parsedUser?.role || '').toLowerCase();
-    } catch (e) {
-      return '';
-    }
-  };
+  try {
+    const user = JSON.parse(localStorage.getItem('userProfile'));
+    return (user?.role || '').toLowerCase();
+  } catch {
+    return '';
+  }
+};
   // User Profile Data - Load from API if authenticated
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('userProfile');
@@ -102,11 +98,32 @@ export const AppContextProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Catatan Treatment
+  const [catatanTreatment, setCatatanTreatment] = useState(() => {
+    const saved = localStorage.getItem('catatanTreatment');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Treatment Data
   const [treatmentData, setTreatmentData] = useState(() => {
     const saved = localStorage.getItem('treatmentData');
     return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+  if (!Array.isArray(treatmentData)) return;
+
+  const autoGaji = treatmentData.map((t) => {
+    return {
+      id: `GAJI_AUTO_${t.id}`,
+      nama: t.nama,
+      total: t.totalFee || 0,
+      sumber: 'treatment'
+    };
+  });
+
+  setGajiData(autoGaji);
+}, [treatmentData]);
 
   // Slip Gaji Data
   const [slipGajiData, setSlipGajiData] = useState(() => {
@@ -328,6 +345,14 @@ export const AppContextProvider = ({ children }) => {
   useEffect(() => {
     saveToLocalStorage('treatmentData', treatmentData);
   }, [treatmentData]);
+
+  // Simpan catatan treatment ke localStorage
+useEffect(() => {
+  saveToLocalStorage(
+    'catatanTreatment',
+    catatanTreatment
+  );
+}, [catatanTreatment]);
 
   // Simpan slip gaji data ke localStorage
   useEffect(() => {

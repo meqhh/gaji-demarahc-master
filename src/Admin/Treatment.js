@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
+import { AppContext } from "../context/AppContext";
 
 // ======================
 // DATA TREATMENTS
@@ -144,16 +145,28 @@ function getFeeByCategory(category) {
 }
 
 function Treatment() {
-  const [dataTreatment, setDataTreatment] = useState(treatments);
-  const [search, setSearch] = useState("");
-  const [showTambah, setShowTambah] = useState(false);
-  const [showDetail, setShowDetail] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [detailData, setDetailData] = useState(null);
-  const [editData, setEditData] = useState(null);
-  const [deleteData, setDeleteData] = useState(null);
-  const [formData, setFormData] = useState({});
+
+const { karyawanData } = useContext(AppContext);
+console.log("DATA KARYAWAN:", karyawanData);
+
+const [dataTreatment, setDataTreatment] = useState(treatments);
+const [search, setSearch] = useState("");
+
+const [showTambah, setShowTambah] = useState(false);
+const [showDetail, setShowDetail] = useState(false);
+const [showEdit, setShowEdit] = useState(false);
+const [showDelete, setShowDelete] = useState(false);
+const [showCatat, setShowCatat] = useState(false);
+
+const [detailData, setDetailData] = useState(null);
+const [editData, setEditData] = useState(null);
+const [deleteData, setDeleteData] = useState(null);
+const [selectedTreatment, setSelectedTreatment] = useState(null);
+
+const [formData, setFormData] = useState({});
+
+const [bidanTerpilih, setBidanTerpilih] = useState("");
+const [catatanTreatment, setCatatanTreatment] = useState([]);
 
   // FILTER DATA BY SEARCH
   const filteredData = dataTreatment.filter((item) =>
@@ -223,6 +236,37 @@ function Treatment() {
     }
   };
 
+  const handleCatatTreatment = (treatment) => {
+  setSelectedTreatment(treatment);
+  setShowCatat(true);
+  };
+
+  const simpanTreatment = () => {
+  if (!bidanTerpilih) {
+    alert("Pilih bidan terlebih dahulu");
+    return;
+  }
+
+  const fee =
+    (selectedTreatment.harga *
+      getFeeByCategory(selectedTreatment.category)) / 100;
+
+  const dataBaru = {
+    id: Date.now(),
+    treatment: selectedTreatment.nama,
+    bidan: bidanTerpilih,
+    fee: fee,
+    tanggal: new Date().toLocaleDateString("id-ID"),
+  };
+
+  setCatatanTreatment([...catatanTreatment, dataBaru]);
+
+  console.log("DATA TREATMENT BARU:", dataBaru);
+
+  setShowCatat(false);
+  setBidanTerpilih("");
+};
+
   return (
     <div className="space-y-8 pb-8">
       <style>{`
@@ -260,6 +304,65 @@ function Treatment() {
           animation: slideDown 0.6s ease-out forwards;
         }
       `}</style>
+
+      {showCatat && selectedTreatment && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl shadow-lg w-[500px]">
+      
+      <h2 className="text-xl font-bold mb-4">
+        Catat Treatment
+      </h2>
+
+      <div className="mb-4">
+        <label className="block font-semibold mb-1">
+          Treatment
+        </label>
+        <input
+          type="text"
+          value={selectedTreatment.nama}
+          disabled
+          className="w-full border p-2 rounded bg-gray-100"
+        />
+      </div>
+
+      <div className="mb-4">
+        <label className="block font-semibold mb-1">
+          Bidan
+        </label>
+
+        <select
+        value={bidanTerpilih}
+        onChange={(e) => setBidanTerpilih(e.target.value)}
+      >
+        <option value="">Pilih Bidan</option>
+
+        {karyawanData.map((item) => (
+          <option key={item.id} value={item.nama}>
+            {item.nama}
+          </option>
+        ))}
+      </select>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setShowCatat(false)}
+          className="px-4 py-2 border rounded"
+        >
+          Batal
+        </button>
+
+        <button
+            onClick={simpanTreatment}
+            className="px-4 py-2 bg-green-600 text-white rounded"
+          >
+            Simpan
+          </button>
+      </div>
+
+    </div>
+  </div>
+)}
 
       <main>
         {/* Header Section */}
@@ -337,6 +440,7 @@ function Treatment() {
                       >
                         Detail
                       </button>
+
                       <button
                         onClick={() => {
                           setEditData(t);
@@ -346,11 +450,19 @@ function Treatment() {
                       >
                         Edit
                       </button>
+
                       <button
                         onClick={() => handleHapus(t)}
                         className="text-red-600 font-bold hover:text-red-700 transition-colors"
                       >
                         Hapus
+                      </button>
+
+                      <button
+                        onClick={() => handleCatatTreatment(t)}
+                        className="text-green-600 font-bold hover:text-green-700 transition-colors"
+                      >
+                        Catat
                       </button>
                     </td>
                   </tr>

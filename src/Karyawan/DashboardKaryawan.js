@@ -57,9 +57,29 @@ export default function DashboardKaryawan() {
   const formatTime = (d) => d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   const getMonthLabel = (d) => d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
-  const handleCheckIn = () => {
-    // Allow manual check-in - removed login restriction
-    if (hasCheckedInToday()) {
+  const canCheckIn = () => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  return currentHour > 8 || (currentHour === 8 && currentMinute >= 0);
+  };
+
+const canCheckOut = () => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  return currentHour > 17 || (currentHour === 17 && currentMinute >= 0);
+};
+
+   const handleCheckIn = () => {
+
+      if (!canCheckIn()) {
+        alert("Absensi belum dibuka. Silakan melakukan absensi masuk mulai pukul 08.00 WIB.");
+        return;
+    }
+      if (hasCheckedInToday()) {
       // Show today's attendance info
       const todayItem = myAbsensi.find((a) => isSameAttendanceDay(a));
       if (todayItem) {
@@ -114,20 +134,38 @@ export default function DashboardKaryawan() {
     return myAbsensi.find((a) => isSameAttendanceDay(a));
   };
 
-  const handleCheckOut = () => {
-    const today = new Date();
-    const nowTime = formatTime(today);
-    const todayItem = getTodayItemLocal();
-    if (!todayItem) {
-      alert('Belum ada absen masuk hari ini.');
-      return;
-    }
+    const handleCheckOut = () => {
+
+  if (!canCheckOut()) {
+    alert("Absensi pulang hanya dapat dilakukan mulai pukul 17.00 WIB.");
+    return;
+  }
+
+  const today = new Date();
+  const nowTime = formatTime(today);
+  const todayItem = getTodayItemLocal();
+
+  if (!todayItem) {
+    alert("Belum ada absen masuk hari ini.");
+    return;
+  }
+
     if (todayItem.jamKeluar) {
-      alert('Anda sudah absen keluar hari ini.');
+      alert("Anda sudah absen keluar hari ini.");
       return;
     }
-    const updatedTodayItem = { ...todayItem, jamKeluar: nowTime };
-    if (updateAbsensi) updateAbsensi(todayItem.id, { jamKeluar: nowTime });
+
+    const updatedTodayItem = {
+      ...todayItem,
+      jamKeluar: nowTime,
+    };
+
+    if (updateAbsensi) {
+      updateAbsensi(todayItem.id, {
+        jamKeluar: nowTime,
+      });
+    }
+
     setTodayAbsensi(updatedTodayItem);
     setShowAbsensiModal(true);
   };
