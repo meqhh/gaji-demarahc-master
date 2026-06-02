@@ -1,8 +1,20 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
+const monthNames = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
+const getMonthLabel = (dateString) => {
+  if (!dateString) return "";
+  const parsed = new Date(dateString);
+  if (isNaN(parsed.getTime())) return "";
+  return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+};
+
 function SlipGaji() {
-  const { karyawanData = [], slipGajiData = [], addSlipGaji, deleteSlipGaji, setSlipGajiData } = useContext(AppContext);
+  const { karyawanData = [], slipGajiData = [], gajiData = [], absensiData = [], addSlipGaji, deleteSlipGaji, setSlipGajiData } = useContext(AppContext);
   
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -44,18 +56,6 @@ function SlipGaji() {
     return options;
   }, []);
 
-  // Filter data
-  const filteredData = useMemo(() => {
-    return slipGajiData.filter((item) => {
-      const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
-      const matchPeriode = item.periode === bulan;
-      const matchSearch = searchQuery === "" || 
-        item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchKaryawan && matchPeriode && matchSearch;
-    });
-  }, [slipGajiData, filterKaryawan, bulan, searchQuery]);
-
   // Toast
   const showToast = (message) => {
     setToastMessage(message);
@@ -75,6 +75,90 @@ function SlipGaji() {
     return `Rp ${n.toLocaleString("id-ID")}`;
   };
 
+  const deriveSlipsFromGajiData = useMemo(() => {
+    if (!Array.isArray(gajiData) || gajiData.length === 0) return [];
+
+    const groups = {};
+    gajiData.forEach((record) => {
+      const nama = record.karyawan || record.nama || "";
+      if (!nama) return;
+      const dateValue = record.tanggal || record.date || record.createdAt || new Date().toISOString();
+      const periode = getMonthLabel(dateValue);
+      const key = `${nama}||${periode}`;
+
+      if (!groups[key]) {
+        const karyawan = Array.isArray(karyawanData) ? karyawanData.find((k) => k.nama === nama) : null;
+        groups[key] = {
+          id: `AUTO-SLIP-${nama}-${periode}`,
+          karyawanId: karyawan?.id || "",
+          nama,
+          nip: karyawan?.nip || "",
+          posisi: karyawan?.posisi || "",
+          departemen: karyawan?.departemen || "",
+          gajiPokok: Number(karyawan?.gajiPokok || 0),
+          tunjangan: Number(karyawan?.tunjanganTransport || 0),
+          feePaket: [],
+          feeTindakan: 0,
+          potongBpjsTk: Number(karyawan?.asuransi || karyawan?.bpjs || 0),
+          potonganTax: Number(karyawan?.pajak || 0),
+          periode,
+          status: "Selesai",
+          transactionDetails: [],
+          date: dateValue
+        };
+      }
+
+      const group = groups[key];
+      const harga = Number(record.harga || 0);
+      const feePercent = Number(record.fee || 0);
+      const totalFee = Math.round((harga * feePercent) / 100);
+
+      group.feeTindakan += totalFee;
+      group.transactionDetails.push({
+        tanggal: record.tanggal || record.date || "",
+        namaPasien: record.pasien || record.namaPasien || "",
+        klinik: record.klinik || record.klinikHomeService || "",
+        tindakan: record.treatment || record.tindakan || "",
+        harga,
+        feePercent,
+        totalFee,
+        feeTransport: Number(record.feeTransport || 0)
+      });
+    });
+
+    return Object.values(groups).map((group) => {
+      const totalPenghasilan = group.gajiPokok + group.tunjangan + group.feeTindakan;
+      const totalPotongan = group.potongBpjsTk + group.potonganTax;
+      return {
+        ...group,
+        totalPenghasilan,
+        totalPotongan,
+        gajiNetto: totalPenghasilan - totalPotongan
+      };
+    });
+  }, [gajiData, karyawanData]);
+
+  const combinedSlipGajiData = useMemo(() => {
+    if (!Array.isArray(slipGajiData)) return deriveSlipsFromGajiData;
+    const existingKeys = new Set(slipGajiData.map((item) => `${item.nama}-${item.periode}`));
+    const derived = Array.isArray(deriveSlipsFromGajiData)
+      ? deriveSlipsFromGajiData.filter((item) => !existingKeys.has(`${item.nama}-${item.periode}`))
+      : [];
+    return [...slipGajiData, ...derived];
+  }, [slipGajiData, deriveSlipsFromGajiData]);
+
+  // Filter data
+  const filteredData = useMemo(() => {
+    return combinedSlipGajiData.filter((item) => {
+      const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
+      const matchPeriode = item.periode === bulan;
+      const matchSearch = searchQuery === "" || 
+        item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchKaryawan && matchPeriode && matchSearch;
+    });
+  }, [combinedSlipGajiData, filterKaryawan, bulan, searchQuery]);
+
   // Handle currency-like input where user types (allow manual typing)
   const handleCurrencyChange = (name, rawValue) => {
     // strip all non-digit characters
@@ -85,12 +169,12 @@ function SlipGaji() {
 
   // Stats
   const stats = useMemo(() => {
-    const total = slipGajiData.length;
-    const draft = slipGajiData.filter(d => d.status === "Draft").length;
-    const proses = slipGajiData.filter(d => d.status === "Proses").length;
-    const selesai = slipGajiData.filter(d => d.status === "Selesai").length;
+    const total = combinedSlipGajiData.length;
+    const draft = combinedSlipGajiData.filter(d => d.status === "Draft").length;
+    const proses = combinedSlipGajiData.filter(d => d.status === "Proses").length;
+    const selesai = combinedSlipGajiData.filter(d => d.status === "Selesai").length;
     return { total, draft, proses, selesai };
-  }, [slipGajiData]);
+  }, [combinedSlipGajiData]);
 
   // Handlers
   const handleAddClick = () => {

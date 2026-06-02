@@ -54,25 +54,27 @@ export default function CutiKaryawan() {
   const sisaCuti = totalJatahCuti - cutiTerpakai;
 
   // Set modal data saat modal dibuka; nama diisi manual oleh user
+  const getUserName = () => userProfile?.name || userProfile?.nama || "";
+
   const openTambahModal = () => {
-    setFormData({ nama: userProfile?.name || "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
+    setFormData({ nama: getUserName(), tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
     setShowTambahModal(true);
   };
 
   // Tambah data cuti
   const handleTambahCuti = async (e) => {
     e.preventDefault();
-    const namaAkun = userProfile?.name;
+    const namaAkun = getUserName();
     if (!namaAkun) {
       alert("Nama karyawan tidak boleh kosong");
       return;
     }
 
     const newCuti = {
-        ...formData,
-        nama: namaAkun,
-        id: formData.id || `CUTI${Date.now()}`,
-      };
+      ...formData,
+      nama: namaAkun,
+      id: formData.id || `CUTI${Date.now()}`,
+    };
 
     // If tanggalAkhir provided and lama empty, compute lama (inclusive)
     if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
@@ -412,8 +414,14 @@ export default function CutiKaryawan() {
               <button onClick={() => setShowTambahModal(false)} className="text-2xl text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <form onSubmit={handleTambahCuti} className="space-y-4">
-              <div className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg">
-                {userProfile?.name || "-"}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Nama Karyawan</label>
+                <input
+                  type="text"
+                  value={getUserName() || "-"}
+                  readOnly
+                  className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg focus:outline-none transition-all"
+                />
               </div>
 
               <div>

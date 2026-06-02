@@ -146,7 +146,7 @@ function getFeeByCategory(category) {
 
 function Treatment() {
 
-const { karyawanData } = useContext(AppContext);
+const { karyawanData, addTreatment, addGaji } = useContext(AppContext);
 console.log("DATA KARYAWAN:", karyawanData);
 
 const [dataTreatment, setDataTreatment] = useState(treatments);
@@ -241,31 +241,89 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
   setShowCatat(true);
   };
 
-  const simpanTreatment = () => {
-  if (!bidanTerpilih) {
-    alert("Pilih bidan terlebih dahulu");
-    return;
-  }
+  const simpanTreatment = async () => {
+    if (!bidanTerpilih) {
+      alert("Pilih bidan terlebih dahulu");
+      return;
+    }
 
-  const fee =
-    (selectedTreatment.harga *
-      getFeeByCategory(selectedTreatment.category)) / 100;
+    const fee =
+      (selectedTreatment.harga * getFeeByCategory(selectedTreatment.category)) / 100;
 
-  const dataBaru = {
-    id: Date.now(),
-    treatment: selectedTreatment.nama,
-    bidan: bidanTerpilih,
-    fee: fee,
-    tanggal: new Date().toLocaleDateString("id-ID"),
+    const dataBaru = {
+      id: Date.now(),
+      treatment: selectedTreatment.nama,
+      bidan: bidanTerpilih,
+      fee: fee,
+      tanggal: new Date().toLocaleDateString("id-ID"),
+    };
+
+    // Optimistically add to local catatan
+    setCatatanTreatment([...catatanTreatment, dataBaru]);
+
+    try {
+      // Find karyawan record by nama to get id and kompensasi
+      const karyawan = Array.isArray(karyawanData)
+        ? karyawanData.find((k) => (k.nama || k.name) === bidanTerpilih)
+        : null;
+
+      const karyawanId = karyawan ? (karyawan.id || karyawan._id || karyawan.user_id) : null;
+
+      // Prepare treatment payload for backend
+      const treatmentPayload = {
+        karyawanId: karyawanId,
+        nama: selectedTreatment.nama,
+        tipeLayanan: selectedTreatment.category || "Treatment",
+        tanggal: new Date().toISOString(),
+        treatment: selectedTreatment.nama,
+        biaya: selectedTreatment.harga || 0,
+        fee: fee
+      };
+
+      // Persist treatment to server (if authenticated)
+      if (addTreatment) await addTreatment(treatmentPayload);
+
+      // Prepare gaji payload using existing kompensasi dari karyawan (fallbacks)
+      const now = new Date();
+      const periode = `${String(now.getMonth() + 1).padStart(2, "0")}-${now.getFullYear()}`;
+
+      const gajiPokok = Number(karyawan?.gajiPokok || 0);
+      const tunjangan = Number(karyawan?.tunjangan || 0);
+      const potonganAsuransi = Number(karyawan?.asuransi || 0);
+      const potonganTax = Number(karyawan?.pajak || 0);
+
+      const gajiKotor = gajiPokok + fee + tunjangan;
+      const gajiNetto = gajiKotor - potonganAsuransi - potonganTax;
+
+      const gajiPayload = {
+        karyawanId: karyawanId,
+        karyawan: bidanTerpilih,
+        nama: bidanTerpilih,
+        tanggal: new Date().toISOString(),
+        pasien: selectedTreatment.pasien || "",
+        treatment: selectedTreatment.nama,
+        harga: selectedTreatment.harga || 0,
+        fee,
+        periode,
+        gajiPokok,
+        tunjangan,
+        bonus: fee,
+        potonganAsuransi,
+        potonganTax,
+        gajiKotor,
+        gajiNetto
+      };
+
+      if (addGaji) await addGaji(gajiPayload);
+
+      console.log("DATA TREATMENT BARU:", dataBaru);
+    } catch (e) {
+      console.error('Gagal menyimpan treatment/gaji otomatis:', e);
+    }
+
+    setShowCatat(false);
+    setBidanTerpilih("");
   };
-
-  setCatatanTreatment([...catatanTreatment, dataBaru]);
-
-  console.log("DATA TREATMENT BARU:", dataBaru);
-
-  setShowCatat(false);
-  setBidanTerpilih("");
-};
 
   return (
     <div className="space-y-8 pb-8">

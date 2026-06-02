@@ -3,7 +3,7 @@ import Logo from "../Images/demaralogo.png";
 import { AppContext } from "../context/AppContext";
 
 export default function SlipgajiKaryawan() {
-	const { slipGajiData = [], userProfile, karyawanData = [] } = useContext(AppContext);
+	const { slipGajiData = [], userProfile, karyawanData = [], gajiData = [] } = useContext(AppContext);
 	const [selected, setSelected] = useState(null);
 
 	// Format Rupiah helper
@@ -16,6 +16,89 @@ export default function SlipgajiKaryawan() {
 		}
 		return `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 	};
+
+	const monthNames = [
+		"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+		"Juli", "Agustus", "September", "Oktober", "November", "Desember"
+	];
+
+	const getMonthLabel = (dateString) => {
+		if (!dateString) return "";
+		const parsed = new Date(dateString);
+		if (isNaN(parsed.getTime())) return "";
+		return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+	};
+
+	const deriveSlipsFromGajiData = useMemo(() => {
+		if (!Array.isArray(gajiData) || gajiData.length === 0) return [];
+		const groups = {};
+
+		gajiData.forEach((record) => {
+			const nama = record.karyawan || record.nama || "";
+			if (!nama) return;
+			const dateValue = record.tanggal || record.date || record.createdAt || new Date().toISOString();
+			const periode = getMonthLabel(dateValue);
+			const key = `${nama}||${periode}`;
+
+			if (!groups[key]) {
+				const karyawan = Array.isArray(karyawanData) ? karyawanData.find((k) => k.nama === nama) : null;
+				groups[key] = {
+					id: `AUTO-SLIP-${nama}-${periode}`,
+					date: dateValue,
+					nama,
+					nip: karyawan?.nip || "",
+					posisi: karyawan?.posisi || "Staff",
+					department: karyawan?.departemen || "Klinik",
+					gajiPokok: Number(karyawan?.gajiPokok || 0),
+					uangTransport: Number(karyawan?.tunjanganTransport || 0),
+					feePaket: [],
+					feeTindakan: 0,
+					potongBpjsTk: Number(karyawan?.asuransi || karyawan?.bpjs || 0),
+					potonganTax: Number(karyawan?.pajak || 0),
+					periode,
+					status: "Selesai",
+					transactionDetails: []
+				};
+			}
+
+			const group = groups[key];
+			const harga = Number(record.harga || 0);
+			const feePercent = Number(record.fee || 0);
+			const totalFee = Math.round((harga * feePercent) / 100);
+
+			group.feeTindakan += totalFee;
+			group.transactionDetails.push({
+				tanggal: record.tanggal || record.date || "",
+				namaPasien: record.pasien || record.namaPasien || "",
+				klinikHomeService: record.klinik || record.klinikHomeService || "",
+				tindakan: record.treatment || record.tindakan || "",
+				harga,
+				feePercent,
+				totalFee,
+				feeTransport: Number(record.feeTransport || 0)
+			});
+		});
+
+		return Object.values(groups).map((group) => {
+			const totalPenghasilan = group.gajiPokok + group.uangTransport + group.feeTindakan;
+			const totalPotongan = group.potongBpjsTk + group.potonganTax;
+			return {
+				...group,
+				totalPenghasilan,
+				totalPotongan,
+				gajiNetto: totalPenghasilan - totalPotongan
+			};
+		});
+	}, [gajiData, karyawanData]);
+
+	const combinedSlipGajiData = useMemo(() => {
+		if (!Array.isArray(slipGajiData)) return deriveSlipsFromGajiData;
+		const manualKeys = new Set(slipGajiData.map((item) => `${item.nama}-${item.periode || getMonthLabel(item.date)}`));
+		const derived = Array.isArray(deriveSlipsFromGajiData)
+			? deriveSlipsFromGajiData.filter((item) => !manualKeys.has(`${item.nama}-${item.periode || getMonthLabel(item.date)}`))
+			: [];
+		return [...slipGajiData, ...derived];
+	}, [slipGajiData, deriveSlipsFromGajiData]);
 
 	// Convert transaction details from admin format to karyawan format
 	const convertTransactionDetails = (adminDetails) => {
@@ -89,16 +172,15 @@ export default function SlipgajiKaryawan() {
 		});
 	};
 
-	// Filter slip gaji untuk ditampilkan (SEMUA slip untuk semua karyawan)
+	// Filter slip gaji untuk ditampilkan hanya untuk karyawan login
 	const slips = useMemo(() => {
-		// Jika tidak ada slipGajiData, return empty array
-		if (!Array.isArray(slipGajiData) || slipGajiData.length === 0) {
-			return [];
-		}
-
-		// Convert dan tampilkan SEMUA slip gaji (bukan hanya untuk user yang login)
-		return convertSlipGajiData(slipGajiData);
-	}, [slipGajiData, karyawanData]);
+		const currentUserName = userProfile?.name || userProfile?.nama || "";
+		const source = Array.isArray(combinedSlipGajiData) ? combinedSlipGajiData : [];
+		const filtered = currentUserName
+			? source.filter((slip) => slip.nama === currentUserName || slip.employee?.name === currentUserName)
+			: source;
+		return convertSlipGajiData(filtered);
+	}, [combinedSlipGajiData, userProfile, karyawanData]);
 
 	function openSlip(slip) {
 		setSelected(slip);

@@ -110,21 +110,6 @@ export const AppContextProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  useEffect(() => {
-  if (!Array.isArray(treatmentData)) return;
-
-  const autoGaji = treatmentData.map((t) => {
-    return {
-      id: `GAJI_AUTO_${t.id}`,
-      nama: t.nama,
-      total: t.totalFee || 0,
-      sumber: 'treatment'
-    };
-  });
-
-  setGajiData(autoGaji);
-}, [treatmentData]);
-
   // Slip Gaji Data
   const [slipGajiData, setSlipGajiData] = useState(() => {
     const saved = localStorage.getItem('slipGajiData');

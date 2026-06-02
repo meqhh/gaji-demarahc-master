@@ -236,6 +236,89 @@ function FeeTindakanModal({
                   <p className="text-xs text-gray-600 mt-1">{formatRupiah(kompGaji.tunjanganTransport || 0)}</p>
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Jam Lembur</label>
+                    <input
+                      type="number"
+                      id="lemburJam"
+                      placeholder="0"
+                      min="0"
+                      value={kompGaji.lemburJam || ''}
+                      onChange={(e) => onKompGajiChange({ ...kompGaji, lemburJam: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nilai Kinerja</label>
+                    <input
+                      type="number"
+                      id="nilaiKinerja"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      value={kompGaji.nilaiKinerja || ''}
+                      onChange={(e) => onKompGajiChange({ ...kompGaji, nilaiKinerja: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Potongan Pajak</label>
+                    <input
+                      type="number"
+                      id="potonganPajak"
+                      placeholder="0"
+                      min="0"
+                      value={kompGaji.potonganPajak || ''}
+                      onChange={(e) => onKompGajiChange({ ...kompGaji, potonganPajak: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Potongan Kasbon</label>
+                    <input
+                      type="number"
+                      id="potonganKasbon"
+                      placeholder="0"
+                      min="0"
+                      value={kompGaji.potonganKasbon || ''}
+                      onChange={(e) => onKompGajiChange({ ...kompGaji, potonganKasbon: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    />
+                    <p className="text-xs text-gray-600 mt-1">Potongan kasbon langsung dipotong</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Potongan Alpha</label>
+                    <input
+                      type="number"
+                      id="potonganAlpha"
+                      placeholder="0"
+                      min="0"
+                      value={kompGaji.potonganAlpha || ''}
+                      onChange={(e) => onKompGajiChange({ ...kompGaji, potonganAlpha: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Potongan Telat</label>
+                    <input
+                      type="number"
+                      id="potonganTelat"
+                      placeholder="0"
+                      min="0"
+                      value={kompGaji.potonganTelat || ''}
+                      onChange={(e) => onKompGajiChange({ ...kompGaji, potonganTelat: parseFloat(e.target.value) || 0 })}
+                      className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+                    />
+                  </div>
+                </div>
+
                 {/* Divider */}
                 <div className="border-t border-gray-200 pt-3"></div>
 
@@ -253,10 +336,6 @@ function FeeTindakanModal({
                   />
                   <p className="text-xs text-gray-600 mt-1">-{formatRupiah(kompGaji.potonganBPJS || 0)}</p>
                 </div>
-
-                {/* Divider */}
-                <div className="border-t-2 border-gray-300 pt-3"></div>
-
                 {/* Total Gaji Bersih */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <p className="text-xs text-gray-600 mb-1">Total Gaji Bersih</p>
@@ -444,13 +523,33 @@ function Gaji() {
       return saved ? JSON.parse(saved) : {
         gajiPokok: 0,
         tunjanganTransport: 0,
-        potonganBPJS: 0
+        potonganBPJS: 0,
+        lemburJam: 0,
+        nilaiKinerja: 0,
+        potonganPajak: 0,
+        potonganAlpha: 0,
+        potonganTelat: 0,
+        potonganKasbon: 0,
+        bonusKehadiran: 0,
+        bonusLembur: 0,
+        bonusKinerja: 0,
+        bonusJabatan: 0
       };
     } catch (e) {
       return {
         gajiPokok: 0,
         tunjanganTransport: 0,
-        potonganBPJS: 0
+        potonganBPJS: 0,
+        lemburJam: 0,
+        nilaiKinerja: 0,
+        potonganPajak: 0,
+        potonganAlpha: 0,
+        potonganTelat: 0,
+        potonganKasbon: 0,
+        bonusKehadiran: 0,
+        bonusLembur: 0,
+        bonusKinerja: 0,
+        bonusJabatan: 0
       };
     }
   });
@@ -529,9 +628,21 @@ function Gaji() {
     return `Rp ${Math.round(value * 1000).toLocaleString('id-ID')}`;
   };
 
+  const monthNames = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+
+  const getMonthLabel = (dateString) => {
+    if (!dateString) return "";
+    const parsed = new Date(dateString);
+    if (isNaN(parsed.getTime())) return "";
+    return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+  };
+
   // Filter gaji data based on selected filters
   const filteredGajiData = useMemo(() => {
-  let data = [...gajiData];
+  let data = Array.isArray(gajiData) ? [...gajiData] : [];
 
   if (filterTanggal) {
     data = data.filter(
@@ -546,7 +657,7 @@ function Gaji() {
   }
 
   return data;
-}, [treatmentData, filterTanggal, filterKaryawan]);
+}, [gajiData, filterTanggal, filterKaryawan]);
 
   // Hitung total dari filtered data
   const totalFeeTindakan = filteredGajiData.reduce(
@@ -558,15 +669,62 @@ function Gaji() {
     0
   );
 
-  // Hitung total gaji
-const totalGross =
-  (kompGaji.gajiPokok || 0) +
-  totalFeeTindakan +
-  totalFeePaket +
-  (kompGaji.tunjanganTransport || 0);
+  const selectedKaryawan = useMemo(() => {
+    if (!filterKaryawan || filterKaryawan === "Semua") return null;
+    return Array.isArray(karyawanData)
+      ? karyawanData.find((k) => k.nama === filterKaryawan)
+      : null;
+  }, [filterKaryawan, karyawanData]);
 
-const totalGajiBersih =
-  totalGross - (kompGaji.potonganBPJS || 0);
+  const currentPeriode = filterTanggal ? getMonthLabel(filterTanggal) : getMonthLabel(new Date().toISOString());
+
+  const selectedAbsensi = useMemo(() => {
+    if (!selectedKaryawan || !Array.isArray(absensiData)) return [];
+    return absensiData.filter((item) => {
+      if (!item || !item.nama) return false;
+      if (item.nama !== selectedKaryawan.nama) return false;
+      const periode = getMonthLabel(item.tanggal || item.date || item.dateString || item.date || item.createdAt);
+      return periode === currentPeriode;
+    });
+  }, [absensiData, selectedKaryawan, currentPeriode]);
+
+  const hadirCount = selectedAbsensi.filter((item) => String(item.status).toLowerCase() === "hadir").length;
+  const alphaCount = selectedAbsensi.filter((item) => String(item.status).toLowerCase() === "alpha").length;
+  const lateCount = selectedAbsensi.filter((item) => /telat|terlambat/i.test(String(item.status))).length;
+  const totalAbsensiDays = selectedAbsensi.length;
+
+  const gajiPokok = Number(kompGaji.gajiPokok || selectedKaryawan?.gajiPokok || 0);
+  const tunjanganTransport = Number(kompGaji.tunjanganTransport || selectedKaryawan?.tunjanganTransport || 0);
+  const potonganBPJS = Number(kompGaji.potonganBPJS || selectedKaryawan?.asuransi || selectedKaryawan?.bpjs || 0);
+
+  const defaultPajak = Math.round(((gajiPokok + totalFeeTindakan + totalFeePaket + tunjanganTransport) * 0.05));
+  const potonganPajak = Number(kompGaji.potonganPajak || selectedKaryawan?.pajak || defaultPajak);
+
+  const bonusKehadiranAuto = totalAbsensiDays > 0 && alphaCount === 0 && hadirCount / totalAbsensiDays >= 0.9 ? Math.round(gajiPokok * 0.05) : 0;
+  const bonusLemburAuto = Math.round((Number(kompGaji.lemburJam || 0) * (gajiPokok / 173)) * 1.5);
+  const bonusKinerjaAuto = Number(kompGaji.nilaiKinerja || selectedKaryawan?.nilaiKinerja || 0) >= 90
+    ? Math.round(gajiPokok * 0.1)
+    : Number(kompGaji.nilaiKinerja || selectedKaryawan?.nilaiKinerja || 0) >= 75
+      ? Math.round(gajiPokok * 0.05)
+      : Math.round(gajiPokok * 0.02);
+
+  const getJabatanBonus = (posisi) => {
+    if (!posisi) return 0;
+    const title = posisi.toLowerCase();
+    if (title.includes("manager") || title.includes("kepala") || title.includes("supervisor")) return Math.round(gajiPokok * 0.08);
+    if (title.includes("admin") || title.includes("senior") || title.includes("koordinator")) return Math.round(gajiPokok * 0.05);
+    return Math.round(gajiPokok * 0.03);
+  };
+
+  const bonusKehadiran = Number(kompGaji.bonusKehadiran || bonusKehadiranAuto);
+  const bonusLembur = Number(kompGaji.bonusLembur || bonusLemburAuto);
+  const bonusKinerja = Number(kompGaji.bonusKinerja || bonusKinerjaAuto);
+  const bonusJabatan = Number(kompGaji.bonusJabatan || getJabatanBonus(selectedKaryawan?.posisi));
+
+  const totalBonus = bonusKehadiran + bonusLembur + bonusKinerja + bonusJabatan;
+  const totalPotongan = potonganBPJS + Number(kompGaji.potonganAlpha || alphaCount * 50000) + Number(kompGaji.potonganTelat || lateCount * 25000) + potonganPajak + Number(kompGaji.potonganKasbon || 0);
+  const totalGross = gajiPokok + tunjanganTransport + totalFeeTindakan + totalFeePaket + totalBonus;
+  const totalGajiBersih = totalGross - totalPotongan;
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
