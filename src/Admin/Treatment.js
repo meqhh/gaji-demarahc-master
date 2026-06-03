@@ -132,6 +132,7 @@ const treatments = [
 const TREATMENT_FEE_DEDUCTION = 75000; // Rp75.000 potongan per treatment
 const MAX_TREATMENT_FEE = 250000; // Rp250.000 maksimal fee
 const MIN_TREATMENT_FEE = 25000; // Rp25.000 minimal fee setelah potongan
+const ADMIN_FIXED_FEE_PERCENT = 15;
 
 // FEE OTOMATIS BERDASARKAN KATEGORI
 function getFeeByCategory(category) {
@@ -269,16 +270,16 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       return;
     }
 
-    const fee = calculateTreatmentFee(selectedTreatment.harga, selectedTreatment.category);
+    const feePercent = ADMIN_FIXED_FEE_PERCENT;
+    const feeAmount = Math.round((Number(selectedTreatment.harga || 0) * feePercent) / 100);
 
-    const feePercent = selectedTreatment.fee || getFeeByCategory(selectedTreatment.category);
     const dataBaru = {
       id: Date.now(),
       treatment: selectedTreatment.nama,
       bidan: bidanTerpilih,
-      fee: fee,
+      fee: feeAmount,
       feePercent: feePercent,
-      feeAmount: fee,
+      feeAmount: feeAmount,
       tanggal: new Date().toLocaleDateString("id-ID"),
     };
 
@@ -301,9 +302,9 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         tanggal: new Date().toISOString(),
         treatment: selectedTreatment.nama,
         biaya: selectedTreatment.harga || 0,
-        fee: fee,
+        fee: feeAmount,
         feePercent: feePercent,
-        feeAmount: fee,
+        feeAmount: feeAmount,
       };
 
       // Persist treatment to server (if authenticated)
@@ -318,7 +319,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       const potonganAsuransi = Number(karyawan?.asuransi || 0);
       const potonganTax = Number(karyawan?.pajak || 0);
 
-      const gajiKotor = gajiPokok + fee + tunjangan;
+      const gajiKotor = gajiPokok + feeAmount + tunjangan;
       const gajiNetto = gajiKotor - potonganAsuransi - potonganTax;
 
       const gajiPayload = {
@@ -331,11 +332,11 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         harga: selectedTreatment.harga || 0,
         fee: feePercent,
         feePercent: feePercent,
-        feeAmount: fee,
+        feeAmount: feeAmount,
         periode,
         gajiPokok,
         tunjangan,
-        bonus: fee,
+        bonus: feeAmount,
         potonganAsuransi,
         potonganTax,
         gajiKotor,

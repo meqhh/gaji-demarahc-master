@@ -2,14 +2,11 @@ import mongoose from 'mongoose';
 
 const slipGajiSchema = new mongoose.Schema({
   karyawanId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Karyawan',
+    type: String,
     required: true
   },
   gajiId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Gaji',
-    required: true
+    type: String
   },
   nama: {
     type: String,

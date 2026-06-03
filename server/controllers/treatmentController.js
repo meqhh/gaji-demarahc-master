@@ -1,13 +1,29 @@
-import Treatment from '../models/Treatment.js';
+import { treatmentDB } from '../database/mysqlDb.js';
+
+const snakeToCamel = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/_([a-z])/g, (_, c) => c.toUpperCase()),
+      value
+    ])
+  );
+
+const camelToSnake = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/([A-Z])/g, '_$1').toLowerCase(),
+      value
+    ])
+  );
 
 // Get all treatment
 export const getAllTreatment = async (req, res) => {
   try {
-    const treatment = await Treatment.find().populate('karyawanId').sort({ tanggal: -1 });
+    const treatment = await treatmentDB.getAll();
     res.json({
       success: true,
       message: 'Data treatment berhasil diambil',
-      data: treatment
+      data: treatment.map(snakeToCamel)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -17,11 +33,11 @@ export const getAllTreatment = async (req, res) => {
 // Get treatment by karyawan
 export const getTreatmentByKaryawan = async (req, res) => {
   try {
-    const treatment = await Treatment.find({ karyawanId: req.params.karyawanId }).sort({ tanggal: -1 });
+    const treatment = await treatmentDB.findByKaryawanId(req.params.karyawanId);
     res.json({
       success: true,
       message: 'Data treatment karyawan berhasil diambil',
-      data: treatment
+      data: treatment.map(snakeToCamel)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -37,13 +53,16 @@ export const createTreatment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
     
-    const newTreatment = new Treatment(req.body);
-    await newTreatment.save();
+    const newTreatment = await treatmentDB.save({
+      ...camelToSnake(req.body),
+      karyawan_id: karyawanId,
+      created_at: new Date()
+    });
     
     res.status(201).json({
       success: true,
       message: 'Data treatment berhasil ditambahkan',
-      data: newTreatment
+      data: snakeToCamel(newTreatment)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -53,20 +72,22 @@ export const createTreatment = async (req, res) => {
 // Update treatment
 export const updateTreatment = async (req, res) => {
   try {
-    const treatment = await Treatment.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedAt: new Date() },
-      { new: true }
-    );
-    
+    const treatment = await treatmentDB.findById(req.params.id);
     if (!treatment) {
       return res.status(404).json({ success: false, message: 'Data treatment tidak ditemukan' });
     }
+
+    const updatedTreatment = await treatmentDB.save({
+      ...treatment,
+      ...camelToSnake(req.body),
+      id: req.params.id,
+      updated_at: new Date()
+    });
     
     res.json({
       success: true,
       message: 'Data treatment berhasil diperbarui',
-      data: treatment
+      data: snakeToCamel(updatedTreatment)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -76,11 +97,13 @@ export const updateTreatment = async (req, res) => {
 // Delete treatment
 export const deleteTreatment = async (req, res) => {
   try {
-    const treatment = await Treatment.findByIdAndDelete(req.params.id);
+    const treatment = await treatmentDB.findById(req.params.id);
     
     if (!treatment) {
       return res.status(404).json({ success: false, message: 'Data treatment tidak ditemukan' });
     }
+
+    await treatmentDB.delete(req.params.id);
     
     res.json({
       success: true,

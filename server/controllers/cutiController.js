@@ -1,13 +1,29 @@
-import Cuti from '../models/Cuti.js';
+import { cutiDB } from '../database/mysqlDb.js';
+
+const snakeToCamel = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/_([a-z])/g, (_, c) => c.toUpperCase()),
+      value
+    ])
+  );
+
+const camelToSnake = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/([A-Z])/g, '_$1').toLowerCase(),
+      value
+    ])
+  );
 
 // Get all cuti
 export const getAllCuti = async (req, res) => {
   try {
-    const cuti = await Cuti.find().populate('karyawanId').sort({ createdAt: -1 });
+    const cuti = await cutiDB.getAll();
     res.json({
       success: true,
       message: 'Data cuti berhasil diambil',
-      data: cuti
+      data: cuti.map(snakeToCamel)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -17,11 +33,11 @@ export const getAllCuti = async (req, res) => {
 // Get cuti by ID
 export const getCutiById = async (req, res) => {
   try {
-    const cuti = await Cuti.findById(req.params.id).populate('karyawanId');
+    const cuti = await cutiDB.findById(req.params.id);
     if (!cuti) {
       return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
     }
-    res.json({ success: true, data: cuti });
+    res.json({ success: true, data: snakeToCamel(cuti) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -30,11 +46,11 @@ export const getCutiById = async (req, res) => {
 // Get cuti by karyawan
 export const getCutiByKaryawan = async (req, res) => {
   try {
-    const cuti = await Cuti.find({ karyawanId: req.params.karyawanId }).sort({ createdAt: -1 });
+    const cuti = await cutiDB.findByKaryawanId(req.params.karyawanId);
     res.json({
       success: true,
       message: 'Data cuti karyawan berhasil diambil',
-      data: cuti
+      data: cuti.map(snakeToCamel)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -50,13 +66,16 @@ export const createCuti = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
     
-    const newCuti = new Cuti(req.body);
-    await newCuti.save();
+    const newCuti = await cutiDB.save({
+      ...camelToSnake(req.body),
+      karyawan_id: karyawanId,
+      created_at: new Date()
+    });
     
     res.status(201).json({
       success: true,
       message: 'Pengajuan cuti berhasil dibuat',
-      data: newCuti
+      data: snakeToCamel(newCuti)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -66,17 +85,18 @@ export const createCuti = async (req, res) => {
 // Update cuti data (karyawan bisa edit saat status masih Pending, admin bisa update status)
 export const updateCuti = async (req, res) => {
   try {
-    const cuti = await Cuti.findById(req.params.id);
+    const cuti = await cutiDB.findById(req.params.id);
     if (!cuti) {
       return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
     }
 
     const isAdmin = req.user?.role === 'admin';
+    const cutiCamel = snakeToCamel(cuti);
     if (!isAdmin) {
-      if (cuti.nama !== req.user?.name) {
+      if (cutiCamel.nama !== req.user?.name) {
         return res.status(403).json({ success: false, message: 'Tidak memiliki izin untuk mengubah cuti ini' });
       }
-      if (cuti.status !== 'Pending') {
+      if (cutiCamel.status !== 'Pending') {
         return res.status(400).json({ success: false, message: 'Pengajuan cuti hanya dapat diedit saat status Pending' });
       }
     }
@@ -101,8 +121,12 @@ export const updateCuti = async (req, res) => {
     updates.updatedBy = req.user?.name || req.user?.email || 'System';
     updates.updatedAt = new Date();
 
-    const updatedCuti = await Cuti.findByIdAndUpdate(req.params.id, updates, { new: true });
-    res.json({ success: true, message: 'Pengajuan cuti berhasil diperbarui', data: updatedCuti });
+    const updatedCuti = await cutiDB.save({
+      ...cuti,
+      ...camelToSnake(updates),
+      id: req.params.id
+    });
+    res.json({ success: true, message: 'Pengajuan cuti berhasil diperbarui', data: snakeToCamel(updatedCuti) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -120,6 +144,11 @@ export const updateCutiStatus = async (req, res) => {
     if (status === 'Ditolak' && !rejectionReason) {
       return res.status(400).json({ success: false, message: 'Alasan penolakan harus diisi' });
     }
+
+    const existingCuti = await cutiDB.findById(req.params.id);
+    if (!existingCuti) {
+      return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
+    }
     
     const updateData = {
       status,
@@ -131,20 +160,16 @@ export const updateCutiStatus = async (req, res) => {
       updateData.rejectionReason = rejectionReason;
     }
     
-    const cuti = await Cuti.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
-    
-    if (!cuti) {
-      return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
-    }
+    const cuti = await cutiDB.save({
+      ...existingCuti,
+      ...camelToSnake(updateData),
+      id: req.params.id
+    });
     
     res.json({
       success: true,
       message: `Pengajuan cuti berhasil diubah menjadi ${status}`,
-      data: cuti
+      data: snakeToCamel(cuti)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -154,11 +179,13 @@ export const updateCutiStatus = async (req, res) => {
 // Delete cuti
 export const deleteCuti = async (req, res) => {
   try {
-    const cuti = await Cuti.findByIdAndDelete(req.params.id);
+    const cuti = await cutiDB.findById(req.params.id);
     
     if (!cuti) {
       return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
     }
+
+    await cutiDB.delete(req.params.id);
     
     res.json({
       success: true,

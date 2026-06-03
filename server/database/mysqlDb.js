@@ -18,6 +18,19 @@ const getTableColumns = async (tableName) => {
   }
 };
 
+const findRowsByField = async (tableName, fieldName, value) => {
+  const conn = await pool.getConnection();
+  try {
+    const [rows] = await conn.query(
+      `SELECT * FROM \`${tableName}\` WHERE \`${fieldName}\` = ?`,
+      [value]
+    );
+    return Array.isArray(rows) ? rows : [];
+  } finally {
+    conn.release();
+  }
+};
+
 // Users Database Operations
 const usersDB = {
   getAll: async () => {
@@ -322,19 +335,49 @@ const slipGajiDB = {
     }
   },
 
+  findByKaryawanId: async (karyawanId) => {
+    try {
+      return await findRowsByField('slip_gaji', 'karyawan_id', karyawanId);
+    } catch (err) {
+      console.error('Error in slipGajiDB.findByKaryawanId:', err);
+      return [];
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const conn = await pool.getConnection();
+      await conn.query('DELETE FROM slip_gaji WHERE id = ?', [id]);
+      conn.release();
+    } catch (err) {
+      console.error('Error in slipGajiDB.delete:', err);
+      throw err;
+    }
+  },
+
   save: async (slipGaji) => {
     try {
       const conn = await pool.getConnection();
+      const tableColumns = await getTableColumns('slip_gaji');
       
-      const keys = Object.keys(slipGaji).filter(k => k !== 'created_at');
-      const placeholders = keys.map(() => '?').join(', ');
-      const values = keys.map(k => slipGaji[k]);
-      
-      const [result] = await conn.query(
-        `INSERT INTO slip_gaji (${keys.join(', ')}) VALUES (${placeholders})`,
-        values
-      );
-      slipGaji.id = result.insertId;
+      if (slipGaji.id) {
+        const fields = Object.keys(slipGaji).filter((k) => k !== 'id' && tableColumns.has(k));
+        const values = fields.map((k) => slipGaji[k]);
+        values.push(slipGaji.id);
+
+        const setClause = fields.map((f) => `${f} = ?`).join(', ');
+        await conn.query(`UPDATE slip_gaji SET ${setClause} WHERE id = ?`, values);
+      } else {
+        const keys = Object.keys(slipGaji).filter((k) => k !== 'created_at' && tableColumns.has(k));
+        const placeholders = keys.map(() => '?').join(', ');
+        const values = keys.map((k) => slipGaji[k]);
+
+        const [result] = await conn.query(
+          `INSERT INTO slip_gaji (${keys.join(', ')}) VALUES (${placeholders})`,
+          values
+        );
+        slipGaji.id = result.insertId;
+      }
       
       conn.release();
       return slipGaji;
@@ -371,22 +414,43 @@ const cutiDB = {
     }
   },
 
+  findByKaryawanId: async (karyawanId) => {
+    try {
+      return await findRowsByField('cuti', 'karyawan_id', karyawanId);
+    } catch (err) {
+      console.error('Error in cutiDB.findByKaryawanId:', err);
+      return [];
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const conn = await pool.getConnection();
+      await conn.query('DELETE FROM cuti WHERE id = ?', [id]);
+      conn.release();
+    } catch (err) {
+      console.error('Error in cutiDB.delete:', err);
+      throw err;
+    }
+  },
+
   save: async (cuti) => {
     try {
       const conn = await pool.getConnection();
+      const tableColumns = await getTableColumns('cuti');
       cuti.created_at = new Date();
       
       if (cuti.id) {
-        const fields = Object.keys(cuti).filter(k => k !== 'id');
-        const values = fields.map(k => cuti[k]);
+        const fields = Object.keys(cuti).filter((k) => k !== 'id' && tableColumns.has(k));
+        const values = fields.map((k) => cuti[k]);
         values.push(cuti.id);
         
-        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const setClause = fields.map((f) => `${f} = ?`).join(', ');
         await conn.query(`UPDATE cuti SET ${setClause} WHERE id = ?`, values);
       } else {
-        const keys = Object.keys(cuti).filter(k => k !== 'created_at');
+        const keys = Object.keys(cuti).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
-        const values = keys.map(k => cuti[k]);
+        const values = keys.map((k) => cuti[k]);
         
         const [result] = await conn.query(
           `INSERT INTO cuti (${keys.join(', ')}) VALUES (${placeholders})`,
@@ -430,22 +494,43 @@ const absensiDB = {
     }
   },
 
+  findByKaryawanId: async (karyawanId) => {
+    try {
+      return await findRowsByField('absensi', 'karyawan_id', karyawanId);
+    } catch (err) {
+      console.error('Error in absensiDB.findByKaryawanId:', err);
+      return [];
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const conn = await pool.getConnection();
+      await conn.query('DELETE FROM absensi WHERE id = ?', [id]);
+      conn.release();
+    } catch (err) {
+      console.error('Error in absensiDB.delete:', err);
+      throw err;
+    }
+  },
+
   save: async (absensi) => {
     try {
       const conn = await pool.getConnection();
+      const tableColumns = await getTableColumns('absensi');
       absensi.created_at = new Date();
       
       if (absensi.id) {
-        const fields = Object.keys(absensi).filter(k => k !== 'id');
-        const values = fields.map(k => absensi[k]);
+        const fields = Object.keys(absensi).filter((k) => k !== 'id' && tableColumns.has(k));
+        const values = fields.map((k) => absensi[k]);
         values.push(absensi.id);
         
-        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const setClause = fields.map((f) => `${f} = ?`).join(', ');
         await conn.query(`UPDATE absensi SET ${setClause} WHERE id = ?`, values);
       } else {
-        const keys = Object.keys(absensi).filter(k => k !== 'created_at');
+        const keys = Object.keys(absensi).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
-        const values = keys.map(k => absensi[k]);
+        const values = keys.map((k) => absensi[k]);
         
         const [result] = await conn.query(
           `INSERT INTO absensi (${keys.join(', ')}) VALUES (${placeholders})`,
@@ -489,22 +574,43 @@ const gajiDB = {
     }
   },
 
+  findByKaryawanId: async (karyawanId) => {
+    try {
+      return await findRowsByField('gaji', 'karyawan_id', karyawanId);
+    } catch (err) {
+      console.error('Error in gajiDB.findByKaryawanId:', err);
+      return [];
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const conn = await pool.getConnection();
+      await conn.query('DELETE FROM gaji WHERE id = ?', [id]);
+      conn.release();
+    } catch (err) {
+      console.error('Error in gajiDB.delete:', err);
+      throw err;
+    }
+  },
+
   save: async (gaji) => {
     try {
       const conn = await pool.getConnection();
+      const tableColumns = await getTableColumns('gaji');
       gaji.created_at = new Date();
       
       if (gaji.id) {
-        const fields = Object.keys(gaji).filter(k => k !== 'id');
-        const values = fields.map(k => gaji[k]);
+        const fields = Object.keys(gaji).filter((k) => k !== 'id' && tableColumns.has(k));
+        const values = fields.map((k) => gaji[k]);
         values.push(gaji.id);
         
-        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const setClause = fields.map((f) => `${f} = ?`).join(', ');
         await conn.query(`UPDATE gaji SET ${setClause} WHERE id = ?`, values);
       } else {
-        const keys = Object.keys(gaji).filter(k => k !== 'created_at');
+        const keys = Object.keys(gaji).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
-        const values = keys.map(k => gaji[k]);
+        const values = keys.map((k) => gaji[k]);
         
         const [result] = await conn.query(
           `INSERT INTO gaji (${keys.join(', ')}) VALUES (${placeholders})`,
@@ -548,22 +654,43 @@ const treatmentDB = {
     }
   },
 
+  findByKaryawanId: async (karyawanId) => {
+    try {
+      return await findRowsByField('treatment', 'karyawan_id', karyawanId);
+    } catch (err) {
+      console.error('Error in treatmentDB.findByKaryawanId:', err);
+      return [];
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const conn = await pool.getConnection();
+      await conn.query('DELETE FROM treatment WHERE id = ?', [id]);
+      conn.release();
+    } catch (err) {
+      console.error('Error in treatmentDB.delete:', err);
+      throw err;
+    }
+  },
+
   save: async (treatment) => {
     try {
       const conn = await pool.getConnection();
+      const tableColumns = await getTableColumns('treatment');
       treatment.created_at = new Date();
       
       if (treatment.id) {
-        const fields = Object.keys(treatment).filter(k => k !== 'id');
-        const values = fields.map(k => treatment[k]);
+        const fields = Object.keys(treatment).filter((k) => k !== 'id' && tableColumns.has(k));
+        const values = fields.map((k) => treatment[k]);
         values.push(treatment.id);
         
-        const setClause = fields.map(f => `${f} = ?`).join(', ');
+        const setClause = fields.map((f) => `${f} = ?`).join(', ');
         await conn.query(`UPDATE treatment SET ${setClause} WHERE id = ?`, values);
       } else {
-        const keys = Object.keys(treatment).filter(k => k !== 'created_at');
+        const keys = Object.keys(treatment).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
-        const values = keys.map(k => treatment[k]);
+        const values = keys.map((k) => treatment[k]);
         
         const [result] = await conn.query(
           `INSERT INTO treatment (${keys.join(', ')}) VALUES (${placeholders})`,

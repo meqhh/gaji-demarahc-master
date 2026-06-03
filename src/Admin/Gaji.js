@@ -570,19 +570,74 @@ function Gaji() {
   const [deleteType, setDeleteType] = useState(null);
   
   // Filter state
-  const [filterTanggal, setFilterTanggal] = useState("");
-  const [filterKaryawan, setFilterKaryawan] = useState("Semua");
+  const [filterTanggal, setFilterTanggal] = useState(() => {
+    try {
+      return localStorage.getItem("gajiFilterTanggal") || "";
+    } catch (e) {
+      return "";
+    }
+  });
 
-  // Get unique karyawan names from active karyawan data only
+  const [filterKaryawan, setFilterKaryawan] = useState(() => {
+    try {
+      return localStorage.getItem("gajiSelectedKaryawan") || "Semua";
+    } catch (e) {
+      return "Semua";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("gajiFilterTanggal", filterTanggal);
+    } catch (e) {}
+  }, [filterTanggal]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("gajiSelectedKaryawan", filterKaryawan);
+    } catch (e) {}
+  }, [filterKaryawan]);
+
+  const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+  const handleFilterTanggalChange = (value) => {
+    setFilterTanggal(value);
+    try {
+      localStorage.setItem("gajiFilterTanggal", value);
+    } catch (e) {}
+  };
+
+  const handleFilterKaryawanChange = (value) => {
+    setFilterKaryawan(value);
+    try {
+      localStorage.setItem("gajiSelectedKaryawan", value);
+    } catch (e) {}
+  };
+
+  const getNormalizedName = (item) => normalizeText(item?.karyawan || item?.nama || item?.name || "");
+
+  // Get unique karyawan names from karyawan data and gaji data
   const uniqueKaryawanNames = useMemo(() => {
-    const karyawanNames = Array.isArray(karyawanData) && karyawanData.length > 0
-      ? karyawanData
-          .map((k) => k?.nama)
-          .filter((name) => name && name.trim() !== "")
-      : [];
+    const nameMap = new Map();
 
-    return [...new Set(karyawanNames)].sort();
-  }, [karyawanData]);
+    if (Array.isArray(karyawanData)) {
+      karyawanData.forEach((k) => {
+        const name = k?.nama || k?.name;
+        const key = normalizeText(name);
+        if (key && !nameMap.has(key)) nameMap.set(key, name.trim());
+      });
+    }
+
+    if (Array.isArray(gajiData)) {
+      gajiData.forEach((item) => {
+        const name = item?.karyawan || item?.nama || item?.name;
+        const key = normalizeText(name);
+        if (key && !nameMap.has(key)) nameMap.set(key, name.trim());
+      });
+    }
+
+    return Array.from(nameMap.values()).sort((a, b) => a.localeCompare(b, 'id'));
+  }, [karyawanData, gajiData]);
 
   // Tambah atau Edit Fee Paket
   const handlePaketSubmit = (data) => {
@@ -619,10 +674,14 @@ function Gaji() {
   // Handle change komponen gaji
   const handleKompGajiChange = (e) => {
     const { id, value } = e.target;
-    setKompGaji({
+    const updated = {
       ...kompGaji,
       [id]: parseFloat(value) || 0
-    });
+    };
+    setKompGaji(updated);
+    try {
+      localStorage.setItem("kompGaji", JSON.stringify(updated));
+    } catch (e) {}
   };
 
   const formatRupiah = (angka) => {
@@ -702,40 +761,18 @@ function Gaji() {
     }
 
     if (filterKaryawan !== "Semua") {
-      data = data.filter((item) => item.karyawan === filterKaryawan || item.nama === filterKaryawan);
+      const targetName = normalizeText(filterKaryawan);
+      data = data.filter((item) => getNormalizedName(item) === targetName);
     }
 
     return data;
   }, [gajiData, filterTanggal, filterKaryawan]);
 
   const getGajiFeeMeta = (g) => {
-    const feePercent = g.feePercent !== undefined && g.feePercent !== null ? Number(g.feePercent) : undefined;
-    const feeAmount = g.feeAmount !== undefined && g.feeAmount !== null ? Number(g.feeAmount) : undefined;
-    const bonusAmount = g.bonus !== undefined && g.bonus !== null ? Number(g.bonus) : undefined;
-    const feeValue = g.fee !== undefined && g.fee !== null ? Number(g.fee) : undefined;
-    const hargaValue = Number(g.harga || 0);
-
-    if (!Number.isNaN(feeAmount) && feeAmount > 0) {
-      return { amount: feeAmount, percent: feePercent };
-    }
-
-    if (!Number.isNaN(bonusAmount) && bonusAmount > 0) {
-      return { amount: bonusAmount, percent: feePercent };
-    }
-
-    if (!Number.isNaN(feePercent) && feePercent >= 0) {
-      return { amount: Math.round((hargaValue * feePercent) / 100), percent: feePercent };
-    }
-
-    if (!Number.isNaN(feeValue) && feeValue > 100) {
-      return { amount: feeValue };
-    }
-
-    if (!Number.isNaN(feeValue) && feeValue >= 0) {
-      return { amount: Math.round((hargaValue * feeValue) / 100), percent: feeValue };
-    }
-
-    return { amount: 0 };
+    const hargaValue = Number(g?.harga || 0);
+    const fixedFeePercent = 15;
+    const amount = Math.round((hargaValue * fixedFeePercent) / 100);
+    return { amount, percent: fixedFeePercent };
   };
 
     // Hitung total dari filtered data
@@ -750,18 +787,65 @@ function Gaji() {
 
   const selectedKaryawan = useMemo(() => {
     if (!filterKaryawan || filterKaryawan === "Semua") return null;
-    return Array.isArray(karyawanData)
-      ? karyawanData.find((k) => k.nama === filterKaryawan)
-      : null;
-  }, [filterKaryawan, karyawanData]);
 
-  const currentPeriode = filterTanggal ? getMonthLabel(filterTanggal) : getMonthLabel(new Date().toISOString());
+    const targetName = normalizeText(filterKaryawan);
+    const matchedKaryawan = Array.isArray(karyawanData)
+      ? karyawanData.find((k) => normalizeText(k.nama || k.name) === targetName)
+      : null;
+
+    if (matchedKaryawan) return matchedKaryawan;
+
+    const fallbackGaji = Array.isArray(gajiData)
+      ? gajiData.find((item) => getNormalizedName(item) === targetName)
+      : null;
+
+    if (fallbackGaji) {
+      return {
+        ...fallbackGaji,
+        nama: fallbackGaji.nama || fallbackGaji.karyawan || fallbackGaji.name || filterKaryawan,
+        gajiPokok: fallbackGaji.gajiPokok || fallbackGaji.gaji || 0,
+        tunjanganTransport: fallbackGaji.tunjanganTransport || fallbackGaji.tunjangan || 0,
+        asuransi: fallbackGaji.potonganBPJS || fallbackGaji.asuransi || fallbackGaji.bpjs || 0,
+        bpjs: fallbackGaji.potonganBPJS || fallbackGaji.asuransi || fallbackGaji.bpjs || 0,
+        pajak: fallbackGaji.potonganPajak || fallbackGaji.pajak || 0
+      };
+    }
+
+    return { nama: filterKaryawan };
+  }, [filterKaryawan, karyawanData, gajiData]);
+
+  const getPeriodeFromGajiItem = (item) => {
+    if (!item) return "";
+    if (item.periode) {
+      return String(item.periode).trim();
+    }
+    const rawDate = item.tanggal || item.date || item.createdAt || item.dateString;
+    return getMonthLabel(rawDate);
+  };
+
+  const currentPeriode = useMemo(() => {
+    if (filterTanggal) {
+      return getMonthLabel(filterTanggal);
+    }
+
+    if (Array.isArray(filteredGajiData) && filteredGajiData.length > 0) {
+      const periods = new Set(filteredGajiData.map(getPeriodeFromGajiItem).filter(Boolean));
+      if (periods.size === 1) {
+        return Array.from(periods)[0];
+      }
+      return "Beberapa Periode";
+    }
+
+    return getMonthLabel(new Date().toISOString());
+  }, [filterTanggal, filteredGajiData]);
 
   const selectedAbsensi = useMemo(() => {
     if (!selectedKaryawan || !Array.isArray(absensiData)) return [];
+    const selectedName = normalizeText(selectedKaryawan.nama || selectedKaryawan.name || "");
     return absensiData.filter((item) => {
       if (!item || !item.nama) return false;
-      if (item.nama !== selectedKaryawan.nama) return false;
+      const itemName = normalizeText(item.nama);
+      if (itemName !== selectedName) return false;
       const periode = getMonthLabel(item.tanggal || item.date || item.dateString || item.date || item.createdAt);
       return periode === currentPeriode;
     });
@@ -809,7 +893,7 @@ function Gaji() {
           <input
             type="date"
             value={filterTanggal}
-            onChange={(e) => setFilterTanggal(e.target.value)}
+            onChange={(e) => handleFilterTanggalChange(e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
           />
         </div>
@@ -818,7 +902,7 @@ function Gaji() {
           <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Karyawan</label>
           <select 
             value={filterKaryawan}
-            onChange={(e) => setFilterKaryawan(e.target.value)}
+            onChange={(e) => handleFilterKaryawanChange(e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
           >
             <option>Semua</option>
@@ -857,7 +941,6 @@ function Gaji() {
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Harga</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Fee</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Total Fee</th>
-                      <th className="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wide">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -883,23 +966,6 @@ function Gaji() {
                             </>
                           );
                         })()}
-                        <td className="px-6 py-4 text-center text-sm space-x-2 flex items-center justify-center">
-                          {/*
-                            <button
-                              onClick={() => { setEditData(g); setEditType("tindakan"); setShowModalTindakan(true); }}
-                              className="px-3 py-1.5 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition"
-                            >
-                              Edit
-                            </button>
-
-                            <button
-                              onClick={() => handleDelete(g, "tindakan")}
-                              className="px-3 py-1.5 bg-red-600 text-white rounded font-medium hover:bg-red-700 transition"
-                            >
-                              Hapus
-                            </button>
-                          */}
-                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -76,45 +76,71 @@ function SlipGaji() {
     if (!Array.isArray(gajiData) || gajiData.length === 0) return [];
 
     const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
+    const groups = {};
 
-    // Map directly from gajiData - each gaji entry becomes a slip entry
-    return gajiData.map((record) => {
+    gajiData.forEach((record) => {
       const nama = record.karyawan || record.nama || "";
-      const karyawan = Array.isArray(karyawanData)
-        ? karyawanData.find((k) => k.nama === nama || String(k.id) === String(record.karyawanId))
-        : null;
-      const dateValue = record.tanggal || record.date || record.createdAt;
-      // Only generate periode from date if date exists; don't default to current date
-      const periode = normalizePeriode(record.periode, dateValue);
+      if (!nama) return;
 
-      const gajiPokok = Number(record.gajiPokok || record.gaji || 0);
-      const tunjangan = Number(record.tunjangan || record.tunjanganTransport || 0);
-      const bonus = Number(record.bonus || 0);
-      const potonganAsuransiExisting = Number(record.potonganAsuransi || record.potonganBPJS || 0);
-      const potonganTax = Number(record.potonganTax || record.potonganPajak || 0);
-      const totalPenghasilan = Number(record.gajiKotor || (gajiPokok + tunjangan + bonus));
-      const totalPotongan = potonganAsuransiExisting + potonganTax + BPJSTK_DEDUCTION;
+      const dateValue = record.tanggal || record.date || record.createdAt || new Date().toISOString();
+      const periode = getMonthLabel(dateValue) || "Tanpa Periode";
+      const key = `${nama}||${periode}`;
+
+      if (!groups[key]) {
+        const karyawan = Array.isArray(karyawanData)
+          ? karyawanData.find((k) => String(k.nama || k.name) === String(nama))
+          : null;
+
+        groups[key] = {
+          id: `AUTO-SLIP-${nama}-${periode}`,
+          gajiId: record.id || record._id || "",
+          karyawanId: karyawan?.id || record.karyawanId || "",
+          nama,
+          nip: karyawan?.nip || "",
+          posisi: karyawan?.posisi || karyawan?.position || "",
+          departemen: karyawan?.departemen || karyawan?.department || "",
+          gajiPokok: Number(karyawan?.gajiPokok || record.gajiPokok || record.gaji || 0),
+          tunjangan: Number(karyawan?.tunjanganTransport || record.tunjanganTransport || record.tunjangan || 0),
+          bonus: Number(record.bonus || 0),
+          potonganAsuransi: Number(record.potonganAsuransi || record.potonganBPJS || 0) + BPJSTK_DEDUCTION,
+          potonganTax: Number(record.potonganTax || record.potonganPajak || 0),
+          feeTindakan: 0,
+          feePaket: [],
+          transactionDetails: [],
+          periode,
+          status: record.status || "Selesai",
+          date: dateValue
+        };
+      }
+
+      const group = groups[key];
+      const harga = Number(record.harga || 0);
+      const feePercent = Number(record.fee || 0);
+      const totalFee = Math.round((harga * feePercent) / 100);
+
+      group.feeTindakan += totalFee;
+      group.transactionDetails.push({
+        tanggal: record.tanggal || record.date || "",
+        namaPasien: record.pasien || record.namaPasien || "",
+        klinikHomeService: record.klinik || record.klinikHomeService || "",
+        tindakan: record.treatment || record.tindakan || "",
+        harga,
+        feePercent,
+        totalFee,
+        feeTransport: Number(record.feeTransport || 0)
+      });
+    });
+
+    return Object.values(groups).map((group) => {
+      const totalPenghasilan = group.gajiPokok + group.tunjangan + group.bonus + group.feeTindakan;
+      const totalPotongan = group.potonganAsuransi + group.potonganTax;
       const gajiNetto = totalPenghasilan - totalPotongan;
 
       return {
-        id: record.id || record._id || `AUTO-SLIP-${nama}-${periode}`,
-        karyawanId: karyawan?.id || record.karyawanId || "",
-        gajiId: record.id || record._id || "",
-        nama,
-        nip: karyawan?.nip || "",
-        posisi: karyawan?.posisi || "",
-        departemen: karyawan?.departemen || "",
-        gajiPokok,
-        tunjangan,
-        bonus,
-        potonganAsuransi: potonganAsuransiExisting + BPJSTK_DEDUCTION,
-        potonganTax,
+        ...group,
         totalPenghasilan,
         totalPotongan,
-        gajiNetto,
-        periode: periode || "Tanpa Periode",
-        status: record.status || "Selesai",
-        date: dateValue || new Date().toISOString()
+        gajiNetto
       };
     });
   }, [gajiData, karyawanData]);

@@ -2,8 +2,7 @@ import mongoose from 'mongoose';
 
 const absensiSchema = new mongoose.Schema({
   karyawanId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Karyawan',
+    type: String,
     required: true
   },
   nama: {

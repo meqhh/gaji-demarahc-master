@@ -1,13 +1,29 @@
-import Absensi from '../models/Absensi.js';
+import { absensiDB } from '../database/mysqlDb.js';
+
+const snakeToCamel = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/_([a-z])/g, (_, c) => c.toUpperCase()),
+      value
+    ])
+  );
+
+const camelToSnake = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key.replace(/([A-Z])/g, '_$1').toLowerCase(),
+      value
+    ])
+  );
 
 // Get all absensi
 export const getAllAbsensi = async (req, res) => {
   try {
-    const absensi = await Absensi.find().populate('karyawanId').sort({ tanggal: -1 });
+    const absensi = await absensiDB.getAll();
     res.json({
       success: true,
       message: 'Data absensi berhasil diambil',
-      data: absensi
+      data: absensi.map(snakeToCamel)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -17,11 +33,11 @@ export const getAllAbsensi = async (req, res) => {
 // Get absensi by karyawan
 export const getAbsensiByKaryawan = async (req, res) => {
   try {
-    const absensi = await Absensi.find({ karyawanId: req.params.karyawanId }).sort({ tanggal: -1 });
+    const absensi = await absensiDB.findByKaryawanId(req.params.karyawanId);
     res.json({
       success: true,
       message: 'Data absensi karyawan berhasil diambil',
-      data: absensi
+      data: absensi.map(snakeToCamel)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -36,14 +52,17 @@ export const createAbsensi = async (req, res) => {
     if (!karyawanId || !nama || !tanggal || !status) {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
-    
-    const newAbsensi = new Absensi(req.body);
-    await newAbsensi.save();
+
+    const newAbsensi = await absensiDB.save({
+      ...camelToSnake(req.body),
+      karyawan_id: karyawanId,
+      created_at: new Date()
+    });
     
     res.status(201).json({
       success: true,
       message: 'Absensi berhasil ditambahkan',
-      data: newAbsensi
+      data: snakeToCamel(newAbsensi)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -53,20 +72,22 @@ export const createAbsensi = async (req, res) => {
 // Update absensi
 export const updateAbsensi = async (req, res) => {
   try {
-    const absensi = await Absensi.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedAt: new Date() },
-      { new: true }
-    );
-    
-    if (!absensi) {
+    const existingAbsensi = await absensiDB.findById(req.params.id);
+    if (!existingAbsensi) {
       return res.status(404).json({ success: false, message: 'Absensi tidak ditemukan' });
     }
+
+    const updatedAbsensi = await absensiDB.save({
+      ...existingAbsensi,
+      ...camelToSnake(req.body),
+      id: req.params.id,
+      updated_at: new Date()
+    });
     
     res.json({
       success: true,
       message: 'Absensi berhasil diperbarui',
-      data: absensi
+      data: snakeToCamel(updatedAbsensi)
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -76,12 +97,12 @@ export const updateAbsensi = async (req, res) => {
 // Delete absensi
 export const deleteAbsensi = async (req, res) => {
   try {
-    const absensi = await Absensi.findByIdAndDelete(req.params.id);
-    
-    if (!absensi) {
+    const existingAbsensi = await absensiDB.findById(req.params.id);
+    if (!existingAbsensi) {
       return res.status(404).json({ success: false, message: 'Absensi tidak ditemukan' });
     }
-    
+
+    await absensiDB.delete(req.params.id);
     res.json({
       success: true,
       message: 'Absensi berhasil dihapus'

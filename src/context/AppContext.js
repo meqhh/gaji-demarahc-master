@@ -274,7 +274,30 @@ export const AppContextProvider = ({ children }) => {
         ]);
 
         if (Array.isArray(absensiRes)) setAbsensiData(absensiRes);
-        if (Array.isArray(gajiRes)) setGajiData(gajiRes);
+        if (Array.isArray(gajiRes)) {
+          try {
+            const savedLocal = localStorage.getItem('gajiData');
+            const localArr = savedLocal ? JSON.parse(savedLocal) : [];
+            if (Array.isArray(localArr) && localArr.length > 0) {
+              const mergedGajiData = [...gajiRes];
+              localArr.forEach(localItem => {
+                if (!localItem) return;
+                const existingIndex = mergedGajiData.findIndex(serverItem => {
+                  if (!serverItem) return false;
+                  if (serverItem.id !== undefined && localItem.id !== undefined && String(serverItem.id) === String(localItem.id)) return true;
+                  if (serverItem._id !== undefined && localItem._id !== undefined && String(serverItem._id) === String(localItem._id)) return true;
+                  return false;
+                });
+                if (existingIndex === -1) mergedGajiData.push(localItem);
+              });
+              setGajiData(mergedGajiData);
+            } else {
+              setGajiData(gajiRes);
+            }
+          } catch (e) {
+            setGajiData(gajiRes);
+          }
+        }
         if (Array.isArray(slipRes)) {
           // normalize server slip items to always have `id` for frontend convenience
           const normalized = slipRes.map(s => ({ ...s, id: s.id || s._id || s.id }));

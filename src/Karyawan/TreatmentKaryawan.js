@@ -253,10 +253,9 @@ export default function TreatmentKaryawan() {
                 <button onClick={async ()=>{
                   if(!pasien){ alert('Masukkan nama pasien'); return; }
 
-                  const feePercent = getFeeByCategory(selectedTreatment.category);
-                  const feeAmount = calculateTreatmentFee(selectedTreatment.harga, selectedTreatment.category);
+                  const feePercent = 15;
+                  const feeAmount = Math.round((Number(selectedTreatment.harga || 0) * feePercent) / 100);
 
-                  // payload treatment
                   const treatmentPayload = {
                     karyawanId: userProfile?.id || userProfile?._id || null,
                     nama: (userProfile && (userProfile.name || userProfile.nama)) || '',
