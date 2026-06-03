@@ -1090,16 +1090,31 @@ function Gaji() {
                     periode: currentPeriode,
                     date: filterTanggal || new Date().toISOString(),
                     gajiPokok: gajiPokok,
+                    tunjangan: tunjanganTransport,
                     tunjanganTransport: tunjanganTransport,
                     feeTindakan: totalFeeTindakan,
+                    feePaket: totalFeePaket,
+                    bonus: totalFeeTindakan,
+                    potonganAsuransi: potonganBPJS,
                     potonganBPJS: potonganBPJS,
                     potonganPajak: potonganPajak,
+                    potonganTax: potonganPajak,
                     totalPotongan: totalPotongan,
-                    totalPenghasilan: gajiPokok + tunjanganTransport + totalFeeTindakan,
+                    totalPenghasilan: totalGross,
                     gajiKotor: totalGross,
                     gajiNetto: totalGajiBersih,
                     status: "Selesai",
-                    tanggalGajian: new Date().toISOString()
+                    tanggalGajian: new Date().toISOString(),
+                    transactionDetails: filteredGajiData.map(g => ({
+                      tanggal: g.tanggal || g.date || "",
+                      namaPasien: g.pasien || g.namaPasien || "",
+                      klinikHomeService: g.klinik || g.klinikHomeService || "",
+                      tindakan: g.treatment || g.tindakan || "",
+                      harga: Number(g.harga || 0),
+                      feePercent: 15,
+                      totalFee: Math.round((Number(g.harga || 0) * 15) / 100),
+                      feeTransport: Number(g.feeTransport || 0)
+                    }))
                   };
 
                   // Debug log

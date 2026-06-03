@@ -461,9 +461,10 @@ function SlipGaji() {
                   <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Penghasilan</h3>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-gray-600">Gaji Pokok</span><span className="font-medium">{formatRupiah(selectedData.gajiPokok)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Tunjangan</span><span className="font-medium">{formatRupiah(selectedData.tunjangan)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Bonus</span><span className="font-medium">{formatRupiah(selectedData.bonus)}</span></div>
-                    <div className="flex justify-between border-t pt-2 mt-2 font-bold text-gray-900"><span>Total</span><span>{formatRupiah(selectedData.totalPenghasilan)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Tunjangan Transport</span><span className="font-medium">{formatRupiah(selectedData.tunjangan || 0)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Fee Tindakan</span><span className="font-medium">{formatRupiah(selectedData.feeTindakan || selectedData.bonus || 0)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Fee Paket</span><span className="font-medium">{formatRupiah(selectedData.feePaket || 0)}</span></div>
+                    <div className="flex justify-between border-t pt-2 mt-2 font-bold text-blue-900 bg-blue-50 p-2 rounded"><span>Gaji Kotor</span><span>{formatRupiah(selectedData.totalPenghasilan)}</span></div>
                   </div>
                 </div>
               </div>
@@ -472,17 +473,50 @@ function SlipGaji() {
                 <div className="border border-gray-200 rounded p-4 bg-gray-50">
                   <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Potongan</h3>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-600">Asuransi</span><span className="font-medium">{formatRupiah(selectedData.potonganAsuransi)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Pajak</span><span className="font-medium">{formatRupiah(selectedData.potonganTax)}</span></div>
-                    <div className="flex justify-between border-t pt-2 mt-2 font-bold text-gray-900"><span>Total</span><span>{formatRupiah(selectedData.totalPotongan)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">BPJS/TK</span><span className="font-medium">-{formatRupiah(selectedData.potonganAsuransi)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Pajak</span><span className="font-medium">-{formatRupiah(selectedData.potonganTax)}</span></div>
+                    <div className="flex justify-between border-t pt-2 mt-2 font-bold text-red-900 bg-red-50 p-2 rounded"><span>Total Potongan</span><span>-{formatRupiah(selectedData.totalPotongan)}</span></div>
                   </div>
                 </div>
 
-                <div className="bg-gray-800 text-white rounded p-4 flex flex-col justify-center items-center">
-                  <p className="text-xs font-semibold text-gray-300 mb-2">GAJI NETTO</p>
-                  <p className="text-3xl font-bold">{formatRupiah(selectedData.gajiNetto)}</p>
+                <div className="bg-green-50 border border-green-200 rounded p-4 flex flex-col justify-center items-center">
+                  <p className="text-xs font-semibold text-green-600 mb-2">GAJI BERSIH</p>
+                  <p className="text-3xl font-bold text-green-900">{formatRupiah(selectedData.gajiNetto)}</p>
                 </div>
               </div>
+
+              {/* Transaction Details - Treatment List */}
+              {selectedData.transactionDetails && selectedData.transactionDetails.length > 0 && (
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-4 pb-2 border-b">Detail Tindakan ({selectedData.transactionDetails.length})</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-300 bg-white">
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Tanggal</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Pasien</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Klinik</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Tindakan</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 text-xs">Harga</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 text-xs">Fee (15%)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedData.transactionDetails.map((td, idx) => (
+                          <tr key={idx} className="border-b border-gray-200 hover:bg-white">
+                            <td className="px-3 py-2 text-gray-700">{td.tanggal ? new Date(td.tanggal).toLocaleDateString('id-ID') : "-"}</td>
+                            <td className="px-3 py-2 text-gray-700">{td.namaPasien || "-"}</td>
+                            <td className="px-3 py-2 text-gray-700">{td.klinikHomeService || "-"}</td>
+                            <td className="px-3 py-2 text-gray-700">{td.tindakan || "-"}</td>
+                            <td className="px-3 py-2 text-right text-gray-700">{formatRupiah(td.harga || 0)}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatRupiah(td.totalFee || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-gray-200 p-6 bg-gray-50 flex gap-3">
