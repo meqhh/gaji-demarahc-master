@@ -129,6 +129,10 @@ const treatments = [
 
   ];
 
+const TREATMENT_FEE_DEDUCTION = 75000; // Rp75.000 potongan per treatment
+const MAX_TREATMENT_FEE = 250000; // Rp250.000 maksimal fee
+const MIN_TREATMENT_FEE = 25000; // Rp25.000 minimal fee setelah potongan
+
 // FEE OTOMATIS BERDASARKAN KATEGORI
 function getFeeByCategory(category) {
   const lower = category.toLowerCase();
@@ -142,6 +146,24 @@ function getFeeByCategory(category) {
   }
 
   return 15; // fee single treatment
+}
+
+// Hitung fee treatment dengan batasan max dan potongan Rp75.000
+function calculateTreatmentFee(harga, category) {
+  const percentageRate = getFeeByCategory(category);
+  const calculatedFee = (harga * percentageRate) / 100;
+  
+  // Cap fee agar tidak jadi jutaan
+  const cappedFee = Math.min(calculatedFee, MAX_TREATMENT_FEE);
+  
+  // Kurangi dengan potongan Rp75.000
+  const netFee = cappedFee - TREATMENT_FEE_DEDUCTION;
+  
+  if (cappedFee > 0 && netFee <= 0) {
+    return MIN_TREATMENT_FEE;
+  }
+  
+  return Math.max(netFee, 0);
 }
 
 function Treatment() {
@@ -176,8 +198,8 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
 
   const totalTreatment = filteredData.length;
   const totalFeeTotal = filteredData.reduce((sum, item) => {
-    const fee = getFeeByCategory(item.category);
-    return sum + (item.harga * fee) / 100;
+    const fee = calculateTreatmentFee(item.harga, item.category);
+    return sum + fee;
   }, 0);
 
   // Format harga ke Rupiah
@@ -247,14 +269,16 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       return;
     }
 
-    const fee =
-      (selectedTreatment.harga * getFeeByCategory(selectedTreatment.category)) / 100;
+    const fee = calculateTreatmentFee(selectedTreatment.harga, selectedTreatment.category);
 
+    const feePercent = selectedTreatment.fee || getFeeByCategory(selectedTreatment.category);
     const dataBaru = {
       id: Date.now(),
       treatment: selectedTreatment.nama,
       bidan: bidanTerpilih,
       fee: fee,
+      feePercent: feePercent,
+      feeAmount: fee,
       tanggal: new Date().toLocaleDateString("id-ID"),
     };
 
@@ -277,7 +301,9 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         tanggal: new Date().toISOString(),
         treatment: selectedTreatment.nama,
         biaya: selectedTreatment.harga || 0,
-        fee: fee
+        fee: fee,
+        feePercent: feePercent,
+        feeAmount: fee,
       };
 
       // Persist treatment to server (if authenticated)
@@ -303,7 +329,9 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         pasien: selectedTreatment.pasien || "",
         treatment: selectedTreatment.nama,
         harga: selectedTreatment.harga || 0,
-        fee,
+        fee: feePercent,
+        feePercent: feePercent,
+        feeAmount: fee,
         periode,
         gajiPokok,
         tunjangan,

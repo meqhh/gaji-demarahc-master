@@ -33,7 +33,7 @@ export const createGaji = async (req, res) => {
   try {
     const { karyawanId, nama, periode, gajiPokok, gajiKotor, gajiNetto } = req.body;
     
-    if (!karyawanId || !nama || !periode || !gajiPokok || !gajiKotor || !gajiNetto) {
+    if (!karyawanId || !nama || !periode || gajiPokok === undefined || gajiKotor === undefined || gajiNetto === undefined) {
       return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
     }
     

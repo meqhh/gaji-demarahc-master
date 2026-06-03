@@ -22,6 +22,30 @@ const gajiSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  harga: {
+    type: Number,
+    default: 0
+  },
+  fee: {
+    type: Number,
+    default: 0
+  },
+  feePercent: {
+    type: Number,
+    default: 0
+  },
+  feeAmount: {
+    type: Number,
+    default: 0
+  },
+  treatment: {
+    type: String,
+    default: ""
+  },
+  pasien: {
+    type: String,
+    default: ""
+  },
   bonus: {
     type: Number,
     default: 0

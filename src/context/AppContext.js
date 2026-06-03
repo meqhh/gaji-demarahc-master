@@ -275,7 +275,11 @@ export const AppContextProvider = ({ children }) => {
 
         if (Array.isArray(absensiRes)) setAbsensiData(absensiRes);
         if (Array.isArray(gajiRes)) setGajiData(gajiRes);
-        if (Array.isArray(slipRes)) setSlipGajiData(slipRes);
+        if (Array.isArray(slipRes)) {
+          // normalize server slip items to always have `id` for frontend convenience
+          const normalized = slipRes.map(s => ({ ...s, id: s.id || s._id || s.id }));
+          setSlipGajiData(normalized);
+        }
 
         if (Array.isArray(cutiRes)) {
           try {
@@ -537,12 +541,80 @@ useEffect(() => {
       const tempId = gaji.id || `GAJI${Date.now()}`;
       const tempItem = { ...gaji, id: tempId };
       setGajiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+
+      // Also create a Slip Gaji record derived from this Gaji entry so it appears
+      // immediately in the Slip Gaji menu for admins.
+      const buildSlipFromGaji = (gajiObj, gajiIdForSlip) => {
+        const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
+        const nama = gajiObj.nama || gajiObj.karyawan || "";
+        const karyawan = Array.isArray(karyawanData)
+          ? karyawanData.find(k => String(k.id) === String(gajiObj.karyawanId) || k.nama === nama)
+          : null;
+
+        const periode = gajiObj.periode || (gajiObj.tanggal || gajiObj.date) || new Date().toISOString();
+
+        const gajiPokok = Number(gajiObj.gajiPokok || gajiObj.gaji || 0);
+        const tunjangan = Number(gajiObj.tunjangan || gajiObj.tunjanganTransport || 0);
+        const bonus = Number(gajiObj.bonus || 0);
+        const potonganAsuransiExisting = Number(gajiObj.potonganAsuransi || gajiObj.potonganBPJS || 0);
+        const potonganTax = Number(gajiObj.potonganTax || gajiObj.potonganPajak || 0);
+        const totalPenghasilan = Number(gajiObj.gajiKotor || (gajiPokok + tunjangan + bonus));
+        const totalPotongan = potonganAsuransiExisting + potonganTax + BPJSTK_DEDUCTION;
+        const gajiNetto = totalPenghasilan - totalPotongan;
+
+        return {
+          id: `SLIP-${(karyawan && (karyawan.id || karyawan.nama)) || nama}-${Date.now()}`,
+          karyawanId: karyawan?.id || gajiObj.karyawanId || nama,
+          gajiId: gajiIdForSlip || (gajiObj.id || tempId),
+          nama: nama,
+          periode: typeof periode === 'string' ? periode : new Date(periode).toISOString(),
+          nip: karyawan?.nip || "",
+          posisi: karyawan?.posisi || "",
+          departemen: karyawan?.departemen || "",
+          gajiPokok: gajiPokok,
+          tunjangan: tunjangan,
+          bonus: bonus,
+          potonganAsuransi: potonganAsuransiExisting + BPJSTK_DEDUCTION,
+          potonganTax: potonganTax,
+          totalPenghasilan: totalPenghasilan,
+          totalPotongan: totalPotongan,
+          gajiNetto: gajiNetto,
+          tanggalGajian: new Date().toISOString(),
+          status: gajiObj.status || 'Selesai'
+        };
+      };
+
+      // create local slip immediately
+      try {
+        const slipLocal = buildSlipFromGaji(gaji, tempId);
+        setSlipGajiData(prev => Array.isArray(prev) ? [...prev, slipLocal] : [slipLocal]);
+      } catch (e) {
+        console.error('Failed to create local slip from gaji:', e);
+      }
+
       const token = localStorage.getItem('token');
       if (token) {
         try {
           const res = await gajiApi.create(token, gaji);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+          if (serverItem) {
+            // replace temp gaji with server item
+            setGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+
+            // build slip based on server item and persist to server slip API
+            const slipFromServerGaji = buildSlipFromGaji(serverItem, serverItem.id || serverItem._id || tempId);
+            const tempSlipId = slipFromServerGaji.id;
+            // optimistic add already done; attempt to persist to server
+            try {
+              const slipRes = await slipGajiApi.create(token, slipFromServerGaji);
+              const serverSlip = slipRes && slipRes.data ? slipRes.data : null;
+              if (serverSlip) {
+                setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === tempSlipId ? serverSlip : s) : [serverSlip]);
+              }
+            } catch (e) {
+              console.error('Failed to persist slip gaji to server:', e);
+            }
+          }
         } catch (e) {
           console.error('Failed to create gaji on server:', e);
         }
@@ -552,11 +624,86 @@ useEffect(() => {
       const prevSnapshot = Array.isArray(gajiData) ? gajiData.slice() : [];
       setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? { ...g, ...updates } : g) : []);
       const token = localStorage.getItem('token');
+
+      // helper to build slip object from gaji
+      const buildSlipFromGaji = (gajiObj, gajiIdForSlip) => {
+        const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
+        const nama = gajiObj.nama || gajiObj.karyawan || "";
+        const karyawan = Array.isArray(karyawanData)
+          ? karyawanData.find(k => String(k.id) === String(gajiObj.karyawanId) || k.nama === nama)
+          : null;
+        const periode = gajiObj.periode || (gajiObj.tanggal || gajiObj.date) || new Date().toISOString();
+
+        const gajiPokok = Number(gajiObj.gajiPokok || gajiObj.gaji || 0);
+        const tunjangan = Number(gajiObj.tunjangan || gajiObj.tunjanganTransport || 0);
+        const bonus = Number(gajiObj.bonus || 0);
+        const potonganAsuransiExisting = Number(gajiObj.potonganAsuransi || gajiObj.potonganBPJS || 0);
+        const potonganTax = Number(gajiObj.potonganTax || gajiObj.potonganPajak || 0);
+        const totalPenghasilan = Number(gajiObj.gajiKotor || (gajiPokok + tunjangan + bonus));
+        const totalPotongan = potonganAsuransiExisting + potonganTax + BPJSTK_DEDUCTION;
+        const gajiNetto = totalPenghasilan - totalPotongan;
+
+        return {
+          id: `SLIP-${(karyawan && (karyawan.id || karyawan.nama)) || nama}-${Date.now()}`,
+          karyawanId: karyawan?.id || gajiObj.karyawanId || nama,
+          gajiId: gajiIdForSlip || (gajiObj.id || id),
+          nama: nama,
+          periode: typeof periode === 'string' ? periode : new Date(periode).toISOString(),
+          nip: karyawan?.nip || "",
+          posisi: karyawan?.posisi || "",
+          departemen: karyawan?.departemen || "",
+          gajiPokok: gajiPokok,
+          tunjangan: tunjangan,
+          bonus: bonus,
+          potonganAsuransi: potonganAsuransiExisting + BPJSTK_DEDUCTION,
+          potonganTax: potonganTax,
+          totalPenghasilan: totalPenghasilan,
+          totalPotongan: totalPotongan,
+          gajiNetto: gajiNetto,
+          tanggalGajian: new Date().toISOString(),
+          status: gajiObj.status || 'Selesai'
+        };
+      };
+
       if (token) {
         try {
           const res = await gajiApi.update(token, id, updates);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? serverItem : g) : []);
+          if (serverItem) {
+            setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? serverItem : g) : []);
+
+            // update or create slip corresponding to this gaji
+            try {
+              const slipObj = buildSlipFromGaji(serverItem, serverItem.id || serverItem._id || id);
+              // try to find existing slip by gajiId
+              const existing = Array.isArray(slipGajiData) ? slipGajiData.find(s => String(s.gajiId) === String(id) || String(s.gajiId) === String(serverItem.id) ) : null;
+              if (existing) {
+                // update local
+                setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => (String(s.id) === String(existing.id) ? { ...s, ...slipObj } : s)) : [slipObj]);
+                // persist update if server id exists
+                try {
+                  if (existing.id && existing.id.toString().startsWith('SLIP') === false) {
+                    await slipGajiApi.update(token, existing.id, slipObj);
+                  }
+                } catch (err) {
+                  console.error('Failed to update slip gaji on server:', err);
+                }
+              } else {
+                // add new slip locally and try to persist
+                const tempSlip = { ...slipObj };
+                setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tempSlip] : [tempSlip]);
+                try {
+                  const slipRes = await slipGajiApi.create(token, slipObj);
+                  const serverSlip = slipRes && slipRes.data ? slipRes.data : null;
+                  if (serverSlip) setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === tempSlip.id ? serverSlip : s) : [serverSlip]);
+                } catch (err) {
+                  console.error('Failed to create slip gaji on server after gaji update:', err);
+                }
+              }
+            } catch (slipErr) {
+              console.error('Error building/updating slip from gaji update:', slipErr);
+            }
+          }
         } catch (e) {
           console.error('Failed to update gaji on server:', e);
           setGajiData(prevSnapshot);
@@ -638,7 +785,10 @@ useEffect(() => {
         try {
           const res = await slipGajiApi.create(token, slip);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setSlipGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
+          if (serverItem) {
+            const normalized = { ...serverItem, id: serverItem.id || serverItem._id || tempId };
+            setSlipGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? normalized : p) : [normalized]);
+          }
         } catch (e) {
           console.error('Failed to create slip gaji on server:', e);
         }
@@ -646,13 +796,16 @@ useEffect(() => {
     },
     updateSlipGaji: async (id, updates) => {
       const prevSnapshot = Array.isArray(slipGajiData) ? slipGajiData.slice() : [];
-      setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === id ? { ...s, ...updates } : s) : []);
+      setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => (String(s.id) === String(id) || String(s._id) === String(id)) ? { ...s, ...updates } : s) : []);
       const token = localStorage.getItem('token');
       if (token) {
         try {
           const res = await slipGajiApi.update(token, id, updates);
           const serverItem = res && res.data ? res.data : null;
-          if (serverItem) setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === id ? serverItem : s) : []);
+          if (serverItem) {
+            const normalized = { ...serverItem, id: serverItem.id || serverItem._id || id };
+            setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => (String(s.id) === String(id) || String(s._id) === String(id)) ? normalized : s) : []);
+          }
         } catch (e) {
           console.error('Failed to update slip gaji on server:', e);
           setSlipGajiData(prevSnapshot);
@@ -661,7 +814,7 @@ useEffect(() => {
     },
     deleteSlipGaji: async (id) => {
       const prevSnapshot = Array.isArray(slipGajiData) ? slipGajiData.slice() : [];
-      setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => s.id !== id) : []);
+      setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => (String(s.id) !== String(id) && String(s._id || '') !== String(id))) : []);
       const token = localStorage.getItem('token');
       if (token) {
         try {

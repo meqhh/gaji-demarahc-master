@@ -3,6 +3,10 @@ import { AppContext } from "../context/AppContext";
 
 // All treatment data comes from AppContext/backend (no hardcoded master data)
 
+const TREATMENT_FEE_DEDUCTION = 75000; // Rp75.000 potongan per treatment
+const MAX_TREATMENT_FEE = 250000; // Rp250.000 maksimal fee
+const MIN_TREATMENT_FEE = 25000; // Rp25.000 minimal fee setelah potongan
+
 // FEE OTOMATIS BERDASARKAN KATEGORI
 function getFeeByCategory(category) {
   const lower = String(category || '').toLowerCase();
@@ -16,6 +20,24 @@ function getFeeByCategory(category) {
   }
 
   return 15; // fee single treatment
+}
+
+// Hitung fee treatment dengan batasan max dan potongan Rp75.000
+function calculateTreatmentFee(harga, category) {
+  const percentageRate = getFeeByCategory(category);
+  const calculatedFee = (harga * percentageRate) / 100;
+  
+  // Cap fee agar tidak jadi jutaan
+  const cappedFee = Math.min(calculatedFee, MAX_TREATMENT_FEE);
+  
+  // Kurangi dengan potongan Rp75.000
+  const netFee = cappedFee - TREATMENT_FEE_DEDUCTION;
+  
+  if (cappedFee > 0 && netFee <= 0) {
+    return MIN_TREATMENT_FEE;
+  }
+  
+  return Math.max(netFee, 0);
 }
 
 export default function TreatmentKaryawan() {
@@ -222,7 +244,7 @@ export default function TreatmentKaryawan() {
 
                 <div>
                   <label className="block text-sm font-semibold">Total Fee</label>
-                  <p className="p-2 border rounded bg-gray-50">{formatHarga((selectedTreatment.harga * getFeeByCategory(selectedTreatment.category))/100)}</p>
+                  <p className="p-2 border rounded bg-gray-50">{formatHarga(calculateTreatmentFee(selectedTreatment.harga, selectedTreatment.category))}</p>
                 </div>
               </div>
 
@@ -231,7 +253,8 @@ export default function TreatmentKaryawan() {
                 <button onClick={async ()=>{
                   if(!pasien){ alert('Masukkan nama pasien'); return; }
 
-                  const fee = (selectedTreatment.harga * getFeeByCategory(selectedTreatment.category))/100;
+                  const feePercent = getFeeByCategory(selectedTreatment.category);
+                  const feeAmount = calculateTreatmentFee(selectedTreatment.harga, selectedTreatment.category);
 
                   // payload treatment
                   const treatmentPayload = {
@@ -242,7 +265,9 @@ export default function TreatmentKaryawan() {
                     treatment: selectedTreatment.nama,
                     biaya: selectedTreatment.harga || 0,
                     pasien: pasien,
-                    fee: fee
+                    fee: feeAmount,
+                    feePercent,
+                    feeAmount
                   };
 
                   try{
@@ -255,7 +280,7 @@ export default function TreatmentKaryawan() {
                     const tunjangan = Number(userProfile?.tunjangan || 0);
                     const potonganAsuransi = Number(userProfile?.asuransi || 0);
                     const potonganTax = Number(userProfile?.pajak || 0);
-                    const gajiKotor = gajiPokok + fee + tunjangan;
+                    const gajiKotor = gajiPokok + feeAmount + tunjangan;
                     const gajiNetto = gajiKotor - potonganAsuransi - potonganTax;
 
                     const gajiPayload = {
@@ -266,11 +291,13 @@ export default function TreatmentKaryawan() {
                       pasien,
                       treatment: selectedTreatment.nama,
                       harga: selectedTreatment.harga || 0,
-                      fee,
+                      fee: feePercent,
+                      feePercent,
+                      feeAmount,
                       periode,
                       gajiPokok,
                       tunjangan,
-                      bonus: fee,
+                      bonus: feeAmount,
                       potonganAsuransi,
                       potonganTax,
                       gajiKotor,

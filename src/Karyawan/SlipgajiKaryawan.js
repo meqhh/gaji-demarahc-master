@@ -5,6 +5,7 @@ import { AppContext } from "../context/AppContext";
 export default function SlipgajiKaryawan() {
 	const { slipGajiData = [], userProfile, karyawanData = [], gajiData = [] } = useContext(AppContext);
 	const [selected, setSelected] = useState(null);
+	const [showAllData, setShowAllData] = useState(false);
 
 	// Format Rupiah helper
 	const formatRupiah = (num) => {
@@ -93,6 +94,15 @@ export default function SlipgajiKaryawan() {
 
 	const combinedSlipGajiData = useMemo(() => {
 		if (!Array.isArray(slipGajiData)) return deriveSlipsFromGajiData;
+		
+		// Debug logging
+		console.log("combinedSlipGajiData Debug:", {
+			slipGajiDataLength: slipGajiData.length,
+			slipGajiData: slipGajiData,
+			deriveSlipsFromGajiDataLength: deriveSlipsFromGajiData.length,
+			deriveSlipsFromGajiData: deriveSlipsFromGajiData
+		});
+		
 		const manualKeys = new Set(slipGajiData.map((item) => `${item.nama}-${item.periode || getMonthLabel(item.date)}`));
 		const derived = Array.isArray(deriveSlipsFromGajiData)
 			? deriveSlipsFromGajiData.filter((item) => !manualKeys.has(`${item.nama}-${item.periode || getMonthLabel(item.date)}`))
@@ -176,11 +186,31 @@ export default function SlipgajiKaryawan() {
 	const slips = useMemo(() => {
 		const currentUserName = userProfile?.name || userProfile?.nama || "";
 		const source = Array.isArray(combinedSlipGajiData) ? combinedSlipGajiData : [];
-		const filtered = currentUserName
-			? source.filter((slip) => slip.nama === currentUserName || slip.employee?.name === currentUserName)
-			: source;
+		
+		// Debug logging
+		console.log("SlipgajiKaryawan Debug:", {
+			userProfile,
+			currentUserName,
+			sourceLength: source.length,
+			sourceData: source.slice(0, 3),
+			combinedSlipGajiDataLength: Array.isArray(combinedSlipGajiData) ? combinedSlipGajiData.length : 0,
+			showAllData
+		});
+		
+		let filtered = source;
+		
+		// If user is logged in, filter by name (more flexible matching)
+		if (currentUserName && !showAllData) {
+			filtered = source.filter((slip) => {
+				const slipName = slip.nama || slip.employee?.name || "";
+				const normalizedSlipName = String(slipName).trim().toLowerCase();
+				const normalizedUserName = String(currentUserName).trim().toLowerCase();
+				return normalizedSlipName === normalizedUserName;
+			});
+		}
+		
 		return convertSlipGajiData(filtered);
-	}, [combinedSlipGajiData, userProfile, karyawanData]);
+	}, [combinedSlipGajiData, userProfile, karyawanData, showAllData]);
 
 	function openSlip(slip) {
 		setSelected(slip);
@@ -574,6 +604,17 @@ export default function SlipgajiKaryawan() {
 					</div>
 				</div>
 
+				{/* Debug Info Alert */}
+				{Array.isArray(combinedSlipGajiData) && combinedSlipGajiData.length > 0 && (
+					<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+						<div className="text-xs text-blue-800 space-y-1">
+							<div><strong>Data Tersedia:</strong> {combinedSlipGajiData.length} slip gaji</div>
+							<div><strong>Akun User:</strong> {userProfile?.name || userProfile?.nama || "Unknown"}</div>
+							{slips.length === 0 && <div className="text-orange-600"><strong>Catatan:</strong> Tidak ada yang match dengan nama user. Klik tombol di bawah untuk melihat semua data.</div>}
+						</div>
+					</div>
+				)}
+
 				{/* Breadcrumb */}
 				<div className="flex items-center space-x-2 text-sm text-gray-600 mb-6">
 					<span className="inline-block text-gray-400">
@@ -618,8 +659,31 @@ export default function SlipgajiKaryawan() {
 									))
 								) : (
 									<tr>
-										<td colSpan={4} className="px-6 py-12 text-center text-gray-400 font-medium">
-											Tidak ada data slip gaji.
+										<td colSpan={4} className="px-6 py-12">
+											<div className="text-center space-y-4">
+												<div className="text-gray-400 font-medium">Tidak ada data slip gaji.</div>
+												<div className="text-xs text-gray-500 space-y-2 bg-gray-50 p-4 rounded">
+													<div><strong>Debug Info:</strong></div>
+													<div>User: {userProfile?.name || userProfile?.nama || "Unknown"}</div>
+													<div>Data tersedia: {Array.isArray(combinedSlipGajiData) ? combinedSlipGajiData.length : 0} item</div>
+													{Array.isArray(combinedSlipGajiData) && combinedSlipGajiData.length > 0 && (
+														<div className="mt-2">
+															<div><strong>Data yang tersedia:</strong></div>
+															{combinedSlipGajiData.slice(0, 3).map((d, i) => (
+																<div key={i}>- {d.nama} ({d.periode})</div>
+															))}
+														</div>
+													)}
+												</div>
+												{combinedSlipGajiData.length > 0 && (
+													<button
+														onClick={() => setShowAllData(!showAllData)}
+														className="text-blue-600 hover:text-blue-800 underline text-sm"
+													>
+														{showAllData ? "Tampilkan Data Saya" : "Tampilkan Semua Data"}
+													</button>
+												)}
+											</div>
 										</td>
 									</tr>
 								)}

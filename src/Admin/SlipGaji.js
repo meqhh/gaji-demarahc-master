@@ -9,8 +9,20 @@ const monthNames = [
 const getMonthLabel = (dateString) => {
   if (!dateString) return "";
   const parsed = new Date(dateString);
-  if (isNaN(parsed.getTime())) return "";
-  return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+  if (!isNaN(parsed.getTime())) {
+    return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+  }
+  return "";
+};
+
+const normalizePeriode = (periode, dateValue) => {
+  if (!periode && !dateValue) return "Tanpa Periode";
+  if (periode && typeof periode === 'string') {
+    const normalized = getMonthLabel(periode);
+    if (normalized) return normalized;
+    return periode;
+  }
+  return getMonthLabel(dateValue) || String(periode || "Tanpa Periode");
 };
 
 function SlipGaji() {
@@ -18,28 +30,13 @@ function SlipGaji() {
   
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
-  const [bulan, setBulan] = useState(`Januari ${new Date().getFullYear()}`);
+  const [bulan, setBulan] = useState(`${monthNames[new Date().getMonth()]} ${new Date().getFullYear()}`);
   const [filterKaryawan, setFilterKaryawan] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDetail, setShowDetail] = useState(false);
   const [selectedData, setSelectedData] = useState(null);
   const [showDelete, setShowDelete] = useState(false);
   const [deleteData, setDeleteData] = useState(null);
-  const [showTambah, setShowTambah] = useState(false);
-
-  const [formData, setFormData] = useState({
-    karyawanId: "",
-    nama: "",
-    nip: "",
-    posisi: "",
-    departemen: "",
-    gajiPokok: 0,
-    tunjangan: 0,
-    bonus: 0,
-    potonganAsuransi: 0,
-    potonganTax: 0,
-    status: "Draft"
-  });
 
   // Generate month/year options
   const monthYearOptions = useMemo(() => {
@@ -78,62 +75,46 @@ function SlipGaji() {
   const deriveSlipsFromGajiData = useMemo(() => {
     if (!Array.isArray(gajiData) || gajiData.length === 0) return [];
 
-    const groups = {};
-    gajiData.forEach((record) => {
+    const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
+
+    // Map directly from gajiData - each gaji entry becomes a slip entry
+    return gajiData.map((record) => {
       const nama = record.karyawan || record.nama || "";
-      if (!nama) return;
-      const dateValue = record.tanggal || record.date || record.createdAt || new Date().toISOString();
-      const periode = getMonthLabel(dateValue);
-      const key = `${nama}||${periode}`;
+      const karyawan = Array.isArray(karyawanData)
+        ? karyawanData.find((k) => k.nama === nama || String(k.id) === String(record.karyawanId))
+        : null;
+      const dateValue = record.tanggal || record.date || record.createdAt;
+      // Only generate periode from date if date exists; don't default to current date
+      const periode = normalizePeriode(record.periode, dateValue);
 
-      if (!groups[key]) {
-        const karyawan = Array.isArray(karyawanData) ? karyawanData.find((k) => k.nama === nama) : null;
-        groups[key] = {
-          id: `AUTO-SLIP-${nama}-${periode}`,
-          karyawanId: karyawan?.id || "",
-          nama,
-          nip: karyawan?.nip || "",
-          posisi: karyawan?.posisi || "",
-          departemen: karyawan?.departemen || "",
-          gajiPokok: Number(karyawan?.gajiPokok || 0),
-          tunjangan: Number(karyawan?.tunjanganTransport || 0),
-          feePaket: [],
-          feeTindakan: 0,
-          potongBpjsTk: Number(karyawan?.asuransi || karyawan?.bpjs || 0),
-          potonganTax: Number(karyawan?.pajak || 0),
-          periode,
-          status: "Selesai",
-          transactionDetails: [],
-          date: dateValue
-        };
-      }
+      const gajiPokok = Number(record.gajiPokok || record.gaji || 0);
+      const tunjangan = Number(record.tunjangan || record.tunjanganTransport || 0);
+      const bonus = Number(record.bonus || 0);
+      const potonganAsuransiExisting = Number(record.potonganAsuransi || record.potonganBPJS || 0);
+      const potonganTax = Number(record.potonganTax || record.potonganPajak || 0);
+      const totalPenghasilan = Number(record.gajiKotor || (gajiPokok + tunjangan + bonus));
+      const totalPotongan = potonganAsuransiExisting + potonganTax + BPJSTK_DEDUCTION;
+      const gajiNetto = totalPenghasilan - totalPotongan;
 
-      const group = groups[key];
-      const harga = Number(record.harga || 0);
-      const feePercent = Number(record.fee || 0);
-      const totalFee = Math.round((harga * feePercent) / 100);
-
-      group.feeTindakan += totalFee;
-      group.transactionDetails.push({
-        tanggal: record.tanggal || record.date || "",
-        namaPasien: record.pasien || record.namaPasien || "",
-        klinik: record.klinik || record.klinikHomeService || "",
-        tindakan: record.treatment || record.tindakan || "",
-        harga,
-        feePercent,
-        totalFee,
-        feeTransport: Number(record.feeTransport || 0)
-      });
-    });
-
-    return Object.values(groups).map((group) => {
-      const totalPenghasilan = group.gajiPokok + group.tunjangan + group.feeTindakan;
-      const totalPotongan = group.potongBpjsTk + group.potonganTax;
       return {
-        ...group,
+        id: record.id || record._id || `AUTO-SLIP-${nama}-${periode}`,
+        karyawanId: karyawan?.id || record.karyawanId || "",
+        gajiId: record.id || record._id || "",
+        nama,
+        nip: karyawan?.nip || "",
+        posisi: karyawan?.posisi || "",
+        departemen: karyawan?.departemen || "",
+        gajiPokok,
+        tunjangan,
+        bonus,
+        potonganAsuransi: potonganAsuransiExisting + BPJSTK_DEDUCTION,
+        potonganTax,
         totalPenghasilan,
         totalPotongan,
-        gajiNetto: totalPenghasilan - totalPotongan
+        gajiNetto,
+        periode: periode || "Tanpa Periode",
+        status: record.status || "Selesai",
+        date: dateValue || new Date().toISOString()
       };
     });
   }, [gajiData, karyawanData]);
@@ -150,22 +131,18 @@ function SlipGaji() {
   // Filter data
   const filteredData = useMemo(() => {
     return combinedSlipGajiData.filter((item) => {
+      // hide tombstone entries
+      if (item._tombstone) return false;
       const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
-      const matchPeriode = item.periode === bulan;
+      // More flexible periode matching: if periode is not set or is null, show it anyway
+      // This helps with newly created gaji records without explicit periode
+      const matchPeriode = !item.periode || item.periode === "Tanpa Periode" || item.periode === bulan || getMonthLabel(item.periode) === bulan;
       const matchSearch = searchQuery === "" || 
         item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
       return matchKaryawan && matchPeriode && matchSearch;
     });
   }, [combinedSlipGajiData, filterKaryawan, bulan, searchQuery]);
-
-  // Handle currency-like input where user types (allow manual typing)
-  const handleCurrencyChange = (name, rawValue) => {
-    // strip all non-digit characters
-    const digits = String(rawValue).replace(/[^0-9]/g, "");
-    const value = digits === "" ? 0 : parseInt(digits, 10);
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
 
   // Stats
   const stats = useMemo(() => {
@@ -176,81 +153,15 @@ function SlipGaji() {
     return { total, draft, proses, selesai };
   }, [combinedSlipGajiData]);
 
-  // Handlers
-  const handleAddClick = () => {
-    setFormData({
-      karyawanId: "",
-      nama: "",
-      nip: "",
-      posisi: "",
-      departemen: "",
-      gajiPokok: 0,
-      tunjangan: 0,
-      bonus: 0,
-      potonganAsuransi: 0,
-      potonganTax: 0,
-      status: "Draft"
-    });
-    setShowTambah(true);
-  };
-
-  const handleSelectKaryawan = (karyawan) => {
-    setFormData({
-      karyawanId: karyawan.id,
-      nama: karyawan.nama,
-      nip: karyawan.nip || "",
-      posisi: karyawan.posisi || "",
-      departemen: karyawan.departemen || "",
-      gajiPokok: karyawan.gajiPokok || 0,
-      tunjangan: karyawan.tunjangan || 0,
-      bonus: 0,
-      potonganAsuransi: karyawan.asuransi || 0,
-      potonganTax: karyawan.pajak || 0,
-      status: "Draft"
-    });
-  };
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: isNaN(value) ? value : (parseInt(value) || 0)
-    }));
-  };
-
-  const handleSaveSlip = () => {
-    if (!formData.karyawanId || !formData.nama) {
-      alert("Pilih karyawan terlebih dahulu!");
-      return;
-    }
-
-    const totalPenghasilan = formData.gajiPokok + formData.tunjangan + formData.bonus;
-    const totalPotongan = formData.potonganAsuransi + formData.potonganTax;
-    const gajiNetto = totalPenghasilan - totalPotongan;
-
-    const newSlip = {
-      karyawanId: formData.karyawanId,
-      nama: formData.nama,
-      nip: formData.nip,
-      posisi: formData.posisi,
-      departemen: formData.departemen,
-      gajiPokok: formData.gajiPokok,
-      tunjangan: formData.tunjangan,
-      bonus: formData.bonus,
-      potonganAsuransi: formData.potonganAsuransi,
-      potonganTax: formData.potonganTax,
-      totalPenghasilan: totalPenghasilan,
-      totalPotongan: totalPotongan,
-      gajiNetto: gajiNetto,
-      periode: bulan,
-      status: formData.status,
-      createdAt: new Date().toISOString()
-    };
-
-    addSlipGaji(newSlip);
-    showToast("✓ Slip gaji berhasil ditambahkan!");
-    setShowTambah(false);
-  };
+  // Debug: Log data flow
+  useEffect(() => {
+    console.log('[SlipGaji] gajiData:', gajiData);
+    console.log('[SlipGaji] deriveSlipsFromGajiData:', deriveSlipsFromGajiData);
+    console.log('[SlipGaji] combinedSlipGajiData:', combinedSlipGajiData);
+    console.log('[SlipGaji] filteredData:', filteredData);
+    console.log('[SlipGaji] bulan filter:', bulan);
+    console.log('[SlipGaji] stats:', stats);
+  }, [gajiData, deriveSlipsFromGajiData, combinedSlipGajiData, filteredData, bulan, stats]);
 
   const handleDetail = (item) => {
     setSelectedData(item);
@@ -264,7 +175,34 @@ function SlipGaji() {
 
   const confirmDelete = () => {
     if (deleteData) {
-      deleteSlipGaji(deleteData.id);
+      const idOrAlt = deleteData.id || deleteData._id || '';
+      const isDerived = String(idOrAlt).startsWith('AUTO-SLIP-');
+      const isLocalTempSlip = String(idOrAlt).startsWith('SLIP-');
+      const matchingGajiRecord = Array.isArray(gajiData) ? gajiData.some((g) => {
+        const namaMatch = (g.nama || g.karyawan || '').toLowerCase() === (deleteData.nama || '').toLowerCase();
+        const periodeMatch = normalizePeriode(g.periode, g.tanggal || g.date) === normalizePeriode(deleteData.periode, deleteData.date);
+        return namaMatch && periodeMatch;
+      }) : false;
+      const shouldTombstone = isDerived || deleteData.gajiId || matchingGajiRecord;
+
+      if (shouldTombstone) {
+        const tomb = {
+          id: `TOMB-${Date.now()}`,
+          nama: deleteData.nama,
+          periode: deleteData.periode || bulan,
+          _tombstone: true
+        };
+        setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tomb] : [tomb]);
+      }
+
+      if (!isDerived && !isLocalTempSlip) {
+        const serverId = deleteData.id || deleteData._id || idOrAlt;
+        deleteSlipGaji(serverId);
+      } else {
+        // If it is a derived or local temp slip, remove locally only.
+        setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => String(s.id) !== String(idOrAlt) && String(s._id || '') !== String(idOrAlt)) : []);
+      }
+
       showToast("✗ Slip gaji berhasil dihapus!");
       setShowDelete(false);
       setDeleteData(null);
@@ -359,14 +297,8 @@ function SlipGaji() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Slip Gaji</h1>
-          <p className="text-sm text-gray-600 mt-1">Kelola slip gaji karyawan</p>
+          <p className="text-sm text-gray-600 mt-1">Data slip gaji otomatis dari menu Gaji</p>
         </div>
-        <button 
-          onClick={handleAddClick}
-          className="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2.5 rounded text-sm font-semibold transition-colors"
-        >
-          + Tambah Slip
-        </button>
       </div>
 
       {/* Stats */}
@@ -553,121 +485,7 @@ function SlipGaji() {
         </div>
       )}
 
-      {/* Modal Tambah */}
-      {showTambah && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded shadow-lg w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-            <div className="border-b border-gray-200 p-6 bg-gray-50">
-              <h2 className="text-lg font-bold text-gray-900">Tambah Slip Gaji</h2>
-              <p className="text-xs text-gray-600 mt-1">Pilih karyawan dan isi data gaji</p>
-            </div>
 
-            <div className="p-6 space-y-5">
-              {/* Select Karyawan */}
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">Pilih Karyawan</label>
-                <div className="border border-gray-300 rounded max-h-48 overflow-y-auto bg-white">
-                  {Array.isArray(karyawanData) && karyawanData.length > 0 ? (
-                    karyawanData.map((k) => (
-                      <button
-                        key={k.id}
-                        onClick={() => handleSelectKaryawan(k)}
-                        className={`w-full px-4 py-3 text-left border-b hover:bg-gray-50 transition-colors ${
-                          formData.karyawanId === k.id ? 'bg-gray-100 border-l-4 border-l-gray-800' : ''
-                        }`}
-                      >
-                        <p className="font-semibold text-gray-900 text-sm">{k.nama}</p>
-                        <p className="text-xs text-gray-600">{k.nip} • {k.posisi}</p>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center text-gray-500 text-sm">Tidak ada data karyawan</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Form Data */}
-              {formData.karyawanId && (
-                <>
-                  <div className="bg-gray-50 border border-gray-200 rounded p-4">
-                    <p className="text-xs font-semibold text-gray-600">KARYAWAN TERPILIH</p>
-                    <p className="text-base font-bold text-gray-900">{formData.nama}</p>
-                    <p className="text-xs text-gray-600">{formData.nip} • {formData.posisi} • {formData.departemen}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-900 mb-1">Gaji Pokok</label>
-                      <div className="flex items-center">
-                        <input
-                          type="text"
-                          name="gajiPokok"
-                          value={formatInputNumber(formData.gajiPokok)}
-                          onChange={(e) => handleCurrencyChange('gajiPokok', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-900 mb-1">Tunjangan</label>
-                      <input
-                        type="text"
-                        name="tunjangan"
-                        value={formatInputNumber(formData.tunjangan)}
-                        onChange={(e) => handleCurrencyChange('tunjangan', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-900 mb-1">Bonus</label>
-                      <input
-                        type="text"
-                        name="bonus"
-                        value={formatInputNumber(formData.bonus)}
-                        onChange={(e) => handleCurrencyChange('bonus', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-900 mb-1">Potongan Asuransi</label>
-                      <input
-                        type="text"
-                        name="potonganAsuransi"
-                        value={formatInputNumber(formData.potonganAsuransi)}
-                        onChange={(e) => handleCurrencyChange('potonganAsuransi', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-900 mb-1">Potongan Pajak</label>
-                      <input
-                        type="text"
-                        name="potonganTax"
-                        value={formatInputNumber(formData.potonganTax)}
-                        onChange={(e) => handleCurrencyChange('potonganTax', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-900 mb-1">Status</label>
-                      <select name="status" value={formData.status} onChange={handleFormChange} className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600">
-                        <option value="Draft">Draft</option>
-                        <option value="Proses">Proses</option>
-                        <option value="Selesai">Selesai</option>
-                      </select>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="border-t border-gray-200 p-6 bg-gray-50 flex gap-3">
-              <button onClick={() => setShowTambah(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded font-medium hover:bg-gray-50">Batal</button>
-              <button onClick={handleSaveSlip} className="flex-1 bg-gray-800 text-white py-2 rounded font-medium hover:bg-gray-900">Simpan Slip</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

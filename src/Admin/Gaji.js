@@ -499,7 +499,8 @@ function Gaji() {
   absensiData = [],
   karyawanData = [],
   treatmentData = [],
-  gajiData = []
+  gajiData = [],
+  addSlipGaji
   } = useContext(AppContext);
   console.log("treatmentData:", treatmentData);
 
@@ -640,28 +641,104 @@ function Gaji() {
     return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
   };
 
+  const normalizeDateForFilter = (value) => {
+    if (!value) return "";
+    const trimmed = String(value).trim();
+
+    // Direct ISO / yyyy-mm-dd
+    const isoMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}/);
+    if (isoMatch) return isoMatch[0];
+
+    // Indonesian / European day-first formats, like 31/12/2024 or 31-12-2024
+    const dmyMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+    if (dmyMatch) {
+      const [, day, month, year] = dmyMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Fallback to Date parsing
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toISOString().slice(0, 10);
+  };
+
+  const normalizeMonthYear = (dateString) => {
+    if (!dateString) return "";
+    const parsed = new Date(dateString);
+    if (isNaN(parsed.getTime())) return "";
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const year = parsed.getFullYear();
+    return `${month}-${year}`;
+  };
+
   // Filter gaji data based on selected filters
   const filteredGajiData = useMemo(() => {
-  let data = Array.isArray(gajiData) ? [...gajiData] : [];
+    let data = Array.isArray(gajiData) ? [...gajiData] : [];
 
-  if (filterTanggal) {
-    data = data.filter(
-      (item) => item.tanggal === filterTanggal
-    );
-  }
+    if (filterTanggal) {
+      const normalizedFilterDate = normalizeDateForFilter(filterTanggal);
+      const normalizedFilterMonthYear = normalizeMonthYear(filterTanggal);
+      const targetMonthLabel = getMonthLabel(filterTanggal);
 
-  if (filterKaryawan !== "Semua") {
-    data = data.filter(
-      (item) => item.karyawan === filterKaryawan
-    );
-  }
+      data = data.filter((item) => {
+        const itemDateRaw = item.tanggal || item.date || item.createdAt || item.dateString;
+        const itemDate = normalizeDateForFilter(itemDateRaw);
 
-  return data;
-}, [gajiData, filterTanggal, filterKaryawan]);
+        if (itemDate && normalizedFilterDate && itemDate === normalizedFilterDate) {
+          return true;
+        }
+
+        if (item.periode && normalizedFilterMonthYear) {
+          const periode = String(item.periode).trim();
+          if (periode === normalizedFilterMonthYear || periode === targetMonthLabel) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+    }
+
+    if (filterKaryawan !== "Semua") {
+      data = data.filter((item) => item.karyawan === filterKaryawan || item.nama === filterKaryawan);
+    }
+
+    return data;
+  }, [gajiData, filterTanggal, filterKaryawan]);
+
+  const getGajiFeeMeta = (g) => {
+    const feePercent = g.feePercent !== undefined && g.feePercent !== null ? Number(g.feePercent) : undefined;
+    const feeAmount = g.feeAmount !== undefined && g.feeAmount !== null ? Number(g.feeAmount) : undefined;
+    const bonusAmount = g.bonus !== undefined && g.bonus !== null ? Number(g.bonus) : undefined;
+    const feeValue = g.fee !== undefined && g.fee !== null ? Number(g.fee) : undefined;
+    const hargaValue = Number(g.harga || 0);
+
+    if (!Number.isNaN(feeAmount) && feeAmount > 0) {
+      return { amount: feeAmount, percent: feePercent };
+    }
+
+    if (!Number.isNaN(bonusAmount) && bonusAmount > 0) {
+      return { amount: bonusAmount, percent: feePercent };
+    }
+
+    if (!Number.isNaN(feePercent) && feePercent >= 0) {
+      return { amount: Math.round((hargaValue * feePercent) / 100), percent: feePercent };
+    }
+
+    if (!Number.isNaN(feeValue) && feeValue > 100) {
+      return { amount: feeValue };
+    }
+
+    if (!Number.isNaN(feeValue) && feeValue >= 0) {
+      return { amount: Math.round((hargaValue * feeValue) / 100), percent: feeValue };
+    }
+
+    return { amount: 0 };
+  };
 
   // Hitung total dari filtered data
   const totalFeeTindakan = filteredGajiData.reduce(
-    (acc, g) => acc + (Number(g.harga) * Number(g.fee)) / 100,
+    (acc, g) => acc + getGajiFeeMeta(g).amount,
     0
   );
   const totalFeePaket = feePaketData.reduce(
@@ -814,8 +891,17 @@ function Gaji() {
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.pasien}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.treatment}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{formatRupiah(Number(g.harga) || 0)}</td>
-                        <td className="px-6 py-4 text-gray-700 text-sm">{g.fee}%</td>
-                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{formatRupiah((Number(g.harga) * Number(g.fee || 0)) / 100)}</td>
+                        {(() => {
+                          const feeMeta = getGajiFeeMeta(g);
+                          return (
+                            <>
+                              <td className="px-6 py-4 text-gray-700 text-sm">
+                                {feeMeta.percent !== undefined ? `${feeMeta.percent}%` : formatRupiah(feeMeta.amount)}
+                              </td>
+                              <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{formatRupiah(feeMeta.amount)}</td>
+                            </>
+                          );
+                        })()}
                         <td className="px-6 py-4 text-center text-sm space-x-2 flex items-center justify-center">
                           {/*
                             <button
@@ -847,6 +933,228 @@ function Gaji() {
               </div> {/* bg-white shadow-sm */}
           </div>   {/* Kolom Tabel Gaji */}
         </div>     {/* Grid */}
+
+      {/* Komponen Gaji Summary Section */}
+      {selectedKaryawan && filterKaryawan !== "Semua" && (
+        <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden card-hover animate-slide-up mb-8">
+          <div className="border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-bold text-gray-900">Komponen Gaji - {selectedKaryawan.nama}</h2>
+            <p className="text-sm text-gray-600 mt-1">Periode: {currentPeriode}</p>
+          </div>
+
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Column 1: Penghasilan */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b pb-2">KOMPONEN PENGHASILAN</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Gaji Pokok</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(gajiPokok)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Tunjangan Transport</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(tunjanganTransport)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Fee Tindakan</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(totalFeeTindakan)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Fee Paket</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(totalFeePaket)}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-700">Subtotal Penghasilan</span>
+                    <span className="text-sm font-bold text-gray-900">{formatRupiah(gajiPokok + tunjanganTransport + totalFeeTindakan + totalFeePaket)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Bonus */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b pb-2">BONUS</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Kehadiran</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusKehadiran)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Lembur</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusLembur)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Kinerja</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusKinerja)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Jabatan</span>
+                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusJabatan)}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-700">Total Bonus</span>
+                    <span className="text-sm font-bold text-gray-900">{formatRupiah(totalBonus)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 3: Potongan & Total */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b pb-2">POTONGAN</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">BPJS/TK</span>
+                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(potonganBPJS)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Alpha</span>
+                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(Number(kompGaji.potonganAlpha || alphaCount * 50000))}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Telat</span>
+                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(Number(kompGaji.potonganTelat || lateCount * 25000))}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Pajak</span>
+                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(potonganPajak)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Kasbon</span>
+                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(Number(kompGaji.potonganKasbon || 0))}</span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-700">Total Potongan</span>
+                    <span className="text-sm font-bold text-gray-900">-{formatRupiah(totalPotongan)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary & Total */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-200">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Gaji Kotor</p>
+                <p className="text-2xl font-bold text-blue-900">{formatRupiah(totalGross)}</p>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <p className="text-xs text-red-600 font-semibold uppercase mb-1">Total Potongan</p>
+                <p className="text-2xl font-bold text-red-900">-{formatRupiah(totalPotongan)}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                <p className="text-xs text-green-600 font-semibold uppercase mb-1">Gaji Bersih</p>
+                <p className="text-2xl font-bold text-green-900">{formatRupiah(totalGajiBersih)}</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  // Reset all komponen gaji to default
+                  setKompGaji({
+                    gajiPokok: 0,
+                    tunjanganTransport: 0,
+                    lemburJam: 0,
+                    nilaiKinerja: 0,
+                    bonusKehadiran: 0,
+                    bonusLembur: 0,
+                    bonusKinerja: 0,
+                    bonusJabatan: 0,
+                    potonganPajak: 0,
+                    potonganKasbon: 0,
+                    potonganAlpha: 0,
+                    potonganTelat: 0,
+                    potonganBPJS: 0
+                  });
+                  setFeePaketData([]);
+                }}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+              <button
+                onClick={async () => {
+                  // Validation
+                  if (!selectedKaryawan || !filterKaryawan || filterKaryawan === "Semua") {
+                    alert("Silakan pilih karyawan terlebih dahulu");
+                    return;
+                  }
+
+                  // Create slip gaji data
+                  const slipData = {
+                    id: `SLIP-${selectedKaryawan.id || selectedKaryawan.nama}-${Date.now()}`,
+                    karyawanId: selectedKaryawan.id || selectedKaryawan.nama,
+                    nama: selectedKaryawan.nama,
+                    nip: selectedKaryawan.nip || "",
+                    posisi: selectedKaryawan.posisi || "",
+                    departemen: selectedKaryawan.departemen || "",
+                    periode: currentPeriode,
+                    date: filterTanggal || new Date().toISOString(),
+                    gajiPokok: gajiPokok,
+                    tunjanganTransport: tunjanganTransport,
+                    feeTindakan: totalFeeTindakan,
+                    feePaket: totalFeePaket,
+                    bonusKehadiran: bonusKehadiran,
+                    bonusLembur: bonusLembur,
+                    bonusKinerja: bonusKinerja,
+                    bonusJabatan: bonusJabatan,
+                    totalBonus: totalBonus,
+                    potonganBPJS: potonganBPJS,
+                    potonganAlpha: Number(kompGaji.potonganAlpha || alphaCount * 50000),
+                    potonganTelat: Number(kompGaji.potonganTelat || lateCount * 25000),
+                    potonganPajak: potonganPajak,
+                    potonganKasbon: Number(kompGaji.potonganKasbon || 0),
+                    totalPotongan: totalPotongan,
+                    totalPenghasilan: gajiPokok + tunjanganTransport + totalFeeTindakan + totalFeePaket + totalBonus,
+                    gajiKotor: totalGross,
+                    gajiNetto: totalGajiBersih,
+                    status: "Selesai",
+                    tanggalGajian: new Date().toISOString()
+                  };
+
+                  // Debug log
+                  console.log("Admin saving slip gaji:", slipData);
+
+                  // Add to context
+                  try {
+                    await addSlipGaji(slipData);
+                    console.log("Slip gaji saved successfully");
+                  } catch (error) {
+                    console.error("Error saving slip gaji:", error);
+                  }
+                  
+                  // Show success message
+                  alert(`Slip Gaji untuk ${selectedKaryawan.nama} berhasil disimpan!`);
+                  
+                  // Reset form
+                  setKompGaji({
+                    gajiPokok: 0,
+                    tunjanganTransport: 0,
+                    lemburJam: 0,
+                    nilaiKinerja: 0,
+                    bonusKehadiran: 0,
+                    bonusLembur: 0,
+                    bonusKinerja: 0,
+                    bonusJabatan: 0,
+                    potonganPajak: 0,
+                    potonganKasbon: 0,
+                    potonganAlpha: 0,
+                    potonganTelat: 0,
+                    potonganBPJS: 0
+                  });
+                  setFeePaketData([]);
+                }}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Simpan Slip Gaji
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editType === "paket" && (
         <FeePaketModal
