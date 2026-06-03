@@ -49,13 +49,17 @@ export default function SlipgajiKaryawan() {
 					nama,
 					nip: karyawan?.nip || "",
 					posisi: karyawan?.posisi || "Staff",
-					department: karyawan?.departemen || "Klinik",
+					departemen: karyawan?.departemen || "Klinik",
 					gajiPokok: Number(karyawan?.gajiPokok || 0),
 					uangTransport: Number(karyawan?.tunjanganTransport || 0),
+					tunjangan: Number(karyawan?.tunjanganTransport || 0),
 					feePaket: [],
 					feeTindakan: 0,
 					potongBpjsTk: Number(karyawan?.asuransi || karyawan?.bpjs || 0),
+					potonganBPJS: Number(karyawan?.asuransi || karyawan?.bpjs || 0),
+					potonganAsuransi: Number(karyawan?.asuransi || karyawan?.bpjs || 0),
 					potonganTax: Number(karyawan?.pajak || 0),
+					potonganPajak: Number(karyawan?.pajak || 0),
 					periode,
 					status: "Selesai",
 					transactionDetails: []
@@ -116,10 +120,12 @@ export default function SlipgajiKaryawan() {
 		return adminDetails.map(td => ({
 			tanggal: td.tanggal || "",
 			namaPasien: td.namaPasien || "",
+			klinik: td.klinik || td.klinikHomeService || "",
 			klinikHomeService: td.klinik || td.klinikHomeService || "",
 			tindakan: td.tindakan || "",
 			harga: typeof td.harga === 'number' ? td.harga : parseInt(String(td.harga).replace(/[^0-9]/g, '')) || 0,
 			feePersen: td.feePercent || td.feePersen || 0,
+			feePercent: td.feePercent || td.feePersen || 0,
 			totalFee: typeof td.totalFee === 'number' ? td.totalFee : (td.harga * (td.feePercent || 0) / 100),
 			feeTransport: typeof td.feeTransport === 'number' ? td.feeTransport : parseInt(String(td.feeTransport || 0).replace(/[^0-9]/g, '')) || 0
 		}));
@@ -139,7 +145,7 @@ export default function SlipgajiKaryawan() {
 		const karyawan = Array.isArray(karyawanData) ? karyawanData.find(k => k.nama === nama) : null;
 		return {
 			name: nama,
-			id: karyawan?.id || `EMP-${nama.substring(0, 3).toUpperCase()}-001`,
+			id: karyawan?.id || karyawan?.nip || `EMP-${nama.substring(0, 3).toUpperCase()}-001`,
 			position: karyawan?.posisi || "Staff",
 			department: karyawan?.departemen || "Klinik"
 		};
@@ -172,11 +178,16 @@ export default function SlipgajiKaryawan() {
 				employee: getKaryawanInfo(slip.nama),
 				gajiPokok: formatRupiah(slip.gajiPokok || 0),
 				uangTransport: formatRupiah(slip.uangTransport || 0),
+				tunjangan: formatRupiah(slip.uangTransport || 0),
 				feePaket: convertFeePaket(slip.feePaket),
 				feeTindakan: formatRupiah(slip.feeTindakan || 0),
 				potongBpjsTk: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
+				potonganBPJS: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
+				potonganAsuransi: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
+				potonganTax: formatRupiah(slip.potonganTax || slip.potonganPajak || 0),
 				totalPenghasilan: formatRupiah(totalPenghasilan),
 				totalPotongan: formatRupiah(totalPotongan),
+				gajiNetto: formatRupiah(total),
 				transactionDetails: convertTransactionDetails(slip.transactionDetails)
 			};
 		});
@@ -713,26 +724,138 @@ export default function SlipgajiKaryawan() {
 
 						{/* Modal Content */}
 						<div className="p-8 space-y-6">
+							{/* Data Karyawan */}
+							<div className="grid grid-cols-2 gap-6">
+								<div className="border border-gray-200 rounded p-4 bg-gray-50">
+									<h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Data Karyawan</h3>
+									<div className="space-y-2 text-sm">
+										<div className="flex justify-between"><span className="text-gray-600">Nama</span><span className="font-medium">{selected.employee.name}</span></div>
+										<div className="flex justify-between"><span className="text-gray-600">NIP</span><span className="font-medium">{selected.employee.id || "-"}</span></div>
+										<div className="flex justify-between"><span className="text-gray-600">Posisi</span><span className="font-medium">{selected.employee.position}</span></div>
+										<div className="flex justify-between"><span className="text-gray-600">Departemen</span><span className="font-medium">{selected.employee.department || "-"}</span></div>
+									</div>
+								</div>
+
+								<div className="border border-gray-200 rounded p-4 bg-gray-50">
+									<h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Penghasilan</h3>
+									<div className="space-y-2 text-sm">
+										<div className="flex justify-between"><span className="text-gray-600">Gaji Pokok</span><span className="font-medium">
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												return formatRupiah(parseRupiah(selected.gajiPokok));
+											})()}
+										</span></div>
+										<div className="flex justify-between"><span className="text-gray-600">Tunjangan Transport</span><span className="font-medium">
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												return formatRupiah(parseRupiah(selected.uangTransport));
+											})()}
+										</span></div>
+										<div className="flex justify-between"><span className="text-gray-600">Fee Tindakan</span><span className="font-medium">
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												return formatRupiah(parseRupiah(selected.feeTindakan));
+											})()}
+										</span></div>
+										<div className="flex justify-between"><span className="text-gray-600">Fee Paket</span><span className="font-medium">
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												const total = selected.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+												return formatRupiah(total);
+											})()}
+										</span></div>
+										<div className="flex justify-between border-t pt-2 mt-2 font-bold text-blue-900 bg-blue-50 p-2 rounded"><span>Gaji Kotor</span><span>
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												const gajiPokok = parseRupiah(selected.gajiPokok);
+												const uangTransport = parseRupiah(selected.uangTransport);
+												const feeTindakan = parseRupiah(selected.feeTindakan);
+												const feePaket = selected.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+												return formatRupiah(gajiPokok + uangTransport + feeTindakan + feePaket);
+											})()}
+										</span></div>
+									</div>
+								</div>
+							</div>
+
+							<div className="grid grid-cols-2 gap-6">
+								<div className="border border-gray-200 rounded p-4 bg-gray-50">
+									<h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Potongan</h3>
+									<div className="space-y-2 text-sm">
+										<div className="flex justify-between"><span className="text-gray-600">BPJS/TK</span><span className="font-medium">-
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												return formatRupiah(parseRupiah(selected.potonganBPJS));
+											})()}
+										</span></div>
+										<div className="flex justify-between border-t pt-2 mt-2 font-bold text-red-900 bg-red-50 p-2 rounded"><span>Total Potongan</span><span>-
+											{(() => {
+												const parseRupiah = (str) => {
+													if (typeof str === 'number') return str;
+													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+													return 0;
+												};
+												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+												return formatRupiah(parseRupiah(selected.potonganBPJS));
+											})()}
+										</span></div>
+									</div>
+								</div>
+
+								<div className="bg-green-50 border border-green-200 rounded p-4 flex flex-col justify-center items-center">
+									<p className="text-xs font-semibold text-green-600 mb-2">GAJI BERSIH</p>
+									<p className="text-3xl font-bold text-green-900">{selected.amount}</p>
+								</div>
+							</div>
+
 							{/* Tabel Detail Transaksi */}
-							<div>
-								<h4 className="text-lg font-semibold text-gray-900 mb-4">Detail Transaksi</h4>
-								<div className="overflow-x-auto border border-gray-200 rounded-lg">
-									<table className="w-full text-sm">
-										<thead className="bg-gray-100">
-											<tr>
-												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tanggal</th>
-												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Nama Pasien</th>
-												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Klinik/Home Service</th>
-												<th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 border-b">Tindakan</th>
-												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">Harga</th>
-												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE</th>
-												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">TOTAL</th>
-												<th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 border-b">FEE TRANSPORT</th>
-											</tr>
-										</thead>
-										<tbody>
-											{selected.transactionDetails && selected.transactionDetails.length > 0 ? (
-												selected.transactionDetails.map((trans, idx) => {
+							{selected.transactionDetails && selected.transactionDetails.length > 0 && (
+								<div className="border border-gray-200 rounded p-4 bg-gray-50">
+									<h3 className="font-bold text-sm text-gray-900 mb-4 pb-2 border-b">Detail Tindakan ({selected.transactionDetails.length})</h3>
+									<div className="overflow-x-auto">
+										<table className="w-full text-sm">
+											<thead>
+												<tr className="border-b border-gray-300 bg-white">
+													<th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Tanggal</th>
+													<th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Pasien</th>
+													<th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Klinik</th>
+													<th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Tindakan</th>
+													<th className="px-3 py-2 text-right font-semibold text-gray-700 text-xs">Harga</th>
+													<th className="px-3 py-2 text-right font-semibold text-gray-700 text-xs">Fee (15%)</th>
+												</tr>
+											</thead>
+											<tbody>
+												{selected.transactionDetails.map((td, idx) => {
 													const parseRupiah = (str) => {
 														if (typeof str === 'number') return str;
 														if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
@@ -743,175 +866,22 @@ export default function SlipgajiKaryawan() {
 														const n = typeof num === 'number' ? num : parseRupiah(num);
 														return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 													};
-													const totalFee = trans.totalFee ? parseRupiah(trans.totalFee) : (parseRupiah(trans.harga) * (trans.feePersen || trans.feePercent || 0) / 100);
-													const klinikHomeService = trans.klinikHomeService || trans.klinik || "";
 													return (
-														<tr key={idx} className="border-b hover:bg-gray-50">
-															<td className="px-4 py-2 text-gray-700">{trans.tanggal || ""}</td>
-															<td className="px-4 py-2 text-gray-700">{trans.namaPasien || ""}</td>
-															<td className="px-4 py-2 text-gray-700">{klinikHomeService}</td>
-															<td className="px-4 py-2 text-gray-700">{trans.tindakan || ""}</td>
-															<td className="px-4 py-2 text-right text-gray-700">{formatRupiah(trans.harga)}</td>
-															<td className="px-4 py-2 text-right text-gray-700">{trans.feePersen || trans.feePercent || 0}%</td>
-															<td className="px-4 py-2 text-right font-semibold text-gray-900">{formatRupiah(totalFee)}</td>
-															<td className="px-4 py-2 text-right text-gray-700">{trans.feeTransport > 0 ? formatRupiah(trans.feeTransport) : "-"}</td>
+														<tr key={idx} className="border-b border-gray-200 hover:bg-white">
+															<td className="px-3 py-2 text-gray-700">{td.tanggal ? new Date(td.tanggal).toLocaleDateString('id-ID') : "-"}</td>
+															<td className="px-3 py-2 text-gray-700">{td.namaPasien || "-"}</td>
+															<td className="px-3 py-2 text-gray-700">{td.klinikHomeService || "-"}</td>
+															<td className="px-3 py-2 text-gray-700">{td.tindakan || "-"}</td>
+															<td className="px-3 py-2 text-right text-gray-700">{formatRupiah(td.harga || 0)}</td>
+															<td className="px-3 py-2 text-right font-semibold text-gray-800">{formatRupiah(td.totalFee || 0)}</td>
 														</tr>
 													);
-												})
-											) : (
-												<tr>
-													<td colSpan={8} className="px-4 py-8 text-center text-gray-400">Tidak ada data transaksi</td>
-												</tr>
-											)}
-											{selected.transactionDetails && selected.transactionDetails.length > 0 && (
-												<tr className="bg-gray-100 font-semibold">
-													<td colSpan={4} className="px-4 py-3 text-right text-gray-900">TOTAL</td>
-													<td className="px-4 py-3 text-right text-gray-700">-</td>
-													<td className="px-4 py-3 text-right text-gray-700">-</td>
-													<td className="px-4 py-3 text-right text-gray-900">
-														{(() => {
-															const parseRupiah = (str) => {
-																if (typeof str === 'number') return str;
-																if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
-																return 0;
-															};
-															const formatRupiah = (num) => {
-																if (typeof num === 'string' && num.includes('Rp')) return num;
-																const n = typeof num === 'number' ? num : parseRupiah(num);
-																return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-															};
-															const total = selected.transactionDetails.reduce((sum, t) => {
-																if (t.totalFee) return sum + parseRupiah(t.totalFee);
-																return sum + (parseRupiah(t.harga) * (t.feePersen || t.feePercent || 0) / 100);
-															}, 0);
-															return formatRupiah(total);
-														})()}
-													</td>
-													<td className="px-4 py-3 text-right text-gray-900">
-														{(() => {
-															const parseRupiah = (str) => {
-																if (typeof str === 'number') return str;
-																if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
-																return 0;
-															};
-															const formatRupiah = (num) => {
-																if (typeof num === 'string' && num.includes('Rp')) return num;
-																const n = typeof num === 'number' ? num : parseRupiah(num);
-																return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-															};
-															const total = selected.transactionDetails.reduce((sum, t) => sum + parseRupiah(t.feeTransport || 0), 0);
-															return formatRupiah(total);
-														})()}
-													</td>
-												</tr>
-											)}
-										</tbody>
-									</table>
-								</div>
-							</div>
-
-							{/* Summary Gaji */}
-							<div className="grid grid-cols-2 gap-6">
-								<div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-									<h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Rincian Gaji</h3>
-									<div className="space-y-2">
-										<div className="flex justify-between text-sm">
-											<span className="text-gray-700">GAJI POKOK</span>
-											<span className="font-semibold text-gray-900">
-												{(() => {
-													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													return formatRupiah(selected.gajiPokok || 0);
-												})()}
-											</span>
-										</div>
-										<div className="flex justify-between text-sm">
-											<span className="text-gray-700">UANG TRANSPORT</span>
-											<span className="font-semibold text-gray-900">
-												{(() => {
-													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													return formatRupiah(selected.uangTransport || 0);
-												})()}
-											</span>
-										</div>
-										{selected.feePaket && selected.feePaket.length > 0 && (
-											<>
-												{selected.feePaket.map((paket, idx) => {
-													const parseRupiah = (str) => {
-														if (typeof str === 'number') return str;
-														if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
-														return 0;
-													};
-													const formatRupiah = (num) => {
-														if (typeof num === 'string' && num.includes('Rp')) return num;
-														const n = typeof num === 'number' ? num : parseRupiah(num);
-														return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													};
-													return (
-														<div key={idx} className="flex justify-between text-sm">
-															<span className="text-gray-700">FEE PAKET ({paket.nama || paket.namaPaket || ""})</span>
-															<span className="font-semibold text-gray-900">
-																{formatRupiah(paket.jumlah || paket.fee || 0)}
-															</span>
-														</div>
-													);
 												})}
-											</>
-										)}
-										<div className="flex justify-between text-sm">
-											<span className="text-gray-700">FEE TINDAKAN</span>
-											<span className="font-semibold text-gray-900">
-												{(() => {
-													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													return formatRupiah(selected.feeTindakan || 0);
-												})()}
-											</span>
-										</div>
-										<div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
-											<span className="text-gray-900">TOTAL GAJI BERSIH</span>
-											<span className="text-gray-900">
-												{selected.amount || (() => {
-													const parseRupiah = (str) => {
-														if (typeof str === 'number') return str;
-														if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
-														return 0;
-													};
-													const formatRupiah = (num) => {
-														if (typeof num === 'string' && num.includes('Rp')) return num;
-														const n = typeof num === 'number' ? num : parseRupiah(num);
-														return `Rp ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													};
-													const gajiPokok = parseRupiah(selected.gajiPokok);
-													const uangTransport = parseRupiah(selected.uangTransport);
-													const feePaket = selected.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
-													const feeTindakan = parseRupiah(selected.feeTindakan);
-													const potongan = parseRupiah(selected.potongBpjsTk);
-													const total = gajiPokok + uangTransport + feePaket + feeTindakan - potongan;
-													return formatRupiah(total);
-												})()}
-											</span>
-										</div>
+											</tbody>
+										</table>
 									</div>
 								</div>
-
-								<div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-									<h3 className="text-base font-semibold text-gray-900 mb-4 pb-2 border-b">Potongan</h3>
-									<div className="space-y-2">
-										<div className="flex justify-between text-sm">
-											<span className="text-gray-700">POTONG BPJS TK</span>
-											<span className="font-semibold text-gray-900">
-												{(() => {
-													const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-													return formatRupiah(selected.potonganBPJS || 0);
-												})()}
-											</span>
-										</div>
-										<div className="flex justify-between text-sm pt-2 mt-2 border-t border-gray-300 font-bold">
-											<span className="text-gray-900">TOTAL GAJI</span>
-											<span className="text-gray-900">{selected.amount}</span>
-										</div>
-									</div>
-								</div>
-							</div>
+							)}
 
 							{/* Action Buttons */}
 							<div className="flex gap-3 pt-4 border-t border-gray-200">
