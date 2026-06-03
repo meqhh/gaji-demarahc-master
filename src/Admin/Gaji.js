@@ -50,6 +50,8 @@ function FeeTindakanModal({
 
   if (!show) return null;
 
+  
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down overflow-y-auto py-8">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl p-0 animate-slide-up my-auto">
@@ -626,7 +628,7 @@ function Gaji() {
   const formatRupiah = (angka) => {
     const value = Number(angka);
     if (Number.isNaN(value)) return 'Rp 0';
-    return `Rp ${Math.round(value * 1000).toLocaleString('id-ID')}`;
+    return `Rp ${Math.round(value).toLocaleString('id-ID')}`;
   };
 
   const monthNames = [
@@ -736,11 +738,11 @@ function Gaji() {
     return { amount: 0 };
   };
 
-  // Hitung total dari filtered data
-  const totalFeeTindakan = filteredGajiData.reduce(
-    (acc, g) => acc + getGajiFeeMeta(g).amount,
-    0
-  );
+    // Hitung total dari filtered data
+    const totalFeeTindakan = filteredGajiData.reduce(
+      (acc, g) => acc + getGajiFeeMeta(g).amount,
+      0
+    );
   const totalFeePaket = feePaketData.reduce(
     (acc, f) => acc + Number(f.fee),
     0
@@ -765,42 +767,20 @@ function Gaji() {
     });
   }, [absensiData, selectedKaryawan, currentPeriode]);
 
-  const hadirCount = selectedAbsensi.filter((item) => String(item.status).toLowerCase() === "hadir").length;
-  const alphaCount = selectedAbsensi.filter((item) => String(item.status).toLowerCase() === "alpha").length;
-  const lateCount = selectedAbsensi.filter((item) => /telat|terlambat/i.test(String(item.status))).length;
-  const totalAbsensiDays = selectedAbsensi.length;
-
   const gajiPokok = Number(kompGaji.gajiPokok || selectedKaryawan?.gajiPokok || 0);
   const tunjanganTransport = Number(kompGaji.tunjanganTransport || selectedKaryawan?.tunjanganTransport || 0);
   const potonganBPJS = Number(kompGaji.potonganBPJS || selectedKaryawan?.asuransi || selectedKaryawan?.bpjs || 0);
 
   const defaultPajak = Math.round(((gajiPokok + totalFeeTindakan + totalFeePaket + tunjanganTransport) * 0.05));
   const potonganPajak = Number(kompGaji.potonganPajak || selectedKaryawan?.pajak || defaultPajak);
-
-  const bonusKehadiranAuto = totalAbsensiDays > 0 && alphaCount === 0 && hadirCount / totalAbsensiDays >= 0.9 ? Math.round(gajiPokok * 0.05) : 0;
-  const bonusLemburAuto = Math.round((Number(kompGaji.lemburJam || 0) * (gajiPokok / 173)) * 1.5);
-  const bonusKinerjaAuto = Number(kompGaji.nilaiKinerja || selectedKaryawan?.nilaiKinerja || 0) >= 90
-    ? Math.round(gajiPokok * 0.1)
-    : Number(kompGaji.nilaiKinerja || selectedKaryawan?.nilaiKinerja || 0) >= 75
-      ? Math.round(gajiPokok * 0.05)
-      : Math.round(gajiPokok * 0.02);
-
-  const getJabatanBonus = (posisi) => {
-    if (!posisi) return 0;
-    const title = posisi.toLowerCase();
-    if (title.includes("manager") || title.includes("kepala") || title.includes("supervisor")) return Math.round(gajiPokok * 0.08);
-    if (title.includes("admin") || title.includes("senior") || title.includes("koordinator")) return Math.round(gajiPokok * 0.05);
-    return Math.round(gajiPokok * 0.03);
-  };
-
-  const bonusKehadiran = Number(kompGaji.bonusKehadiran || bonusKehadiranAuto);
-  const bonusLembur = Number(kompGaji.bonusLembur || bonusLemburAuto);
-  const bonusKinerja = Number(kompGaji.bonusKinerja || bonusKinerjaAuto);
-  const bonusJabatan = Number(kompGaji.bonusJabatan || getJabatanBonus(selectedKaryawan?.posisi));
-
-  const totalBonus = bonusKehadiran + bonusLembur + bonusKinerja + bonusJabatan;
-  const totalPotongan = potonganBPJS + Number(kompGaji.potonganAlpha || alphaCount * 50000) + Number(kompGaji.potonganTelat || lateCount * 25000) + potonganPajak + Number(kompGaji.potonganKasbon || 0);
-  const totalGross = gajiPokok + tunjanganTransport + totalFeeTindakan + totalFeePaket + totalBonus;
+  const totalPotongan =
+  potonganBPJS +
+  potonganPajak;
+  const totalGross =
+  gajiPokok +
+  tunjanganTransport +
+  totalFeeTindakan +
+  totalFeePaket;
   const totalGajiBersih = totalGross - totalPotongan;
 
   return (
@@ -881,6 +861,7 @@ function Gaji() {
                     </tr>
                   </thead>
                   <tbody>
+                    {console.log("DATA GAJI:", filteredGajiData)} 
                     {filteredGajiData.map((g, idx) => (
                       <tr
                         key={g.id}
@@ -971,33 +952,6 @@ function Gaji() {
                 </div>
               </div>
 
-              {/* Column 2: Bonus */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b pb-2">BONUS</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Kehadiran</span>
-                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusKehadiran)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Lembur</span>
-                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusLembur)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Kinerja</span>
-                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusKinerja)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Jabatan</span>
-                    <span className="text-sm font-medium text-gray-900">{formatRupiah(bonusJabatan)}</span>
-                  </div>
-                  <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
-                    <span className="text-sm font-semibold text-gray-700">Total Bonus</span>
-                    <span className="text-sm font-bold text-gray-900">{formatRupiah(totalBonus)}</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Column 3: Potongan & Total */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide border-b pb-2">POTONGAN</h3>
@@ -1007,20 +961,8 @@ function Gaji() {
                     <span className="text-sm font-medium text-gray-900">-{formatRupiah(potonganBPJS)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Alpha</span>
-                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(Number(kompGaji.potonganAlpha || alphaCount * 50000))}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Telat</span>
-                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(Number(kompGaji.potonganTelat || lateCount * 25000))}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Pajak</span>
                     <span className="text-sm font-medium text-gray-900">-{formatRupiah(potonganPajak)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Kasbon</span>
-                    <span className="text-sm font-medium text-gray-900">-{formatRupiah(Number(kompGaji.potonganKasbon || 0))}</span>
                   </div>
                   <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
                     <span className="text-sm font-semibold text-gray-700">Total Potongan</span>
@@ -1054,16 +996,7 @@ function Gaji() {
                   setKompGaji({
                     gajiPokok: 0,
                     tunjanganTransport: 0,
-                    lemburJam: 0,
-                    nilaiKinerja: 0,
-                    bonusKehadiran: 0,
-                    bonusLembur: 0,
-                    bonusKinerja: 0,
-                    bonusJabatan: 0,
                     potonganPajak: 0,
-                    potonganKasbon: 0,
-                    potonganAlpha: 0,
-                    potonganTelat: 0,
                     potonganBPJS: 0
                   });
                   setFeePaketData([]);
@@ -1093,19 +1026,10 @@ function Gaji() {
                     gajiPokok: gajiPokok,
                     tunjanganTransport: tunjanganTransport,
                     feeTindakan: totalFeeTindakan,
-                    feePaket: totalFeePaket,
-                    bonusKehadiran: bonusKehadiran,
-                    bonusLembur: bonusLembur,
-                    bonusKinerja: bonusKinerja,
-                    bonusJabatan: bonusJabatan,
-                    totalBonus: totalBonus,
                     potonganBPJS: potonganBPJS,
-                    potonganAlpha: Number(kompGaji.potonganAlpha || alphaCount * 50000),
-                    potonganTelat: Number(kompGaji.potonganTelat || lateCount * 25000),
                     potonganPajak: potonganPajak,
-                    potonganKasbon: Number(kompGaji.potonganKasbon || 0),
                     totalPotongan: totalPotongan,
-                    totalPenghasilan: gajiPokok + tunjanganTransport + totalFeeTindakan + totalFeePaket + totalBonus,
+                    totalPenghasilan: gajiPokok + tunjanganTransport + totalFeeTindakan,
                     gajiKotor: totalGross,
                     gajiNetto: totalGajiBersih,
                     status: "Selesai",

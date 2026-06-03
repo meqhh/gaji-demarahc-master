@@ -147,6 +147,8 @@ function Karyawan() {
       id: getNextId(),
       nama: form.nama.value,
       posisi: form.posisi.value,
+      gajiPokok: Number(form.gajiPokok.value) || 0,
+      tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
       status: form.status?.value || "",
       nohp: form.nohp.value,
       email: form.email.value,
@@ -157,6 +159,8 @@ function Karyawan() {
       tglKontrak: form.tglKontrak.value,
       lamaKontrak: form.lamaKontrak.value,
       foto: fotoBase64,
+      gajiPokok: Number(form.gajiPokok.value) || 0,
+      tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
     };
 
     if (typeof addKaryawan === 'function') {
@@ -393,6 +397,8 @@ function Karyawan() {
                     ["Lama Kontrak", "lamaKontrak"],
                     ["Tanggal Masuk", "tglMasuk", "date"],
                     ["Tanggal Kontrak", "tglKontrak", "date"],
+                    ["Gaji Pokok", "gajiPokok", "number"],
+                    ["Tunjangan Transport", "tunjanganTransport", "number"],
                   ].map(([label, name, type = "text"]) => (
                     <div key={name}>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
@@ -510,6 +516,19 @@ function Karyawan() {
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Tempat Lahir</label>
                       <p className="text-gray-900">{detailData.tempatLahir || '—'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Gaji Pokok</label>
+                      <p className="text-gray-900">
+                        Rp {Number(detailData.gajiPokok || 0).toLocaleString("id-ID")}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Tunjangan Transport</label>
+                      <p className="text-gray-900">
+                        Rp {Number(detailData.tunjanganTransport || 0).toLocaleString("id-ID")}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Tanggal Lahir</label>
