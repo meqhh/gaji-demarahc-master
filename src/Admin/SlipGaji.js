@@ -132,13 +132,28 @@ function SlipGaji() {
     });
 
     return Object.values(groups).map((group) => {
-      const totalPenghasilan = group.gajiPokok + group.tunjangan + group.bonus + group.feeTindakan;
-      const totalPotongan = group.potonganAsuransi + group.potonganTax;
-      const gajiNetto = totalPenghasilan - totalPotongan;
+              const totalPenghasilan =
+          group.gajiPokok +
+          group.tunjangan +
+          group.bonus +
+          group.feeTindakan;
+
+        // BPJS sudah fixed
+        const bpjs = group.potonganAsuransi;
+
+        // 💥 PAJAK AUTO (misal 5% dari penghasilan)
+        const pajak = Math.round(totalPenghasilan * 0.05);
+
+        // total potongan sekarang
+        const totalPotongan = bpjs + pajak;
+
+        const gajiNetto = totalPenghasilan - totalPotongan;
 
       return {
         ...group,
         totalPenghasilan,
+        bpjs,
+        pajak,
         totalPotongan,
         gajiNetto
       };
@@ -464,6 +479,11 @@ function SlipGaji() {
                     <div className="flex justify-between"><span className="text-gray-600">Tunjangan Transport</span><span className="font-medium">{formatRupiah(selectedData.tunjangan || 0)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Fee Tindakan</span><span className="font-medium">{formatRupiah(selectedData.feeTindakan || selectedData.bonus || 0)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">Fee Paket</span><span className="font-medium">{formatRupiah(selectedData.feePaket || 0)}</span></div>
+                    <span className="font-medium">-{formatRupiah(selectedData.pajak)}</span>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Pajak</span>
+                      <span className="font-medium">-{formatRupiah(selectedData.pajak)}</span>
+                    </div>
                     <div className="flex justify-between border-t pt-2 mt-2 font-bold text-blue-900 bg-blue-50 p-2 rounded"><span>Gaji Kotor</span><span>{formatRupiah(selectedData.totalPenghasilan)}</span></div>
                   </div>
                 </div>

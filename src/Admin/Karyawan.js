@@ -147,8 +147,6 @@ function Karyawan() {
       id: getNextId(),
       nama: form.nama.value,
       posisi: form.posisi.value,
-      gajiPokok: Number(form.gajiPokok.value) || 0,
-      tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
       status: form.status?.value || "",
       nohp: form.nohp.value,
       email: form.email.value,
@@ -161,6 +159,7 @@ function Karyawan() {
       foto: fotoBase64,
       gajiPokok: Number(form.gajiPokok.value) || 0,
       tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
+      bpjs: Number(form.bpjs.value) || 0,
     };
 
     if (typeof addKaryawan === 'function') {
@@ -197,6 +196,9 @@ function Karyawan() {
       tglKontrak: form.tglKontrak.value,
       lamaKontrak: form.lamaKontrak.value,
       foto: fotoBase64,
+      gajiPokok: Number(form.gajiPokok.value) || 0,
+      tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
+      bpjs: Number(form.bpjs.value) || 0,
     };
 
     if (typeof updateKaryawan === 'function') {
@@ -399,6 +401,7 @@ function Karyawan() {
                     ["Tanggal Kontrak", "tglKontrak", "date"],
                     ["Gaji Pokok", "gajiPokok", "number"],
                     ["Tunjangan Transport", "tunjanganTransport", "number"],
+                    ["BPJS", "bpjs", "number"],
                   ].map(([label, name, type = "text"]) => (
                     <div key={name}>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">{label}</label>
@@ -523,6 +526,15 @@ function Karyawan() {
                         Rp {Number(detailData.gajiPokok || 0).toLocaleString("id-ID")}
                       </p>
                     </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          BPJS
+                        </label>
+                        <p className="text-gray-900">
+                          Rp {Number(detailData.bpjs || 0).toLocaleString("id-ID")}
+                        </p>
+                      </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-gray-600 mb-1">Tunjangan Transport</label>
@@ -718,6 +730,47 @@ function Karyawan() {
                     type="text"
                     className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors"
                   />
+                </div>
+
+                {/* TAMBAHAN KOMPONEN GAJI */}
+                <div>
+                  <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Gaji Pokok
+                    </label>
+                    <input
+                      name="gajiPokok"
+                      defaultValue={editData.gajiPokok}
+                      type="number"
+                      className="w-full border border-gray-300 px-4 py-3 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Tunjangan Transport
+                    </label>
+                    <input
+                      name="tunjanganTransport"
+                      defaultValue={editData.tunjanganTransport}
+                      type="number"
+                      className="w-full border border-gray-300 px-4 py-3 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      BPJS
+                    </label>
+                    <input
+                      name="bpjs"
+                      defaultValue={editData.bpjs}
+                      type="number"
+                      className="w-full border border-gray-300 px-4 py-3 rounded-lg"
+                    />
+                  </div>
+                </div>
                 </div>
 
                 {/* Upload Foto */}

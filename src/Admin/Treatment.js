@@ -1,5 +1,6 @@
 import React, { useState, useContext } from "react";
 import { AppContext } from "../context/AppContext";
+import { useEffect } from "react";
 
 // ======================
 // DATA TREATMENTS
@@ -172,8 +173,19 @@ function Treatment() {
 const { karyawanData, addTreatment, addGaji } = useContext(AppContext);
 console.log("DATA KARYAWAN:", karyawanData);
 
-const [dataTreatment, setDataTreatment] = useState(treatments);
+const [dataTreatment, setDataTreatment] = useState(() => {
+  try {
+    const saved = localStorage.getItem("treatments");
+    return saved ? JSON.parse(saved) : treatments;
+  } catch {
+    return treatments;
+  }
+});
 const [search, setSearch] = useState("");
+
+useEffect(() => {
+  localStorage.setItem("treatments", JSON.stringify(dataTreatment));
+}, [dataTreatment]);
 
 const [showTambah, setShowTambah] = useState(false);
 const [showDetail, setShowDetail] = useState(false);
@@ -190,6 +202,8 @@ const [formData, setFormData] = useState({});
 
 const [bidanTerpilih, setBidanTerpilih] = useState("");
 const [catatanTreatment, setCatatanTreatment] = useState([]);
+
+
 
   // FILTER DATA BY SEARCH
   const filteredData = dataTreatment.filter((item) =>
@@ -423,7 +437,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       >
         <option value="">Pilih Bidan</option>
 
-        {karyawanData.map((item) => (
+        {karyawanData?.map?.((item) => (
           <option key={item.id} value={item.nama}>
             {item.nama}
           </option>

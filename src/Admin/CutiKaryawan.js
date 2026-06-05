@@ -99,17 +99,19 @@ function CutiKaryawan() {
   };
 
   const confirmStatusChange = () => {
-    if (!statusChangeTarget) return;
-    const updates = {
-      status: pendingStatus,
-      updatedBy: userProfile?.name || "Admin",
-      updatedAt: new Date().toISOString(),
-    };
-    if (pendingStatus === "Ditolak" && rejectionReason.trim() !== "") {
-      updates.rejectionReason = rejectionReason.trim();
-    }
+  if (!statusChangeTarget) return;
 
-    updateCuti(statusChangeTarget.id, updates);
+  const updates = {
+    status: pendingStatus,
+    updatedBy: userProfile?.name || "Admin",
+    updatedAt: new Date().toISOString(),
+  };
+
+  console.log("TARGET CUTI:", statusChangeTarget);
+  console.log("ID CUTI:", statusChangeTarget?.id);
+  console.log("UPDATE:", updates);
+
+  updateCuti(statusChangeTarget.id, updates);
 
     // show toast
     setToastMessage(`Status untuk ${statusChangeTarget.nama} diubah menjadi ${pendingStatus}`);

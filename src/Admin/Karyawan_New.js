@@ -74,6 +74,7 @@ function Karyawan() {
       foto: fotoBase64,
       gajiPokok: Number(form.gajiPokok.value) || 0,
       transportasi: Number(form.transportasi.value) || 0,
+      bpjs: Number(form.bpjs.value) || 0,
     };
 
     const updatedData = [...data, newKaryawan];
@@ -111,6 +112,7 @@ function Karyawan() {
       foto: fotoBase64,
       gajiPokok: Number(form.gajiPokok.value) || 0,
       transportasi: Number(form.transportasi.value) || 0,
+      bpjs: Number(form.bpjs.value) || 0,
     };
 
     const updatedData = data.map(k => k.id === updated.id ? updated : k);
@@ -267,6 +269,7 @@ function Karyawan() {
                 ["Posisi", "posisi"],
                 ["Gaji Pokok", "gajiPokok", "number"],
                 ["Transportasi", "transportasi", "number"],
+                ["BPJS/TK", "bpjs", "number"],
                 ["Nomor HP", "nohp"],
                 ["Email", "email", "email"],
                 ["Tempat Lahir", "tempatLahir"],
@@ -322,6 +325,7 @@ function Karyawan() {
                 "Posisi": detailData.posisi,
                 "Gaji Pokok": `Rp ${Number(detailData.gajiPokok || 0).toLocaleString("id-ID")}`,
                 "Transportasi": `Rp ${Number(detailData.transportasi || 0).toLocaleString("id-ID")}`,
+                "BPJS/TK": `Rp ${Number(detailData.bpjs || 0).toLocaleString("id-ID")}`,
                 "Nomor HP": detailData.nohp,
                 "Email": detailData.email,
                 "Alamat": detailData.alamat,
@@ -357,8 +361,8 @@ function Karyawan() {
               {[
                 ["Nama", "nama"],
                 ["Posisi", "posisi"],
-                ["Gaji Pokok", "gajiPokok", "number"],
                 ["Transportasi", "transportasi", "number"],
+                ["BPJS/TK", "bpjs", "number"],
                 ["Nomor HP", "nohp"],
                 ["Email", "email", "email"],
                 ["Tempat Lahir", "tempatLahir"],
@@ -367,7 +371,7 @@ function Karyawan() {
                 ["Tanggal Kontrak", "tglKontrak", "date"],
                 ["Lama Kontrak", "lamaKontrak"],
                 ["Gaji Pokok", "gajiPokok", "number"],
-                ["Tunjangan Transport", "tunjanganTransport", "number"],
+                
               ].map(([label, name, type = "text"]) => (
                 <div key={name}>
                   <label className="block text-sm font-bold text-gray-700 mb-2">{label}</label>

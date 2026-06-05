@@ -854,9 +854,18 @@ function Gaji() {
   const gajiPokok = Number(kompGaji.gajiPokok || selectedKaryawan?.gajiPokok || 0);
   const tunjanganTransport = Number(kompGaji.tunjanganTransport || selectedKaryawan?.tunjanganTransport || 0);
   const potonganBPJS = Number(kompGaji.potonganBPJS || selectedKaryawan?.asuransi || selectedKaryawan?.bpjs || 0);
+  const basePajak =
+  gajiPokok +
+  tunjanganTransport +
+  totalFeeTindakan +
+  totalFeePaket;
 
-  const defaultPajak = Math.round(((gajiPokok + totalFeeTindakan + totalFeePaket + tunjanganTransport) * 0.05));
-  const potonganPajak = Number(kompGaji.potonganPajak || selectedKaryawan?.pajak || defaultPajak);
+  const defaultPajak = Math.round(basePajak * 0.05);
+  const potonganPajak =
+  kompGaji.potonganPajak > 0
+    ? Number(kompGaji.potonganPajak)
+    : defaultPajak;
+    
   const totalPotongan =
   potonganBPJS +
   potonganPajak;

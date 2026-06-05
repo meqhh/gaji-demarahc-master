@@ -75,11 +75,17 @@ export default function AbsensiKaryawan() {
 
 		const canCheckIn = () => {
 		const now = new Date();
+
+		console.log("Waktu sekarang:", now);
+		console.log("Jam sekarang:", now.getHours());
+
 		const currentHour = now.getHours();
 		const currentMinute = now.getMinutes();
 
-		return currentHour > 8 || (currentHour === 8 && currentMinute >= 0);
-		};
+		const currentTime = currentHour * 60 + currentMinute;
+
+		return currentTime >= 480 && currentTime <= 1020;
+	};
 
 		const canCheckOut = () => {
 		const now = new Date();
@@ -96,6 +102,8 @@ export default function AbsensiKaryawan() {
 
 	const handleCheckIn = () => {
 		// Allow manual check-in - removed login restriction for manual attendance
+		console.log("HANDLE CHECK IN DIPANGGIL");
+    	console.log("HASIL canCheckIn:", canCheckIn());
 		if (!canCheckIn()) {
 		alert("Absensi belum dibuka. Silakan melakukan absensi masuk mulai pukul 08.00 WIB.");
 		return;
