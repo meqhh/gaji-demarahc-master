@@ -66,6 +66,9 @@ function CutiKaryawan() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
+  
+  // Track which rows are being updated for UI feedback
+  const [updatingStatusIds, setUpdatingStatusIds] = useState(new Set());
 
   // filter data berdasarkan status, karyawan, dan pencarian
   const filteredData = dataCuti.filter((item) => {
@@ -80,26 +83,80 @@ function CutiKaryawan() {
     return matchStatus && matchKaryawan && matchSearch;
   });
 
+  // Hitung sisa cuti untuk karyawan yang dipilih (jika bukan "Semua")
+  const totalJatahCuti = 12;
+  const cutiTerpakaiForSelected = useMemo(() => {
+    if (filterKaryawan === "Semua") return 0;
+    return Array.isArray(dataCuti)
+      ? dataCuti
+          .filter(item => item.nama === filterKaryawan && item.status === "Disetujui")
+          .reduce((total, item) => total + Number(item.lama || 0), 0)
+      : 0;
+  }, [dataCuti, filterKaryawan]);
+
+  const sisaCutiForSelected = totalJatahCuti - cutiTerpakaiForSelected;
+
   // ubah status
+  const getCutiId = (item) => item?.id || item?._id;
+
   const ubahStatus = (statusBaru) => {
-    if (selectedCuti) {
-      updateCuti(selectedCuti.id, { status: statusBaru });
+    const targetId = getCutiId(selectedCuti);
+    if (selectedCuti && targetId) {
+      updateCuti(targetId, { status: statusBaru });
       setSelectedCuti(null);
+    } else {
+      console.error('Cannot update status: cuti id is missing', selectedCuti);
     }
   };
 
   // ubah status langsung dari baris tabel — sekarang dengan konfirmasi dan alasan penolakan
-  const handleRowStatusChange = (item, newStatus) => {
-    if (!item || !item.id) return;
-    setStatusChangeTarget(item);
-    setPendingStatus(newStatus);
-    setRejectionReason("");
-    // if rejecting, require reason; else show simple confirm
-    setShowStatusConfirm(true);
+  const handleRowStatusChange = async (item, newStatus) => {
+    if (!item || !(item.id || item._id)) return;
+    if (String(item.status) === String(newStatus)) return; // no change
+
+    const targetId = item.id || item._id;
+    
+    // Add to loading state
+    setUpdatingStatusIds(prev => new Set([...prev, String(targetId)]));
+    
+    const updates = {
+      status: newStatus,
+      updatedBy: userProfile?.name || "Admin",
+      updatedAt: new Date().toISOString()
+    };
+
+    console.log('Updating cuti', targetId, updates);
+    try {
+      await updateCuti(targetId, updates);
+      
+      // Small delay to ensure state update is complete
+      setTimeout(() => {
+        setToastMessage(`Status untuk ${item.nama} diubah menjadi ${newStatus}`);
+        setToastVisible(true);
+        setTimeout(() => setToastVisible(false), 4000);
+      }, 100);
+    } catch (e) {
+      console.error('Gagal mengubah status:', e && (e.message || e));
+      setToastMessage(`Gagal mengubah status: ${e?.message || 'Terjadi kesalahan'}`);
+      setToastVisible(true);
+      setTimeout(() => setToastVisible(false), 5000);
+    } finally {
+      // Remove from loading state
+      setUpdatingStatusIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(String(targetId));
+        return newSet;
+      });
+    }
   };
 
   const confirmStatusChange = () => {
   if (!statusChangeTarget) return;
+  const targetId = getCutiId(statusChangeTarget);
+  if (!targetId) {
+    console.error('Cannot confirm status change: cuti id is missing', statusChangeTarget);
+    return;
+  }
 
   const updates = {
     status: pendingStatus,
@@ -108,10 +165,10 @@ function CutiKaryawan() {
   };
 
   console.log("TARGET CUTI:", statusChangeTarget);
-  console.log("ID CUTI:", statusChangeTarget?.id);
+  console.log("ID CUTI:", targetId);
   console.log("UPDATE:", updates);
 
-  updateCuti(statusChangeTarget.id, updates);
+  updateCuti(targetId, updates);
 
     // show toast
     setToastMessage(`Status untuk ${statusChangeTarget.nama} diubah menjadi ${pendingStatus}`);
@@ -186,6 +243,24 @@ function CutiKaryawan() {
             </div>
           </div>
         </div>
+
+        {/* Info Cuti Section - Hanya tampil jika karyawan tertentu dipilih */}
+        {filterKaryawan !== "Semua" && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate-slide-up">
+            <div className="bg-white shadow-md rounded-xl p-5">
+              <p className="text-gray-500 font-medium">Total Jatah Cuti</p>
+              <p className="text-2xl font-bold text-gray-900">{totalJatahCuti} hari</p>
+            </div>
+            <div className="bg-white shadow-md rounded-xl p-5">
+              <p className="text-gray-500 font-medium">Cuti Terpakai</p>
+              <p className="text-2xl font-bold text-gray-900">{cutiTerpakaiForSelected} hari</p>
+            </div>
+            <div className="bg-white shadow-md rounded-xl p-5">
+              <p className="text-gray-500 font-medium">Sisa Cuti</p>
+              <p className="text-2xl font-bold text-gray-900">{sisaCutiForSelected} hari</p>
+            </div>
+          </div>
+        )}
 
         {/* Stats Section */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -281,50 +356,60 @@ function CutiKaryawan() {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((item, index) => (
-                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-all animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
-                    <td className="px-6 py-4 text-gray-800 font-semibold">{index + 1}</td>
-                    <td className="px-6 py-4 text-gray-800 font-medium">{item.nama}</td>
-                    <td className="px-6 py-4 text-gray-800 font-medium">{item.tanggal}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm font-semibold border border-gray-300">{item.lama} hari</span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">{item.alasan}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`px-4 py-2 rounded text-sm font-semibold inline-block border ${
-                          item.status === "Disetujui"
-                            ? "bg-gray-100 text-gray-800 border-gray-300"
-                            : item.status === "Ditolak"
-                            ? "bg-gray-50 text-gray-600 border-gray-200"
-                            : "bg-gray-200 text-gray-700 border-gray-300"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <select
-                          value={item.status}
-                          onChange={(e) => handleRowStatusChange(item, e.target.value)}
-                          className="px-3 py-1.5 border rounded text-sm font-semibold bg-white text-gray-700"
-                          aria-label={`Ubah status pengajuan ${item.nama}`}>
-                          <option value="Pending">Pending</option>
-                          <option value="Disetujui">Disetujui</option>
-                          <option value="Ditolak">Ditolak</option>
-                        </select>
-
-                        <button
-                          onClick={() => setSelectedCuti(item)}
-                          className="bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-600 transition-all"
+                {filteredData.map((item, index) => {
+                  const itemId = item.id || item._id;
+                  const currentItem = cutiData.find(c => (c.id || c._id) === itemId) || item;
+                  
+                  return (
+                    <tr key={itemId} className="border-b border-gray-100 hover:bg-gray-50 transition-all animate-slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
+                      <td className="px-6 py-4 text-gray-800 font-semibold">{index + 1}</td>
+                      <td className="px-6 py-4 text-gray-800 font-medium">{currentItem.nama}</td>
+                      <td className="px-6 py-4 text-gray-800 font-medium">{currentItem.tanggal}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded text-sm font-semibold border border-gray-300">{currentItem.lama} hari</span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-700">{currentItem.alasan}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`px-4 py-2 rounded text-sm font-semibold inline-block border ${
+                            currentItem.status === "Disetujui"
+                              ? "bg-gray-100 text-gray-800 border-gray-300"
+                              : currentItem.status === "Ditolak"
+                              ? "bg-gray-50 text-gray-600 border-gray-200"
+                              : "bg-gray-200 text-gray-700 border-gray-300"
+                          }`}
                         >
-                          Detail
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {currentItem.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <select
+                            value={currentItem.status}
+                            onChange={(e) => handleRowStatusChange(currentItem, e.target.value)}
+                            disabled={updatingStatusIds.has(String(itemId))}
+                            className={`px-3 py-1.5 border rounded text-sm font-semibold ${
+                              updatingStatusIds.has(String(itemId))
+                                ? 'bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed'
+                                : 'bg-white text-gray-700 hover:border-gray-500'
+                            } transition-colors`}
+                            aria-label={`Ubah status pengajuan ${currentItem.nama}`}>
+                            <option value="Pending">Pending</option>
+                            <option value="Disetujui">Disetujui</option>
+                            <option value="Ditolak">Ditolak</option>
+                          </select>
+
+                          <button
+                            onClick={() => setSelectedCuti(currentItem)}
+                            className="bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-600 transition-all"
+                          >
+                            Detail
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
                 {filteredData.length === 0 && (

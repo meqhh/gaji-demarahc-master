@@ -132,11 +132,12 @@ export default function SlipgajiKaryawan() {
 	};
 
 	// Convert fee paket from admin format to karyawan format
-	const convertFeePaket = (adminFeePaket) => {
-		if (!adminFeePaket || !Array.isArray(adminFeePaket)) return [];
-		return adminFeePaket.map(fp => ({
-			nama: fp.namaPaket || fp.nama || "",
-			jumlah: typeof fp.fee === 'number' ? fp.fee : parseInt(String(fp.fee || fp.jumlah).replace(/[^0-9]/g, '')) || 0
+	const normalizeFeePaket = (adminFeePaket) => {
+		if (!adminFeePaket) return [];
+		const items = Array.isArray(adminFeePaket) ? adminFeePaket : [adminFeePaket];
+		return items.filter(Boolean).map(fp => ({
+			nama: fp?.namaPaket || fp?.nama || "",
+			jumlah: typeof fp?.fee === 'number' ? fp.fee : parseInt(String(fp?.fee || fp?.jumlah || 0).replace(/[^0-9]/g, '')) || 0
 		}));
 	};
 
@@ -163,9 +164,11 @@ export default function SlipgajiKaryawan() {
 			const month = `${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
 
 			// Calculate totals
+			const feePaketItems = normalizeFeePaket(slip.feePaket);
+			const totalFeePaket = feePaketItems.reduce((sum, p) => sum + (p.jumlah || p.fee || 0), 0);
 			const totalPenghasilan = (slip.gajiPokok || 0) + 
 				(slip.uangTransport || 0) + 
-				(slip.feePaket?.reduce((sum, p) => sum + (p.fee || p.jumlah || 0), 0) || 0) + 
+				totalFeePaket + 
 				(slip.feeTindakan || 0);
 			const totalPotongan = slip.potongBpjsTk || slip.potonganBPJS || 0;
 			const total = totalPenghasilan - totalPotongan;
@@ -179,7 +182,7 @@ export default function SlipgajiKaryawan() {
 				gajiPokok: formatRupiah(slip.gajiPokok || 0),
 				uangTransport: formatRupiah(slip.uangTransport || 0),
 				tunjangan: formatRupiah(slip.uangTransport || 0),
-				feePaket: convertFeePaket(slip.feePaket),
+				feePaket: normalizeFeePaket(slip.feePaket),
 				feeTindakan: formatRupiah(slip.feeTindakan || 0),
 				potongBpjsTk: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
 				potonganBPJS: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
@@ -263,7 +266,7 @@ export default function SlipgajiKaryawan() {
 		const totalFeeTransport = slip.transactionDetails?.reduce((sum, t) => sum + parseRupiah(t.feeTransport || 0), 0) || 0;
 		
 		// Calculate fee paket total
-		const totalFeePaket = slip.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+		const totalFeePaket = normalizeFeePaket(slip.feePaket).reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
 		
 		const totalGajiSebelumPotongan = gajiPokokNum + uangTransportNum + totalFeePaket + totalFeeTindakan;
 
@@ -780,7 +783,7 @@ export default function SlipgajiKaryawan() {
 													return 0;
 												};
 												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-												const total = selected.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+												const total = normalizeFeePaket(selected.feePaket).reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
 												return formatRupiah(total);
 											})()}
 										</span></div>
@@ -795,7 +798,7 @@ export default function SlipgajiKaryawan() {
 												const gajiPokok = parseRupiah(selected.gajiPokok);
 												const uangTransport = parseRupiah(selected.uangTransport);
 												const feeTindakan = parseRupiah(selected.feeTindakan);
-												const feePaket = selected.feePaket?.reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
+												const feePaket = normalizeFeePaket(selected.feePaket).reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
 												return formatRupiah(gajiPokok + uangTransport + feeTindakan + feePaket);
 											})()}
 										</span></div>

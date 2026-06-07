@@ -404,8 +404,10 @@ const cutiDB = {
 
   findById: async (id) => {
     try {
+      console.log('cutiDB.findById called with id:', id, 'type:', typeof id);
       const conn = await pool.getConnection();
       const [rows] = await conn.query('SELECT * FROM cuti WHERE id = ?', [id]);
+      console.log('cutiDB.findById result rows:', rows?.length || 0, 'rows:', rows);
       conn.release();
       return rows[0] || null;
     } catch (err) {

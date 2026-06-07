@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useContext } from "react";
 import { AppContext } from "../context/AppContext";
 
 function Karyawan() {
@@ -43,30 +43,8 @@ function Karyawan() {
     };
   };
 
-  // Initialize data on mount - only load from localStorage, no default data
-  useEffect(() => {
-    try {
-      // Only load from localStorage if exists, otherwise keep empty
-      const stored = JSON.parse(localStorage.getItem("karyawanData")) || [];
-      if (stored.length > 0) {
-        setKaryawanData(stored);
-      } else {
-        // Ensure empty array if no data in localStorage
-        setKaryawanData([]);
-      }
-    } catch (err) {
-      console.error("Gagal load data dari localStorage", err);
-      setKaryawanData([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Initialize karyawan data from absensi - DISABLED: No auto-initialization
-  // useEffect(() => {
-  //   // Disabled - no automatic initialization from absensi
-  // }, [absensiData]);
-
-  // persistence handled by AppContext
+  // Data karyawan saat ini dimuat dan disinkronkan oleh AppContext.
+  // Tidak perlu melakukan inisialisasi ulang dari localStorage di halaman ini.
 
   /* ===========================
      🔧 HELPER FUNCTIONS

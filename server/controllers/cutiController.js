@@ -85,9 +85,11 @@ export const createCuti = async (req, res) => {
 // Update cuti data (karyawan bisa edit saat status masih Pending, admin bisa update status)
 export const updateCuti = async (req, res) => {
   try {
+    console.log('updateCuti called with id:', req.params.id, 'body:', req.body);
     const cuti = await cutiDB.findById(req.params.id);
+    console.log('Found cuti:', cuti ? 'yes' : 'no', cuti);
     if (!cuti) {
-      return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan' });
+      return res.status(404).json({ success: false, message: 'Pengajuan cuti tidak ditemukan', id: req.params.id });
     }
 
     const isAdmin = req.user?.role === 'admin';

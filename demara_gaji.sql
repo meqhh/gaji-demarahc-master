@@ -38,10 +38,14 @@ CREATE TABLE `absensi` (
 CREATE TABLE `cuti` (
   `id` int(11) NOT NULL,
   `karyawan_id` int(11) DEFAULT NULL,
-  `tanggal_mulai` date DEFAULT NULL,
-  `tanggal_selesai` date DEFAULT NULL,
+  `nama` varchar(100) DEFAULT NULL,
+  `tanggal` date DEFAULT NULL,
+  `lama` int(11) DEFAULT 1,
   `alasan` text,
-  `status` enum('pending','disetujui','ditolak') DEFAULT 'pending',
+  `status` enum('Pending','Disetujui','Ditolak') DEFAULT 'Pending',
+  `rejection_reason` text,
+  `updated_by` varchar(100) DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

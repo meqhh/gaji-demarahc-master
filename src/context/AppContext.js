@@ -19,6 +19,31 @@ const saveToLocalStorage = (key, value) => {
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
+const normalizeCutiItem = (item) => {
+  if (!item || typeof item !== 'object') return item;
+  const normalized = { ...item };
+  const id = normalized.id ?? normalized._id;
+  if (id !== undefined && normalized.id === undefined) normalized.id = id;
+  if (normalized.status !== undefined) {
+    const status = String(normalized.status || '').trim();
+    const statusMap = { pending: 'Pending', disetujui: 'Disetujui', ditolak: 'Ditolak' };
+    normalized.status = statusMap[status.toLowerCase()] || status || 'Pending';
+  }
+  if (normalized.rejectionReason === undefined && normalized.rejection_reason !== undefined) {
+    normalized.rejectionReason = normalized.rejection_reason;
+  }
+  if (normalized.updatedBy === undefined && normalized.updated_by !== undefined) {
+    normalized.updatedBy = normalized.updated_by;
+  }
+  if (normalized.tanggal === undefined && normalized.tanggal_mulai !== undefined) {
+    normalized.tanggal = normalized.tanggal_mulai;
+  }
+  if (normalized.lama === undefined && normalized.lama !== undefined) {
+    normalized.lama = normalized.lama;
+  }
+  return normalized;
+};
+
 const isSameKaryawanRecord = (left, right) => {
   if (!left || !right) return false;
 
@@ -50,6 +75,38 @@ const dedupeKaryawanList = (items) => {
     if (!exists) deduped.push(item);
   }
   return deduped;
+};
+
+const isSameAbsensiRecord = (left, right) => {
+  if (!left || !right) return false;
+  if (left.id !== undefined && right.id !== undefined && String(left.id) === String(right.id)) return true;
+  if (left.checkInId && right.checkInId && String(left.checkInId) === String(right.checkInId)) return true;
+  if (
+    left.karyawan_id !== undefined &&
+    right.karyawan_id !== undefined &&
+    String(left.karyawan_id) === String(right.karyawan_id) &&
+    left.tanggal &&
+    right.tanggal &&
+    String(left.tanggal) === String(right.tanggal)
+  ) return true;
+  return false;
+};
+
+const mergeAbsensiData = (serverArr, localArr) => {
+  if (!Array.isArray(serverArr)) return Array.isArray(localArr) ? localArr : [];
+  if (!Array.isArray(localArr) || localArr.length === 0) return serverArr;
+
+  const merged = [...serverArr];
+  for (const localItem of localArr) {
+    if (!localItem) continue;
+    const existingIndex = merged.findIndex((serverItem) => isSameAbsensiRecord(serverItem, localItem));
+    if (existingIndex > -1) {
+      merged[existingIndex] = { ...merged[existingIndex], ...localItem };
+    } else {
+      merged.push(localItem);
+    }
+  }
+  return merged;
 };
 
 export const AppContextProvider = ({ children }) => {
@@ -273,7 +330,14 @@ export const AppContextProvider = ({ children }) => {
           fetchResource(endpoints.treatment)
         ]);
 
-        if (Array.isArray(absensiRes)) setAbsensiData(absensiRes);
+        if (Array.isArray(absensiRes)) {
+          try {
+            const savedLocal = JSON.parse(localStorage.getItem('absensiData')) || [];
+            setAbsensiData(mergeAbsensiData(absensiRes, savedLocal));
+          } catch (mergeError) {
+            setAbsensiData(absensiRes);
+          }
+        }
         if (Array.isArray(gajiRes)) {
           try {
             const savedLocal = localStorage.getItem('gajiData');
@@ -307,27 +371,30 @@ export const AppContextProvider = ({ children }) => {
         if (Array.isArray(cutiRes)) {
           try {
             const savedLocalCuti = JSON.parse(localStorage.getItem('cutiData')) || [];
-            const mergedCuti = Array.isArray(cutiRes) ? [...cutiRes] : [];
+            const normalizedServerCuti = cutiRes.map(normalizeCutiItem);
+            const normalizedLocalCuti = Array.isArray(savedLocalCuti) ? savedLocalCuti.map(normalizeCutiItem) : [];
+            const mergedCuti = [...normalizedServerCuti];
 
-            savedLocalCuti.forEach((localItem) => {
+            normalizedLocalCuti.forEach((localItem) => {
               if (!localItem) return;
+              const localId = localItem.id ?? localItem._id;
+              const isTempLocal = String(localId || '').startsWith('CUTI') || localItem.localTemp === true;
               const matchIndex = mergedCuti.findIndex((serverItem) => {
                 if (!serverItem) return false;
-                if (serverItem.id !== undefined && localItem.id !== undefined && String(serverItem.id) === String(localItem.id)) return true;
-                if (serverItem._id !== undefined && localItem._id !== undefined && String(serverItem._id) === String(localItem._id)) return true;
-                return false;
+                const serverId = serverItem.id ?? serverItem._id;
+                return serverId !== undefined && localId !== undefined && String(serverId) === String(localId);
               });
               if (matchIndex > -1) {
                 mergedCuti[matchIndex] = { ...mergedCuti[matchIndex], ...localItem };
-              } else {
+              } else if (isTempLocal) {
                 mergedCuti.push(localItem);
               }
             });
 
-            setCutiData(mergedCuti);
+            setCutiData(mergedCuti.map(normalizeCutiItem));
           } catch (mergeError) {
             console.warn('Could not merge server and local cuti data, using server data only.', mergeError);
-            setCutiData(cutiRes);
+            setCutiData(cutiRes.map(normalizeCutiItem));
           }
         }
 
@@ -854,7 +921,7 @@ useEffect(() => {
     setCutiData,
     addCuti: async (cuti) => {
       const tempId = cuti.id || `CUTI${Date.now()}`;
-      const tempItem = { ...cuti, id: tempId };
+      const tempItem = { ...cuti, id: tempId, localTemp: true };
       setCutiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
       const token = localStorage.getItem('token');
       if (token) {
@@ -862,7 +929,7 @@ useEffect(() => {
           const res = await cutiApi.create(token, cuti);
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
-            const normalized = { ...serverItem, id: serverItem.id || serverItem._id || tempId };
+            const normalized = normalizeCutiItem({ ...serverItem, id: serverItem.id || serverItem._id || tempId });
             setCutiData(prev => Array.isArray(prev) ? prev.map(p => (p.id === tempId ? normalized : p)) : [normalized]);
           }
         } catch (e) {
@@ -871,20 +938,51 @@ useEffect(() => {
       }
     },
     updateCuti: async (id, updates) => {
+      const normalizedId = id ?? updates?.id ?? updates?._id;
+      if (!normalizedId || String(normalizedId).trim() === '' || String(normalizedId) === 'undefined') {
+        const err = new Error('Invalid cuti id provided to updateCuti');
+        console.error(err.message, { id, updates });
+        throw err;
+      }
+
+      const isTempLocal = String(normalizedId).startsWith('CUTI');
       const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
-      setCutiData(prev => Array.isArray(prev) ? prev.map(c => (String(c.id) === String(id) || String(c._id) === String(id) ? { ...c, ...updates } : c)) : []);
+      setCutiData(prev => Array.isArray(prev) ? prev.map(c => {
+        const currentId = c.id ?? c._id;
+        return currentId !== undefined && String(currentId) === String(normalizedId) ? { ...normalizeCutiItem(c), ...updates, id: normalizedId } : c;
+      }) : []);
+
+      if (isTempLocal) {
+        console.warn('Skipping backend update for local-only temporary cuti item:', normalizedId);
+        return;
+      }
+
       const token = localStorage.getItem('token');
+      console.log('AppContext.updateCuti called', { id: normalizedId, updates });
+      console.log('AppContext.updateCuti token present?', !!token);
       if (token) {
         try {
-          const res = await cutiApi.update(token, id, updates);
+          const res = await cutiApi.update(token, normalizedId, updates);
+          console.log('AppContext.updateCuti server response:', res);
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
-            const normalized = { ...serverItem, id: serverItem.id || serverItem._id || id };
-            setCutiData(prev => Array.isArray(prev) ? prev.map(c => (String(c.id) === String(id) || String(c._id) === String(id) ? normalized : c)) : []);
+            const normalized = normalizeCutiItem({ ...serverItem, id: serverItem.id || serverItem._id || normalizedId });
+            setCutiData(prev => Array.isArray(prev) ? prev.map(c => {
+              const currentId = c.id ?? c._id;
+              return currentId !== undefined && String(currentId) === String(normalizedId) ? normalized : c;
+            }) : []);
           }
         } catch (e) {
-          console.error('Failed to update cuti on server:', e);
-          setCutiData(prevSnapshot);
+          console.error('Failed to update cuti on server:', e && (e.message || e));
+          if (String(e.message).includes('Pengajuan cuti tidak ditemukan')) {
+            setCutiData(prev => Array.isArray(prev) ? prev.filter(c => {
+              const currentId = c.id ?? c._id;
+              return String(currentId) !== String(normalizedId);
+            }) : []);
+          } else {
+            setCutiData(prevSnapshot);
+          }
+          throw e;
         }
       }
     },
