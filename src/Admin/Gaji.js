@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
+import { API_BASE_URL } from "../config/api";
 
 
 // === Modal Tambah/Edit Tindakan === //
@@ -502,7 +503,8 @@ function Gaji() {
   karyawanData = [],
   treatmentData = [],
   gajiData = [],
-  addSlipGaji
+  addSlipGaji,
+  deleteGaji
   } = useContext(AppContext);
   console.log("treatmentData:", treatmentData);
 
@@ -560,6 +562,66 @@ function Gaji() {
   useEffect(() => {
     localStorage.setItem("kompGaji", JSON.stringify(kompGaji));
   }, [kompGaji]);
+
+  // Fetch gaji data from server on component mount to ensure persistence
+  useEffect(() => {
+    const fetchGajiDataFromServer = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/gaji`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token && { 'Authorization': `Bearer ${token}` })
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            console.log('Fetched gaji data from server:', data.data);
+            // Data sudah di-handle di AppContext, jadi tidak perlu redundant update di sini
+            // Tetapi kita log untuk debugging
+          }
+        } else {
+          console.warn('Failed to fetch gaji from server:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching gaji data from server:', error);
+      }
+    };
+
+    // Delay sedikit untuk memastikan AppContext sudah di-initialize
+    const timer = setTimeout(fetchGajiDataFromServer, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Ensure feePaketData dan kompGaji persisted saat component mount
+  useEffect(() => {
+    try {
+      // Load feePaketData from localStorage if available
+      const savedFeePaket = localStorage.getItem("feePaketData");
+      if (savedFeePaket) {
+        const parsed = JSON.parse(savedFeePaket);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setFeePaketData(parsed);
+          console.log('Loaded feePaketData from localStorage:', parsed);
+        }
+      }
+
+      // Load kompGaji from localStorage if available
+      const savedKompGaji = localStorage.getItem("kompGaji");
+      if (savedKompGaji) {
+        const parsed = JSON.parse(savedKompGaji);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          setKompGaji(parsed);
+          console.log('Loaded kompGaji from localStorage:', parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading persisted gaji data:', e);
+    }
+  }, []);
 
   const [showModalTindakan, setShowModalTindakan] = useState(false);
   const [showModalPaket, setShowModalPaket] = useState(false);
@@ -950,6 +1012,7 @@ function Gaji() {
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Harga</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Fee</th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Total Fee</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -972,6 +1035,15 @@ function Gaji() {
                                 {feeMeta.percent !== undefined ? `${feeMeta.percent}%` : formatRupiah(feeMeta.amount)}
                               </td>
                               <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{formatRupiah(feeMeta.amount)}</td>
+                              <td className="px-6 py-4 text-gray-700 text-sm">
+                                <button
+                                  type="button"
+                                  onClick={() => deleteGaji(g.id)}
+                                  className="text-red-600 font-semibold hover:text-red-800 transition-colors"
+                                >
+                                  Hapus
+                                </button>
+                              </td>
                             </>
                           );
                         })()}

@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import { AppContext } from "../context/AppContext";
 import { useEffect } from "react";
+import { API_BASE_URL } from "../config/api";
 
 // ======================
 // DATA TREATMENTS
@@ -183,9 +184,30 @@ const [dataTreatment, setDataTreatment] = useState(() => {
 });
 const [search, setSearch] = useState("");
 
+// Load treatments from localStorage on mount
 useEffect(() => {
   localStorage.setItem("treatments", JSON.stringify(dataTreatment));
 }, [dataTreatment]);
+
+// Fetch treatments from server on mount
+useEffect(() => {
+  const fetchTreatments = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/treatment`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          setDataTreatment(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching treatments from server:', error);
+      // Fall back to localStorage
+    }
+  };
+
+  fetchTreatments();
+}, []);
 
 const [showTambah, setShowTambah] = useState(false);
 const [showDetail, setShowDetail] = useState(false);
@@ -273,10 +295,39 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
     setShowEdit(false);
   };
 
-  // Hapus data langsung
-  const handleHapus = (treatmentData) => {
+  // Hapus data dengan API call ke server
+  const handleHapus = async (treatmentData) => {
     if (!treatmentData?.id) return;
-    setDataTreatment((prev) => Array.isArray(prev) ? prev.filter((t) => t.id !== treatmentData.id) : []);
+    
+    // Confirm delete
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus treatment "${treatmentData.nama}"?`)) {
+      return;
+    }
+
+    try {
+      // Delete from server first
+      const response = await fetch(`${API_BASE_URL}/treatment/${treatmentData.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menghapus treatment');
+      }
+
+      // If server delete successful, remove from local state
+      setDataTreatment((prev) => 
+        Array.isArray(prev) ? prev.filter((t) => t.id !== treatmentData.id) : []
+      );
+
+      alert('Treatment berhasil dihapus');
+    } catch (error) {
+      console.error('Error menghapus treatment:', error);
+      alert(`Gagal menghapus treatment: ${error.message}`);
+    }
   };
 
   const handleCatatTreatment = (treatment) => {
