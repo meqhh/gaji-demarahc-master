@@ -197,6 +197,7 @@ const [editData, setEditData] = useState(null);
 const [selectedTreatment, setSelectedTreatment] = useState(null);
 
 const [formData, setFormData] = useState({});
+const [pasienKlinik, setPasienKlinik] = useState("");
 
 const [bidanTerpilih, setBidanTerpilih] = useState("");
 const [catatanTreatment, setCatatanTreatment] = useState([]);
@@ -214,6 +215,21 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
     const fee = calculateTreatmentFee(item.harga, item.category);
     return sum + fee;
   }, 0);
+
+  const parsePasienKlinik = (value) => {
+    if (!value || typeof value !== "string") {
+      return { namaPasien: "", klinikHomeService: "" };
+    }
+
+    const parts = value.split(/\s*-\s*/);
+    const namaPasien = (parts[0] || "").trim();
+    const klinikHomeService = parts.slice(1).join(" - ").trim();
+
+    return {
+      namaPasien,
+      klinikHomeService: klinikHomeService || "",
+    };
+  };
 
   // Format harga ke Rupiah
   const formatHarga = (harga) => {
@@ -264,8 +280,17 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
   };
 
   const handleCatatTreatment = (treatment) => {
-  setSelectedTreatment(treatment);
-  setShowCatat(true);
+    setSelectedTreatment(treatment);
+    setPasienKlinik("");
+    setBidanTerpilih("");
+    setShowCatat(true);
+  };
+
+  const closeCatatModal = () => {
+    setShowCatat(false);
+    setSelectedTreatment(null);
+    setPasienKlinik("");
+    setBidanTerpilih("");
   };
 
   const simpanTreatment = async () => {
@@ -277,10 +302,15 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
     const feePercent = ADMIN_FIXED_FEE_PERCENT;
     const feeAmount = Math.round((Number(selectedTreatment.harga || 0) * feePercent) / 100);
 
+    const parsedPasienKlinik = parsePasienKlinik(pasienKlinik);
+
     const dataBaru = {
       id: Date.now(),
       treatment: selectedTreatment.nama,
       bidan: bidanTerpilih,
+      pasien: parsedPasienKlinik.namaPasien,
+      klinikHomeService: parsedPasienKlinik.klinikHomeService,
+      pasienKlinik: pasienKlinik,
       fee: feeAmount,
       feePercent: feePercent,
       feeAmount: feeAmount,
@@ -306,6 +336,8 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         tanggal: new Date().toISOString(),
         treatment: selectedTreatment.nama,
         biaya: selectedTreatment.harga || 0,
+        pasien: parsedPasienKlinik.namaPasien,
+        klinik: parsedPasienKlinik.klinikHomeService,
         fee: feeAmount,
         feePercent: feePercent,
         feeAmount: feeAmount,
@@ -331,7 +363,10 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         karyawan: bidanTerpilih,
         nama: bidanTerpilih,
         tanggal: new Date().toISOString(),
-        pasien: selectedTreatment.pasien || "",
+        pasien: parsedPasienKlinik.namaPasien,
+        namaPasien: parsedPasienKlinik.namaPasien,
+        klinik: parsedPasienKlinik.klinikHomeService,
+        klinikHomeService: parsedPasienKlinik.klinikHomeService,
         treatment: selectedTreatment.nama,
         harga: selectedTreatment.harga || 0,
         fee: feePercent,
@@ -354,8 +389,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       console.error('Gagal menyimpan treatment/gaji otomatis:', e);
     }
 
-    setShowCatat(false);
-    setBidanTerpilih("");
+    closeCatatModal();
   };
 
   return (
@@ -422,38 +456,51 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         </label>
 
         <select
-        value={bidanTerpilih}
-        onChange={(e) => setBidanTerpilih(e.target.value)}
-      >
-        <option value="">Pilih Bidan</option>
+          value={bidanTerpilih}
+          onChange={(e) => setBidanTerpilih(e.target.value)}
+          className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+        >
+          <option value="">Pilih Bidan</option>
+          {karyawanData?.map?.((item) => (
+            <option key={item.id} value={item.nama}>
+              {item.nama}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        {karyawanData?.map?.((item) => (
-          <option key={item.id} value={item.nama}>
-            {item.nama}
-          </option>
-        ))}
-      </select>
+      <div className="mb-4">
+        <label className="block font-semibold mb-1">Nama Pasien & Klinik / Home Service</label>
+        <input
+          type="text"
+          value={pasienKlinik}
+          onChange={(e) => setPasienKlinik(e.target.value)}
+          placeholder="Masukkan nama pasien - Klinik/Home Service"
+          className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
+        />
+        <p className="text-xs text-gray-500 mt-2">Tulis nama pasien dan layanan Klinik/Home Service dalam satu kotak, misal: Budi - Klinik Demara.</p>
       </div>
 
       <div className="flex justify-end gap-2">
         <button
-          onClick={() => setShowCatat(false)}
+          type="button"
+          onClick={closeCatatModal}
           className="px-4 py-2 border rounded"
         >
           Batal
         </button>
 
         <button
-            onClick={simpanTreatment}
-            className="px-4 py-2 bg-green-600 text-white rounded"
-          >
-            Simpan
-          </button>
+          type="button"
+          onClick={simpanTreatment}
+          className="px-4 py-2 bg-green-600 text-white rounded"
+        >
+          Simpan
+        </button>
+        </div>
       </div>
-
     </div>
-  </div>
-)}
+  )}
 
       <main>
         {/* Header Section */}
@@ -470,6 +517,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setShowTambah(true)}
             className="px-6 py-3 border-2 border-cyan-400 text-cyan-600 font-bold rounded-lg hover:bg-cyan-50 transition-all duration-300 flex items-center gap-2"
           >
@@ -523,6 +571,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
                     <td className="px-8 py-5 bg-gray-100 text-gray-800">{getFeeByCategory(t.category)}%</td>
                     <td className="px-8 py-5 bg-gray-100 text-center space-x-2">
                       <button
+                        type="button"
                         onClick={() => {
                           setDetailData(t);
                           setShowDetail(true);
@@ -533,6 +582,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => {
                           setEditData(t);
                           setShowEdit(true);
@@ -543,6 +593,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleHapus(t)}
                         className="text-red-600 font-bold hover:text-red-700 transition-colors"
                       >
@@ -550,6 +601,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleCatatTreatment(t)}
                         className="text-green-600 font-bold hover:text-green-700 transition-colors"
                       >
