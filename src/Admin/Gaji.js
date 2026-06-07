@@ -583,14 +583,6 @@ function Gaji() {
     }
   });
 
-  const [filterStatus, setFilterStatus] = useState(() => {
-    try {
-      return localStorage.getItem("gajiFilterStatus") || "Semua Status";
-    } catch (e) {
-      return "Semua Status";
-    }
-  });
-
   useEffect(() => {
     try {
       localStorage.setItem("gajiFilterTanggal", filterTanggal);
@@ -602,12 +594,6 @@ function Gaji() {
       localStorage.setItem("gajiSelectedKaryawan", filterKaryawan);
     } catch (e) {}
   }, [filterKaryawan]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("gajiFilterStatus", filterStatus);
-    } catch (e) {}
-  }, [filterStatus]);
 
   const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
@@ -625,36 +611,7 @@ function Gaji() {
     } catch (e) {}
   };
 
-  const handleFilterStatusChange = (value) => {
-    setFilterStatus(value);
-    try {
-      localStorage.setItem("gajiFilterStatus", value);
-    } catch (e) {}
-  };
-
   const getNormalizedName = (item) => normalizeText(item?.karyawan || item?.nama || item?.name || "");
-
-  const getGajiItemStatus = (item) => {
-    if (!item) return "";
-    const candidateStatus = String(item.status || item.absensiStatus || item.statusAbsensi || "").trim();
-    if (candidateStatus) return candidateStatus;
-
-    if (!Array.isArray(absensiData)) return "";
-    const name = normalizeText(item?.karyawan || item?.nama || item?.name || "");
-    const rawDate = item.tanggal || item.date || item.createdAt || item.dateString;
-    if (!name || !rawDate) return "";
-    const periode = normalizeMonthYear(rawDate);
-
-    const match = absensiData.find((a) => {
-      if (!a || !a.nama) return false;
-      const absensiName = normalizeText(a.nama);
-      if (absensiName !== name) return false;
-      const absensiPeriode = normalizeMonthYear(a.date || a.tanggal || a.dateString);
-      return absensiPeriode && absensiPeriode === periode;
-    });
-
-    return String(match?.status || "").trim();
-  };
 
   // Get unique karyawan names from karyawan data and gaji data
   const uniqueKaryawanNames = useMemo(() => {
@@ -784,13 +741,8 @@ function Gaji() {
       data = data.filter((item) => getNormalizedName(item) === targetName);
     }
 
-    if (filterStatus !== "Semua Status") {
-      const targetStatus = normalizeText(filterStatus);
-      data = data.filter((item) => normalizeText(getGajiItemStatus(item)) === targetStatus);
-    }
-
     return data;
-  }, [gajiData, filterTanggal, filterKaryawan, filterStatus, absensiData]);
+  }, [gajiData, filterTanggal, filterKaryawan]);
 
   const getGajiFeeMeta = (g) => {
     const hargaValue = Number(g?.harga || 0);
@@ -875,18 +827,29 @@ function Gaji() {
     });
   }, [absensiData, selectedKaryawan, currentPeriode]);
 
+  useEffect(() => {
+    if (!selectedKaryawan) return;
+
+    setKompGaji((prev) => ({
+      ...prev,
+      gajiPokok: prev.gajiPokok || selectedKaryawan.gajiPokok || 0,
+      tunjanganTransport: prev.tunjanganTransport || selectedKaryawan.tunjanganTransport || 0,
+      potonganBPJS: prev.potonganBPJS || selectedKaryawan.potonganBPJS || selectedKaryawan.bpjs || selectedKaryawan.asuransi || 0,
+    }));
+  }, [selectedKaryawan]);
+
   const gajiPokok = Number(
     kompGaji.gajiPokok !== undefined && kompGaji.gajiPokok !== null
       ? kompGaji.gajiPokok
       : selectedKaryawan?.gajiPokok || 0
   );
   const tunjanganTransport = Number(
-    kompGaji.tunjanganTransport !== undefined && kompGaji.tunjanganTransport !== null
+    kompGaji.tunjanganTransport !== undefined && kompGaji.tunjanganTransport !== null && kompGaji.tunjanganTransport !== 0
       ? kompGaji.tunjanganTransport
       : selectedKaryawan?.tunjanganTransport || 0
   );
   const potonganBPJS = Number(
-    kompGaji.potonganBPJS !== undefined && kompGaji.potonganBPJS !== null
+    kompGaji.potonganBPJS !== undefined && kompGaji.potonganBPJS !== null && kompGaji.potonganBPJS !== 0
       ? kompGaji.potonganBPJS
       : selectedKaryawan?.asuransi || selectedKaryawan?.bpjs || 0
   );
@@ -959,20 +922,6 @@ function Gaji() {
           </select>
         </div>
 
-        <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Status</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => handleFilterStatusChange(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
-          >
-            <option>Semua Status</option>
-            <option>Hadir</option>
-            <option>Izin</option>
-            <option>Sakit</option>
-            <option>Alpha</option>
-          </select>
-        </div>
       </div>
 
       {/* Tabel Gaji & Komponen Gaji Side by Side */}
@@ -984,9 +933,8 @@ function Gaji() {
               <h2 className="text-lg font-bold text-gray-900">Gaji Tindakan ({filteredGajiData.length})</h2>
               <p className="text-sm text-gray-600 mt-1">
                 {filterTanggal && `Periode: ${currentPeriode} • `}
-                {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan} • `}
-                {filterStatus !== "Semua Status" && `Status: ${filterStatus}`}
-                {!filterTanggal && filterKaryawan === "Semua" && filterStatus === "Semua Status" && "Menampilkan Semua Data"}
+                {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan}`}
+                {!filterTanggal && filterKaryawan === "Semua" && "Menampilkan Semua Data"}
               </p>
             </div>
             
