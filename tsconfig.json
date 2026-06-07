@@ -12,5 +12,6 @@
     "noEmit": true,
     "lib": ["dom", "es6"]
   },
-  "include": ["src", "server"]
+  "include": ["src", "server"],
+  "exclude": ["node_modules", "server/node_modules"]
 }

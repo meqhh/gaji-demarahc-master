@@ -74,26 +74,50 @@ export default function AbsensiKaryawan() {
 	const getTodayKey = () => new Date().toISOString().slice(0,10); 
 
 		const canCheckIn = () => {
-		const now = new Date();
+			const now = new Date();
+			const currentHour = now.getHours();
+			const currentMinute = now.getMinutes();
 
-		console.log("Waktu sekarang:", now);
-		console.log("Jam sekarang:", now.getHours());
-
-		const currentHour = now.getHours();
-		const currentMinute = now.getMinutes();
-
-		const currentTime = currentHour * 60 + currentMinute;
-
-		return currentTime >= 480 && currentTime <= 1020;
-	};
+			const currentTime = currentHour * 60 + currentMinute;
+			return currentTime >= 480 && currentTime <= 1020;
+		};
 
 		const canCheckOut = () => {
-		const now = new Date();
-		const currentHour = now.getHours();
-		const currentMinute = now.getMinutes();
+			const now = new Date();
+			const currentHour = now.getHours();
+			const currentMinute = now.getMinutes();
 
-		return currentHour > 17 || (currentHour === 17 && currentMinute >= 0);
+			const currentTime = currentHour * 60 + currentMinute;
+			return currentTime >= 1020;
 		};
+
+	const getCheckInWindowMessage = () => {
+		if (hasCheckedInToday()) {
+			return 'Anda sudah absen masuk hari ini.';
+		}
+
+		if (!canCheckIn()) {
+			return 'Absen masuk hanya dapat dilakukan antara pukul 08:00 dan 17:00 WIB.';
+		}
+
+		return 'Absen masuk bisa dilakukan sekarang.';
+	};
+
+	const getCheckOutWindowMessage = () => {
+		if (!hasCheckedInToday()) {
+			return 'Silakan absen masuk terlebih dahulu sebelum absen keluar.';
+		}
+
+		if (getTodayItem() && getTodayItem().jamKeluar) {
+			return 'Anda sudah absen keluar hari ini.';
+		}
+
+		if (!canCheckOut()) {
+			return 'Absen keluar hanya dapat dilakukan mulai pukul 17:00 WIB.';
+		}
+
+		return 'Absen keluar bisa dilakukan sekarang.';
+	};
 
 	const didLoginToday = () => {
 		const lastLogin = localStorage.getItem('karyawanLastLogin');
@@ -101,16 +125,12 @@ export default function AbsensiKaryawan() {
 	};
 
 	const handleCheckIn = () => {
-		// Allow manual check-in - removed login restriction for manual attendance
-		console.log("HANDLE CHECK IN DIPANGGIL");
-    	console.log("HASIL canCheckIn:", canCheckIn());
 		if (!canCheckIn()) {
-		alert("Absensi belum dibuka. Silakan melakukan absensi masuk mulai pukul 08.00 WIB.");
-		return;
-	}
+			alert('Absensi masuk hanya dapat dilakukan antara pukul 08.00 dan 17.00 WIB.');
+			return;
+		}
 
 		if (hasCheckedInToday()) {
-			// Show today's attendance info
 			const todayItem = getTodayItem();
 			if (todayItem) {
 				setTodayAbsensi(todayItem);
@@ -199,34 +219,39 @@ export default function AbsensiKaryawan() {
 					<div className="flex items-center gap-3">
 						<button 
 							onClick={handleCheckIn} 
-							disabled={hasCheckedInToday()}
-							className={`font-medium text-sm px-6 py-3 rounded-md transition ${
-								hasCheckedInToday()
-									? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-									: 'bg-gray-700 text-white hover:bg-gray-800'
-							}`}
-						>
-							{hasCheckedInToday() ? 'Sudah Absen Hari Ini' : 'Absen Masuk'}
-						</button>
-						<button
-							onClick={handleCheckOut}
-							disabled={
-								!hasCheckedInToday() ||
-								(getTodayItem() && getTodayItem().jamKeluar)
-							}
-							className={`font-medium text-sm px-6 py-3 rounded-md transition ${
-								!hasCheckedInToday() || (getTodayItem() && getTodayItem().jamKeluar)
-									? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-									: 'bg-amber-600 text-white hover:bg-amber-700'
-							}`}
-						>
-							Keluar
-						</button>
-					</div>
-				</div>
+					disabled={hasCheckedInToday() || !canCheckIn()}
+					className={`font-medium text-sm px-6 py-3 rounded-md transition ${
+						hasCheckedInToday() || !canCheckIn()
+							? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+							: 'bg-gray-700 text-white hover:bg-gray-800'
+					}`}
+				>
+					{hasCheckedInToday() ? 'Sudah Absen Hari Ini' : 'Absen Masuk'}
+				</button>
+				<button
+					onClick={handleCheckOut}
+					disabled={
+						!hasCheckedInToday() ||
+						(getTodayItem() && getTodayItem().jamKeluar) ||
+						!canCheckOut()
+					}
+					className={`font-medium text-sm px-6 py-3 rounded-md transition ${
+						!hasCheckedInToday() || (getTodayItem() && getTodayItem().jamKeluar) || !canCheckOut()
+							? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+							: 'bg-amber-600 text-white hover:bg-amber-700'
+					}`}
+				>
+					Keluar
+				</button>
+			</div>
+			<div className="text-sm text-gray-500">
+				<p>{getCheckInWindowMessage()}</p>
+				<p>{getCheckOutWindowMessage()}</p>
+			</div>
+		</div>
 
-				{/* Attendance Modal (same as dashboard) */}
-				{showAbsensiModal && (
+			{/* Attendance Modal (same as dashboard) */}
+			{showAbsensiModal && (
 					<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 						<div className="absolute inset-0 bg-black opacity-50" onClick={() => setShowAbsensiModal(false)}></div>
 						<div className="bg-white rounded-xl shadow-2xl z-10 max-w-md w-full p-8 border border-gray-200 animate-slide-up">

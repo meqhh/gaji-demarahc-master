@@ -7,10 +7,8 @@ function Karyawan() {
   const [showTambah, setShowTambah] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [detailData, setDetailData] = useState(null);
   const [editData, setEditData] = useState(null);
-  const [deleteData, setDeleteData] = useState(null);
   const [preview, setPreview] = useState(null);
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({});
@@ -187,21 +185,13 @@ function Karyawan() {
     setShowEdit(false);
   };
 
-  // Hapus data
+  // Hapus data langsung
   const handleHapus = (item) => {
-    setDeleteData(item);
-    setShowDelete(true);
-  };
-
-  const confirmDelete = () => {
-    if (deleteData) {
-      if (typeof deleteKaryawan === 'function') {
-        deleteKaryawan(deleteData.id);
-      } else if (typeof setKaryawanData === 'function') {
-        setKaryawanData((prev) => Array.isArray(prev) ? prev.filter((k) => String(k.id) !== String(deleteData.id)) : []);
-      }
-      setShowDelete(false);
-      setDeleteData(null);
+    if (!item?.id) return;
+    if (typeof deleteKaryawan === 'function') {
+      deleteKaryawan(item.id);
+    } else if (typeof setKaryawanData === 'function') {
+      setKaryawanData((prev) => Array.isArray(prev) ? prev.filter((k) => String(k.id) !== String(item.id)) : []);
     }
   };
 
@@ -790,48 +780,6 @@ function Karyawan() {
           </div>
         )}
 
-        {/* === Modal Delete === */}
-        {showDelete && deleteData && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8 animate-slide-up">
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-red-100 rounded-full mb-4">
-                  <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Hapus Karyawan</h2>
-              </div>
-              
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                <p className="text-gray-900 font-medium">{deleteData.nama}</p>
-                <p className="text-sm text-gray-600 mt-1">{getFieldValue(deleteData, "posisi", "jabatan") || "—"}</p>
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-6 text-center">
-                Tindakan ini tidak dapat dibatalkan. Data akan dihapus secara permanen.
-              </p>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowDelete(false);
-                    setDeleteData(null);
-                  }}
-                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-                >
-                  Hapus
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

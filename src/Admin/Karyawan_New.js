@@ -127,15 +127,13 @@ function Karyawan() {
   };
 
   const handleHapus = (id) => {
-    if (window.confirm("Yakin ingin menghapus karyawan ini?")) {
-      const updatedData = data.filter(k => String(k.id) !== String(id));
-      setData(updatedData);
-      deleteKaryawan(id);
-      try {
-        localStorage.setItem("karyawanData", JSON.stringify(updatedData));
-      } catch (error) {
-        console.warn('LocalStorage quota exceeded while saving karyawanData after delete, skipping persistence.', error);
-      }
+    const updatedData = data.filter(k => String(k.id) !== String(id));
+    setData(updatedData);
+    deleteKaryawan(id);
+    try {
+      localStorage.setItem("karyawanData", JSON.stringify(updatedData));
+    } catch (error) {
+      console.warn('LocalStorage quota exceeded while saving karyawanData after delete, skipping persistence.', error);
     }
   };
 

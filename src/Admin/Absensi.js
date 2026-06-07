@@ -17,11 +17,9 @@ function Absensi() {
   });
 
   // Filter state
-  const [filterBulanTahun, setFilterBulanTahun] = useState("Semua Bulan");
+  const [filterTanggal, setFilterTanggal] = useState("");
   const [filterKaryawan, setFilterKaryawan] = useState("Semua");
   const [filterStatus, setFilterStatus] = useState("Semua Status");
-  const [showDelete, setShowDelete] = useState(false);
-  const [deleteData, setDeleteData] = useState(null);
   const [showAksiMenu, setShowAksiMenu] = useState(false);
 
   // Get context values safely
@@ -77,35 +75,43 @@ function Absensi() {
     return <div>Error: AppContext tidak tersedia</div>;
   }
 
-  // helper: convert date string to 'Bulan YYYY' label in id-ID
-  const getMonthLabelFromDate = (dateStr) => {
+  // helper: convert a date string to a readable label in id-ID
+  const getDateLabel = (dateStr) => {
     if (!dateStr) return "";
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return "";
-      return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      return d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
     } catch (e) {
       console.error("Error parsing date:", dateStr, e);
       return "";
     }
   };
 
-  // filtered list based on selected filters
+  const isSameDate = (dateA, dateB) => {
+    const a = new Date(dateA);
+    const b = new Date(dateB);
+    if (isNaN(a.getTime()) || isNaN(b.getTime())) return false;
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
+  };
+
+  // filtered list based on selected date, karyawan and status
   const filteredAbsensi = absensi.filter((a) => {
     if (!a) return false;
-    
-    // filter by month/year - skip if "Semua Bulan"
-    if (filterBulanTahun && filterBulanTahun !== "" && filterBulanTahun !== "Semua Bulan") {
-      const label = getMonthLabelFromDate(a.date);
-      if (label !== filterBulanTahun) return false;
+
+    if (filterTanggal) {
+      const filterDate = `${filterTanggal}T00:00:00`;
+      if (!isSameDate(a.date || a.tanggal, filterDate)) return false;
     }
 
-    // filter by karyawan - skip if "Semua"
     if (filterKaryawan && filterKaryawan !== "Semua") {
       if (!a.nama || a.nama.toLowerCase() !== filterKaryawan.toLowerCase()) return false;
     }
 
-    // filter by status - skip if "Semua Status"
     if (filterStatus && filterStatus !== "Semua Status") {
       if (!a.status || a.status.toLowerCase() !== filterStatus.toLowerCase()) return false;
     }
@@ -239,16 +245,8 @@ function Absensi() {
             
             <div class="info-section">
               <div class="info-row">
-                <span class="info-label">Periode:</span>
-                <span>${filterBulanTahun !== "Semua Bulan" ? filterBulanTahun : "Semua Periode"}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Karyawan:</span>
-                <span>${filterKaryawan !== "Semua" ? filterKaryawan : "Semua Karyawan"}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Status:</span>
-                <span>${filterStatus !== "Semua Status" ? filterStatus : "Semua Status"}</span>
+                <span class="info-label">Tanggal:</span>
+                <span>${filterTanggal ? getDateLabel(filterTanggal) : "Semua Tanggal"}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">Total Data:</span>
@@ -403,30 +401,18 @@ function Absensi() {
     }
   };
 
-  // Hapus data
+  // Hapus data langsung
   const handleDelete = (item) => {
-    setDeleteData(item);
-    setShowDelete(true);
-  };
+    const idToDelete = item?.id;
+    if (!idToDelete) return;
 
-  const confirmDelete = () => {
-    if (deleteData) {
-      const idToDelete = deleteData.id;
-      // Use setAbsensiData directly to ensure proper deletion
-      if (setAbsensiData) {
-        setAbsensiData(prev => {
-          const current = Array.isArray(prev) ? prev : [];
-          return current.filter(a => {
-            // Keep items that don't match (compare both as numbers and strings)
-            const matches = a.id === idToDelete || String(a.id) === String(idToDelete);
-            return !matches;
-          });
-        });
-      } else {
-        deleteAbsensi(idToDelete);
-      }
-      setShowDelete(false);
-      setDeleteData(null);
+    if (typeof setAbsensiData === 'function') {
+      setAbsensiData((prev) => {
+        const current = Array.isArray(prev) ? prev : [];
+        return current.filter((a) => !(a.id === idToDelete || String(a.id) === String(idToDelete)));
+      });
+    } else if (typeof deleteAbsensi === 'function') {
+      deleteAbsensi(idToDelete);
     }
   };
 
@@ -497,27 +483,23 @@ function Absensi() {
         </div>
 
         {/* Filter Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 border-b border-gray-200 bg-gray-50">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 border-b border-gray-200 bg-gray-50">
           <div className="animate-slide-up" style={{ animationDelay: '0.15s' }}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Bulan/Tahun</label>
-            <select 
-              value={filterBulanTahun}
-              onChange={(e) => setFilterBulanTahun(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
-            >
-              <option>Semua Bulan</option>
-              <option>Januari 2025</option>
-              <option>Februari 2025</option>
-              <option>Agustus 2025</option>
-            </select>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal</label>
+            <input
+              type="date"
+              value={filterTanggal}
+              onChange={(e) => setFilterTanggal(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-800 bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
+            />
           </div>
 
           <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Karyawan</label>
-            <select 
+            <select
               value={filterKaryawan}
               onChange={(e) => setFilterKaryawan(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-800 bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
             >
               <option>Semua</option>
               {uniqueKaryawanNames.map((nama) => (
@@ -529,11 +511,11 @@ function Absensi() {
           </div>
 
           <div className="animate-slide-up" style={{ animationDelay: '0.25s' }}>
-            <label className="block text-sm font-bold text-gray-700 mb-2">Persetujuan Atasan</label>
-            <select 
+            <label className="block text-sm font-bold text-gray-700 mb-2">Status Absensi</label>
+            <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-semibold text-gray-800 bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
             >
               <option>Semua Status</option>
               <option>Hadir</option>
@@ -699,55 +681,6 @@ function Absensi() {
         </div>
       )}
 
-      {/* === Modal Delete Absensi === */}
-      {showDelete && deleteData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm animate-slide-down">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-8 animate-slide-up">
-            {/* Icon & Header */}
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-14 h-14 bg-red-100 rounded-full mb-4">
-                <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Hapus Data Absensi</h2>
-              <p className="text-sm text-gray-500">Anda akan menghapus:</p>
-            </div>
-
-            {/* Data yang akan dihapus */}
-            {deleteData && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                <p className="text-gray-900 font-medium">{deleteData.nama || "-"}</p>
-                <p className="text-sm text-gray-600 mt-1">{deleteData.posisi || "-"} • {deleteData.date || "-"}</p>
-              </div>
-            )}
-
-            {/* Warning Text */}
-            <p className="text-sm text-gray-600 mb-6 text-center">
-              Tindakan ini tidak dapat dibatalkan. Data akan dihapus secara permanen.
-            </p>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowDelete(false);
-                  setDeleteData(null);
-                }}
-                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

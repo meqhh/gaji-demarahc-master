@@ -565,9 +565,6 @@ function Gaji() {
   const [showModalPaket, setShowModalPaket] = useState(false);
   const [editData, setEditData] = useState(null);
   const [editType, setEditType] = useState(null);
-  const [deleteData, setDeleteData] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteType, setDeleteType] = useState(null);
   
   // Filter state
   const [filterTanggal, setFilterTanggal] = useState(() => {
@@ -586,6 +583,14 @@ function Gaji() {
     }
   });
 
+  const [filterStatus, setFilterStatus] = useState(() => {
+    try {
+      return localStorage.getItem("gajiFilterStatus") || "Semua Status";
+    } catch (e) {
+      return "Semua Status";
+    }
+  });
+
   useEffect(() => {
     try {
       localStorage.setItem("gajiFilterTanggal", filterTanggal);
@@ -597,6 +602,12 @@ function Gaji() {
       localStorage.setItem("gajiSelectedKaryawan", filterKaryawan);
     } catch (e) {}
   }, [filterKaryawan]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("gajiFilterStatus", filterStatus);
+    } catch (e) {}
+  }, [filterStatus]);
 
   const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
@@ -614,7 +625,36 @@ function Gaji() {
     } catch (e) {}
   };
 
+  const handleFilterStatusChange = (value) => {
+    setFilterStatus(value);
+    try {
+      localStorage.setItem("gajiFilterStatus", value);
+    } catch (e) {}
+  };
+
   const getNormalizedName = (item) => normalizeText(item?.karyawan || item?.nama || item?.name || "");
+
+  const getGajiItemStatus = (item) => {
+    if (!item) return "";
+    const candidateStatus = String(item.status || item.absensiStatus || item.statusAbsensi || "").trim();
+    if (candidateStatus) return candidateStatus;
+
+    if (!Array.isArray(absensiData)) return "";
+    const name = normalizeText(item?.karyawan || item?.nama || item?.name || "");
+    const rawDate = item.tanggal || item.date || item.createdAt || item.dateString;
+    if (!name || !rawDate) return "";
+    const periode = normalizeMonthYear(rawDate);
+
+    const match = absensiData.find((a) => {
+      if (!a || !a.nama) return false;
+      const absensiName = normalizeText(a.nama);
+      if (absensiName !== name) return false;
+      const absensiPeriode = normalizeMonthYear(a.date || a.tanggal || a.dateString);
+      return absensiPeriode && absensiPeriode === periode;
+    });
+
+    return String(match?.status || "").trim();
+  };
 
   // Get unique karyawan names from karyawan data and gaji data
   const uniqueKaryawanNames = useMemo(() => {
@@ -648,27 +688,6 @@ function Gaji() {
     } else {
       setFeePaketData([...feePaketData, { ...data, id: Date.now() }]);
     }
-  };
-
-  // Delete with confirmation
-  const handleDelete = (item, type) => {
-    setDeleteData(item);
-    setDeleteType(type);
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = () => {
-  if (deleteData && deleteType) {
-    if (deleteType === "paket") {
-      setFeePaketData(
-        feePaketData.filter((f) => f.id !== deleteData.id)
-      );
-    }
-
-    setDeleteData(null);
-    setDeleteType(null);
-    setShowDeleteConfirm(false);
-  }
   };
 
   // Handle change komponen gaji
@@ -765,8 +784,13 @@ function Gaji() {
       data = data.filter((item) => getNormalizedName(item) === targetName);
     }
 
+    if (filterStatus !== "Semua Status") {
+      const targetStatus = normalizeText(filterStatus);
+      data = data.filter((item) => normalizeText(getGajiItemStatus(item)) === targetStatus);
+    }
+
     return data;
-  }, [gajiData, filterTanggal, filterKaryawan]);
+  }, [gajiData, filterTanggal, filterKaryawan, filterStatus, absensiData]);
 
   const getGajiFeeMeta = (g) => {
     const hargaValue = Number(g?.harga || 0);
@@ -851,9 +875,21 @@ function Gaji() {
     });
   }, [absensiData, selectedKaryawan, currentPeriode]);
 
-  const gajiPokok = Number(kompGaji.gajiPokok || selectedKaryawan?.gajiPokok || 0);
-  const tunjanganTransport = Number(kompGaji.tunjanganTransport || selectedKaryawan?.tunjanganTransport || 0);
-  const potonganBPJS = Number(kompGaji.potonganBPJS || selectedKaryawan?.asuransi || selectedKaryawan?.bpjs || 0);
+  const gajiPokok = Number(
+    kompGaji.gajiPokok !== undefined && kompGaji.gajiPokok !== null
+      ? kompGaji.gajiPokok
+      : selectedKaryawan?.gajiPokok || 0
+  );
+  const tunjanganTransport = Number(
+    kompGaji.tunjanganTransport !== undefined && kompGaji.tunjanganTransport !== null
+      ? kompGaji.tunjanganTransport
+      : selectedKaryawan?.tunjanganTransport || 0
+  );
+  const potonganBPJS = Number(
+    kompGaji.potonganBPJS !== undefined && kompGaji.potonganBPJS !== null
+      ? kompGaji.potonganBPJS
+      : selectedKaryawan?.asuransi || selectedKaryawan?.bpjs || 0
+  );
   const basePajak =
   gajiPokok +
   tunjanganTransport +
@@ -896,18 +932,18 @@ function Gaji() {
       </div>
 
       {/* Filter Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 animate-slide-up">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 animate-slide-up">
         <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Tanggal</label>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Periode</label>
           <input
-            type="date"
+            type="month"
             value={filterTanggal}
             onChange={(e) => handleFilterTanggalChange(e.target.value)}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
           />
         </div>
 
-        <div className="animate-slide-up" style={{ animationDelay: '0.25s' }}>
+        <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
           <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Karyawan</label>
           <select 
             value={filterKaryawan}
@@ -922,6 +958,21 @@ function Gaji() {
             ))}
           </select>
         </div>
+
+        <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Pilih Status</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => handleFilterStatusChange(e.target.value)}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-gray-800 bg-white cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-opacity-10"
+          >
+            <option>Semua Status</option>
+            <option>Hadir</option>
+            <option>Izin</option>
+            <option>Sakit</option>
+            <option>Alpha</option>
+          </select>
+        </div>
       </div>
 
       {/* Tabel Gaji & Komponen Gaji Side by Side */}
@@ -932,9 +983,10 @@ function Gaji() {
             <div className="border-b border-gray-200 px-6 py-4">
               <h2 className="text-lg font-bold text-gray-900">Gaji Tindakan ({filteredGajiData.length})</h2>
               <p className="text-sm text-gray-600 mt-1">
-                {filterTanggal && `Tanggal: ${new Date(filterTanggal).toLocaleDateString('id-ID')} • `}
-                {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan}`}
-                {!filterTanggal && filterKaryawan === "Semua" && "Menampilkan Semua Data"}
+                {filterTanggal && `Periode: ${currentPeriode} • `}
+                {filterKaryawan !== "Semua" && `Karyawan: ${filterKaryawan} • `}
+                {filterStatus !== "Semua Status" && `Status: ${filterStatus}`}
+                {!filterTanggal && filterKaryawan === "Semua" && filterStatus === "Semua Status" && "Menampilkan Semua Data"}
               </p>
             </div>
             
@@ -1066,21 +1118,6 @@ function Gaji() {
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
               <button
-                onClick={() => {
-                  // Reset all komponen gaji to default
-                  setKompGaji({
-                    gajiPokok: 0,
-                    tunjanganTransport: 0,
-                    potonganPajak: 0,
-                    potonganBPJS: 0
-                  });
-                  setFeePaketData([]);
-                }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Reset
-              </button>
-              <button
                 onClick={async () => {
                   // Validation
                   if (!selectedKaryawan || !filterKaryawan || filterKaryawan === "Semua") {
@@ -1179,31 +1216,6 @@ function Gaji() {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Hapus Data</h3>
-            <p className="text-gray-600 mb-6">
-              Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -58,26 +58,49 @@ export default function DashboardKaryawan() {
   const getMonthLabel = (d) => d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
   const canCheckIn = () => {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-
-  return currentHour > 8 || (currentHour === 8 && currentMinute >= 0);
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute;
+    return currentTime >= 480 && currentTime <= 1020;
   };
 
-const canCheckOut = () => {
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
+  const canCheckOut = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute;
+    return currentTime >= 1020;
+  };
 
-  return currentHour > 17 || (currentHour === 17 && currentMinute >= 0);
-};
+  const getAttendanceStatusMessage = () => {
+    if (hasCheckedInToday()) {
+      const today = getTodayItemLocal();
+      if (today?.jamKeluar) {
+        return 'Anda sudah absen pulang hari ini.';
+      }
+      if (!canCheckOut()) {
+        return 'Anda sudah absen masuk hari ini. Absen keluar bisa dilakukan mulai pukul 17.00 WIB.';
+      }
+      return 'Anda sudah absen masuk hari ini. Silakan klik Keluar untuk absen pulang.';
+    }
 
-   const handleCheckIn = () => {
+    if (!canCheckIn()) {
+      const now = new Date();
+      const currentTime = now.getHours() * 60 + now.getMinutes();
+      if (currentTime < 480) {
+        return 'Absen masuk dibuka mulai pukul 08.00 WIB.';
+      }
+      return 'Absen masuk sudah ditutup. Anda hanya dapat absen keluar setelah pukul 17.00 WIB jika sudah melakukan absen masuk.';
+    }
 
-      if (!canCheckIn()) {
-        alert("Absensi belum dibuka. Silakan melakukan absensi masuk mulai pukul 08.00 WIB.");
-        return;
+    return 'Silakan absen masuk antara pukul 08.00 dan 17.00 WIB.';
+  };
+
+  const handleCheckIn = () => {
+    if (!canCheckIn()) {
+      alert('Absensi masuk hanya dapat dilakukan antara pukul 08.00 dan 17.00 WIB.');
+      return;
     }
       if (hasCheckedInToday()) {
       // Show today's attendance info
@@ -327,8 +350,8 @@ const canCheckOut = () => {
           <div className="flex items-center justify-end">
             <button
               onClick={handleCheckOut}
-              disabled={!hasCheckedInToday() || (getTodayItemLocal() && getTodayItemLocal().jamKeluar)}
-              className={`px-4 py-2 rounded-md font-medium ${!hasCheckedInToday() || (getTodayItemLocal() && getTodayItemLocal().jamKeluar) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}
+              disabled={!hasCheckedInToday() || (getTodayItemLocal() && getTodayItemLocal().jamKeluar) || !canCheckOut()}
+              className={`px-4 py-2 rounded-md font-medium ${!hasCheckedInToday() || (getTodayItemLocal() && getTodayItemLocal().jamKeluar) || !canCheckOut() ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-amber-600 text-white hover:bg-amber-700'}`}
             >
               Keluar
             </button>
@@ -343,17 +366,27 @@ const canCheckOut = () => {
           <div className="w-full bg-gray-300 rounded-lg h-12 overflow-hidden">
             <button
               onClick={handleCheckIn}
-              className="w-full h-full flex items-center justify-start"
+              disabled={hasCheckedInToday() || !canCheckIn()}
+              className={`w-full h-full flex items-center justify-start ${hasCheckedInToday() || !canCheckIn() ? 'cursor-not-allowed' : ''}`}
               aria-label="Absen Masuk"
             >
               <div
-                className={`bg-gradient-to-r from-green-400 to-emerald-400 h-full flex items-center text-gray-700 font-semibold pl-4 ${hasCheckedInToday() ? 'opacity-60' : 'cursor-pointer hover:from-green-500 hover:to-emerald-500'}`}
+                className={`bg-gradient-to-r from-green-400 to-emerald-400 h-full flex items-center text-gray-700 font-semibold pl-4 ${hasCheckedInToday() || !canCheckIn() ? 'opacity-60' : 'cursor-pointer hover:from-green-500 hover:to-emerald-500'}`}
                 style={{ width: '95%' }}
               >
                 {hasCheckedInToday() ? 'Sudah Absen' : 'Absensi'}
               </div>
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 animate-slide-up" style={{ animationDelay: '0.3s' }}>
+        <div className="text-sm text-gray-600 mb-2">{getAttendanceStatusMessage()}</div>
+        <div className="inline-flex items-center gap-2 text-xs text-gray-500 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200">
+          <span className="font-semibold">Info:</span>
+          <span>Absen masuk 08:00 - 17:00 WIB.</span>
+          <span>Absen keluar mulai 17:00 WIB.</span>
         </div>
       </div>
 
