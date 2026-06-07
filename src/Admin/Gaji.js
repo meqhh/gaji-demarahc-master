@@ -673,7 +673,15 @@ function Gaji() {
     } catch (e) {}
   };
 
-  const getNormalizedName = (item) => normalizeText(item?.karyawan || item?.nama || item?.name || "");
+  const getNameFromKaryawanId = (item) => {
+    if (!item || !item.karyawanId || !Array.isArray(karyawanData)) return "";
+    const match = karyawanData.find((k) => String(k.id) === String(item.karyawanId) || String(k.user_id) === String(item.karyawanId));
+    return match?.nama || match?.name || "";
+  };
+
+  const getNormalizedName = (item) => normalizeText(
+    item?.karyawan || item?.nama || item?.name || getNameFromKaryawanId(item) || ""
+  );
 
   // Get unique karyawan names from karyawan data and gaji data
   const uniqueKaryawanNames = useMemo(() => {
@@ -937,6 +945,21 @@ function Gaji() {
   totalFeePaket;
   const totalGajiBersih = totalGross - totalPotongan;
 
+  // Handle delete dengan konfirmasi
+  const handleDeleteGaji = (id, karyawan, treatment) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus gaji "${treatment}" untuk ${karyawan}?`)) {
+      return;
+    }
+    
+    console.log('Deleting gaji with id:', id, 'type:', typeof id);
+    try {
+      deleteGaji(id);
+    } catch (error) {
+      console.error('Error deleting gaji:', error);
+      alert('Gagal menghapus data gaji');
+    }
+  };
+
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <style>{`
@@ -1022,9 +1045,9 @@ function Gaji() {
                         key={g.id}
                         className="border-b border-gray-100 hover:bg-gray-50 transition"
                       >
-                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{g.karyawan || g.pasien || "-"}</td>
+                        <td className="px-6 py-4 text-gray-800 font-semibold text-sm">{g.karyawan || g.pasien || g.namaPasien || "-"}</td>
                         <td className="px-6 py-4 text-gray-600 text-sm">{g.tanggal ? new Date(g.tanggal).toLocaleDateString('id-ID') : "-"}</td>
-                        <td className="px-6 py-4 text-gray-700 text-sm">{g.pasien}</td>
+                        <td className="px-6 py-4 text-gray-700 text-sm">{g.pasien || g.namaPasien || "-"}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{g.treatment}</td>
                         <td className="px-6 py-4 text-gray-700 text-sm">{formatRupiah(Number(g.harga) || 0)}</td>
                         {(() => {
@@ -1038,7 +1061,7 @@ function Gaji() {
                               <td className="px-6 py-4 text-gray-700 text-sm">
                                 <button
                                   type="button"
-                                  onClick={() => deleteGaji(g.id)}
+                                  onClick={() => handleDeleteGaji(g.id, g.karyawan || g.pasien || g.namaPasien || "-", g.treatment)}
                                   className="text-red-600 font-semibold hover:text-red-800 transition-colors"
                                 >
                                   Hapus

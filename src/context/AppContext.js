@@ -630,10 +630,10 @@ useEffect(() => {
     addGaji: async (gaji) => {
       const tempId = gaji.id || `GAJI${Date.now()}`;
       const tempItem = { ...gaji, id: tempId };
+      const prevGajiData = Array.isArray(gajiData) ? gajiData.slice() : [];
       setGajiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
 
-      // Also create a Slip Gaji record derived from this Gaji entry so it appears
-      // immediately in the Slip Gaji menu for admins.
+      let slipLocal = null;
       const buildSlipFromGaji = (gajiObj, gajiIdForSlip) => {
         const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
         const nama = gajiObj.nama || gajiObj.karyawan || "";
@@ -676,7 +676,7 @@ useEffect(() => {
 
       // create local slip immediately
       try {
-        const slipLocal = buildSlipFromGaji(gaji, tempId);
+        slipLocal = buildSlipFromGaji(gaji, tempId);
         setSlipGajiData(prev => Array.isArray(prev) ? [...prev, slipLocal] : [slipLocal]);
       } catch (e) {
         console.error('Failed to create local slip from gaji:', e);
@@ -694,7 +694,6 @@ useEffect(() => {
             // build slip based on server item and persist to server slip API
             const slipFromServerGaji = buildSlipFromGaji(serverItem, serverItem.id || serverItem._id || tempId);
             const tempSlipId = slipFromServerGaji.id;
-            // optimistic add already done; attempt to persist to server
             try {
               const slipRes = await slipGajiApi.create(token, slipFromServerGaji);
               const serverSlip = slipRes && slipRes.data ? slipRes.data : null;
@@ -704,9 +703,16 @@ useEffect(() => {
             } catch (e) {
               console.error('Failed to persist slip gaji to server:', e);
             }
+          } else {
+            throw new Error('Server tidak mengembalikan data gaji');
           }
         } catch (e) {
           console.error('Failed to create gaji on server:', e);
+          setGajiData(prevGajiData);
+          if (slipLocal) {
+            setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => s.id !== slipLocal.id) : []);
+          }
+          alert('Gagal menyimpan gaji ke server. Data gaji lokal telah dibatalkan.');
         }
       }
     },
@@ -801,16 +807,50 @@ useEffect(() => {
       }
     },
     deleteGaji: async (id) => {
+      // Normalize ID untuk comparison
+      const normalizedId = String(id).trim();
+      console.log('deleteGaji called with id:', normalizedId, 'Current gajiData count:', gajiData?.length || 0);
+      
       const prevSnapshot = Array.isArray(gajiData) ? gajiData.slice() : [];
-      setGajiData(prev => Array.isArray(prev) ? prev.filter(g => g.id !== id) : []);
+      
+      // Filter dengan logging
+      const filtered = Array.isArray(gajiData) ? gajiData.filter(g => {
+        const gId = String(g.id).trim();
+        const isMatching = gId !== normalizedId;
+        if (!isMatching) {
+          console.log('Found gaji to delete:', g);
+        }
+        return isMatching;
+      }) : [];
+      
+      console.log('After filter, remaining count:', filtered.length);
+      setGajiData(filtered);
+      
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          await gajiApi.delete(token, id);
+          const result = await gajiApi.delete(token, normalizedId);
+          console.log('Server delete response:', result);
         } catch (e) {
           console.error('Failed to delete gaji on server:', e);
+          const errorMsg = e.message || '';
+          const isTempId = /^GAJI|^TEMP-/.test(normalizedId);
+
+          if ((errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) && isTempId) {
+            console.warn('Delete failed because item was only local and not persisted. Treating as deleted.');
+            return;
+          }
+
+          // Restore if server delete fails for persisted items
           setGajiData(prevSnapshot);
+          if (errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) {
+            alert(`Data gaji tidak ditemukan di server. Mungkin sudah dihapus sebelumnya.`);
+          } else {
+            alert(`Gagal menghapus data dari server: ${errorMsg}. Data telah dikembalikan.`);
+          }
         }
+      } else {
+        console.warn('No token found for server delete');
       }
     },
     getGajiByKaryawan: (nama) => Array.isArray(gajiData) ? gajiData.find(g => g.nama === nama) : undefined,

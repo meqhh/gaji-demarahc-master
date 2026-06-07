@@ -361,13 +361,30 @@ const slipGajiDB = {
       const tableColumns = await getTableColumns('slip_gaji');
       
       if (slipGaji.id) {
-        const fields = Object.keys(slipGaji).filter((k) => k !== 'id' && tableColumns.has(k));
-        const values = fields.map((k) => slipGaji[k]);
-        values.push(slipGaji.id);
+        // Check if record exists first
+        const [existingRows] = await conn.query('SELECT id FROM slip_gaji WHERE id = ?', [slipGaji.id]);
+        
+        if (existingRows && existingRows.length > 0) {
+          // Record exists, do UPDATE
+          const fields = Object.keys(slipGaji).filter((k) => k !== 'id' && tableColumns.has(k));
+          const values = fields.map((k) => slipGaji[k]);
+          values.push(slipGaji.id);
 
-        const setClause = fields.map((f) => `${f} = ?`).join(', ');
-        await conn.query(`UPDATE slip_gaji SET ${setClause} WHERE id = ?`, values);
+          const setClause = fields.map((f) => `${f} = ?`).join(', ');
+          await conn.query(`UPDATE slip_gaji SET ${setClause} WHERE id = ?`, values);
+        } else {
+          // Record doesn't exist, do INSERT with the provided ID
+          const keys = Object.keys(slipGaji).filter((k) => tableColumns.has(k));
+          const placeholders = keys.map(() => '?').join(', ');
+          const values = keys.map((k) => slipGaji[k]);
+          
+          await conn.query(
+            `INSERT INTO slip_gaji (${keys.join(', ')}) VALUES (${placeholders})`,
+            values
+          );
+        }
       } else {
+        // No ID provided, do INSERT and let DB generate one
         const keys = Object.keys(slipGaji).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
         const values = keys.map((k) => slipGaji[k]);
@@ -555,7 +572,9 @@ const gajiDB = {
   getAll: async () => {
     try {
       const conn = await pool.getConnection();
-      const [rows] = await conn.query('SELECT * FROM gaji');
+      const [rows] = await conn.query(
+        'SELECT gaji.*, karyawan.nama AS nama FROM gaji LEFT JOIN karyawan ON gaji.karyawan_id = karyawan.id'
+      );
       conn.release();
       return rows;
     } catch (err) {
@@ -567,7 +586,10 @@ const gajiDB = {
   findById: async (id) => {
     try {
       const conn = await pool.getConnection();
-      const [rows] = await conn.query('SELECT * FROM gaji WHERE id = ?', [id]);
+      const [rows] = await conn.query(
+        'SELECT gaji.*, karyawan.nama AS nama FROM gaji LEFT JOIN karyawan ON gaji.karyawan_id = karyawan.id WHERE gaji.id = ?',
+        [id]
+      );
       conn.release();
       return rows[0] || null;
     } catch (err) {
@@ -578,7 +600,13 @@ const gajiDB = {
 
   findByKaryawanId: async (karyawanId) => {
     try {
-      return await findRowsByField('gaji', 'karyawan_id', karyawanId);
+      const conn = await pool.getConnection();
+      const [rows] = await conn.query(
+        'SELECT gaji.*, karyawan.nama AS nama FROM gaji LEFT JOIN karyawan ON gaji.karyawan_id = karyawan.id WHERE gaji.karyawan_id = ?',
+        [karyawanId]
+      );
+      conn.release();
+      return Array.isArray(rows) ? rows : [];
     } catch (err) {
       console.error('Error in gajiDB.findByKaryawanId:', err);
       return [];
@@ -603,13 +631,30 @@ const gajiDB = {
       gaji.created_at = new Date();
       
       if (gaji.id) {
-        const fields = Object.keys(gaji).filter((k) => k !== 'id' && tableColumns.has(k));
-        const values = fields.map((k) => gaji[k]);
-        values.push(gaji.id);
+        // Check if record exists first
+        const [existingRows] = await conn.query('SELECT id FROM gaji WHERE id = ?', [gaji.id]);
         
-        const setClause = fields.map((f) => `${f} = ?`).join(', ');
-        await conn.query(`UPDATE gaji SET ${setClause} WHERE id = ?`, values);
+        if (existingRows && existingRows.length > 0) {
+          // Record exists, do UPDATE
+          const fields = Object.keys(gaji).filter((k) => k !== 'id' && tableColumns.has(k));
+          const values = fields.map((k) => gaji[k]);
+          values.push(gaji.id);
+          
+          const setClause = fields.map((f) => `${f} = ?`).join(', ');
+          await conn.query(`UPDATE gaji SET ${setClause} WHERE id = ?`, values);
+        } else {
+          // Record doesn't exist, do INSERT with the provided ID
+          const keys = Object.keys(gaji).filter((k) => tableColumns.has(k));
+          const placeholders = keys.map(() => '?').join(', ');
+          const values = keys.map((k) => gaji[k]);
+          
+          await conn.query(
+            `INSERT INTO gaji (${keys.join(', ')}) VALUES (${placeholders})`,
+            values
+          );
+        }
       } else {
+        // No ID provided, do INSERT and let DB generate one
         const keys = Object.keys(gaji).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
         const values = keys.map((k) => gaji[k]);
@@ -683,12 +728,28 @@ const treatmentDB = {
       treatment.created_at = new Date();
       
       if (treatment.id) {
-        const fields = Object.keys(treatment).filter((k) => k !== 'id' && tableColumns.has(k));
-        const values = fields.map((k) => treatment[k]);
-        values.push(treatment.id);
+        // Check if record exists first
+        const [existingRows] = await conn.query('SELECT id FROM treatment WHERE id = ?', [treatment.id]);
         
-        const setClause = fields.map((f) => `${f} = ?`).join(', ');
-        await conn.query(`UPDATE treatment SET ${setClause} WHERE id = ?`, values);
+        if (existingRows && existingRows.length > 0) {
+          // Record exists, do UPDATE
+          const fields = Object.keys(treatment).filter((k) => k !== 'id' && tableColumns.has(k));
+          const values = fields.map((k) => treatment[k]);
+          values.push(treatment.id);
+          
+          const setClause = fields.map((f) => `${f} = ?`).join(', ');
+          await conn.query(`UPDATE treatment SET ${setClause} WHERE id = ?`, values);
+        } else {
+          // Record doesn't exist, do INSERT with the provided ID
+          const keys = Object.keys(treatment).filter((k) => tableColumns.has(k));
+          const placeholders = keys.map(() => '?').join(', ');
+          const values = keys.map((k) => treatment[k]);
+          
+          await conn.query(
+            `INSERT INTO treatment (${keys.join(', ')}) VALUES (${placeholders})`,
+            values
+          );
+        }
       } else {
         const keys = Object.keys(treatment).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');

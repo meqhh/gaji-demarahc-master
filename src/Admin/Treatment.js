@@ -262,25 +262,60 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
     }).format(harga);
   };
 
-  // Tambah data
-  const handleTambah = (e) => {
+  // Tambah data dengan API call ke server
+  const handleTambah = async (e) => {
     e.preventDefault();
     const form = e.target;
+    
+    // Generate temp ID untuk optimistic update
+    const tempId = `TEMP-${Date.now()}`;
     const newTreatment = {
-      id: Math.max(...dataTreatment.map((t) => t.id), 0) + 1,
+      id: tempId,
       nama: form.nama.value,
       category: form.category.value,
       harga: parseInt(form.harga.value),
       fee: parseInt(form.fee.value) || getFeeByCategory(form.category.value),
     };
 
+    // Optimistic update ke UI
     setDataTreatment([...dataTreatment, newTreatment]);
     form.reset();
     setShowTambah(false);
+
+    try {
+      // Simpan ke server
+      const response = await fetch(`${API_BASE_URL}/treatment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(newTreatment)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          // Replace temp ID dengan server ID
+          setDataTreatment(prev =>
+            prev.map(t => t.id === tempId ? { ...data.data, id: data.data.id || tempId } : t)
+          );
+          console.log('Treatment berhasil disimpan ke server:', data.data);
+        }
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Gagal menyimpan treatment ke server');
+      }
+    } catch (error) {
+      console.error('Error menyimpan treatment:', error);
+      alert(`Gagal menyimpan treatment: ${error.message}`);
+      // Remove dari state jika gagal
+      setDataTreatment(prev => prev.filter(t => t.id !== tempId));
+    }
   };
 
-  // Edit data
-  const handleEdit = (e) => {
+  // Edit data dengan API call ke server
+  const handleEdit = async (e) => {
     e.preventDefault();
     const form = e.target;
     const updated = {
@@ -291,8 +326,46 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       fee: parseInt(form.fee.value) || getFeeByCategory(form.category.value),
     };
 
+    // Optimistic update ke UI
     setDataTreatment(dataTreatment.map((t) => (t.id === updated.id ? updated : t)));
     setShowEdit(false);
+
+    try {
+      // Simpan ke server
+      const response = await fetch(`${API_BASE_URL}/treatment/${updated.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(updated)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setDataTreatment(prev =>
+            prev.map(t => t.id === updated.id ? data.data : t)
+          );
+          console.log('Treatment berhasil diupdate di server:', data.data);
+        }
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Gagal mengupdate treatment di server');
+      }
+    } catch (error) {
+      console.error('Error mengupdate treatment:', error);
+      alert(`Gagal mengupdate treatment: ${error.message}`);
+      // Rollback jika gagal
+      const prevVersion = Array.isArray(dataTreatment) 
+        ? dataTreatment.find(t => t.id === updated.id)
+        : editData;
+      if (prevVersion) {
+        setDataTreatment(prev =>
+          prev.map(t => t.id === updated.id ? prevVersion : t)
+        );
+      }
+    }
   };
 
   // Hapus data dengan API call ke server
