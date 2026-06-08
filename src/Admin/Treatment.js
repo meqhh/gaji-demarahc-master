@@ -223,6 +223,7 @@ const [pasienKlinik, setPasienKlinik] = useState("");
 
 const [bidanTerpilih, setBidanTerpilih] = useState("");
 const [catatanTreatment, setCatatanTreatment] = useState([]);
+const isTreatmentReady = Boolean(bidanTerpilih && pasienKlinik.trim() && selectedTreatment);
 
 
 
@@ -418,15 +419,36 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
   };
 
   const simpanTreatment = async () => {
+    if (!selectedTreatment) {
+      alert("Tidak ada treatment yang dipilih.");
+      return;
+    }
     if (!bidanTerpilih) {
-      alert("Pilih bidan terlebih dahulu");
+      alert("Pilih bidan terlebih dahulu.");
+      return;
+    }
+    if (!pasienKlinik.trim()) {
+      alert("Masukkan nama pasien dan klinik/home service terlebih dahulu.");
+      return;
+    }
+
+    const parsedPasienKlinik = parsePasienKlinik(pasienKlinik);
+    if (!parsedPasienKlinik.namaPasien) {
+      alert("Nama pasien tidak valid. Masukkan setidaknya nama pasien.");
+      return;
+    }
+
+    const karyawan = Array.isArray(karyawanData)
+      ? karyawanData.find((k) => (k.nama || k.name) === bidanTerpilih)
+      : null;
+
+    if (!karyawan) {
+      alert("Bidan tidak ditemukan. Pilih bidan yang tersedia pada daftar.");
       return;
     }
 
     const feePercent = ADMIN_FIXED_FEE_PERCENT;
     const feeAmount = Math.round((Number(selectedTreatment.harga || 0) * feePercent) / 100);
-
-    const parsedPasienKlinik = parsePasienKlinik(pasienKlinik);
 
     const dataBaru = {
       id: Date.now(),
@@ -438,23 +460,16 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
       fee: feeAmount,
       feePercent: feePercent,
       feeAmount: feeAmount,
-      tanggal: new Date().toLocaleDateString("id-ID"),
+      tanggal: new Date().toISOString(),
+      tanggalDisplay: new Date().toLocaleDateString("id-ID"),
     };
 
     // Optimistically add to local catatan
     setCatatanTreatment([...catatanTreatment, dataBaru]);
 
     try {
-      // Find karyawan record by nama to get id and kompensasi
-      const karyawan = Array.isArray(karyawanData)
-        ? karyawanData.find((k) => (k.nama || k.name) === bidanTerpilih)
-        : null;
-
-      const karyawanId = karyawan ? (karyawan.id || karyawan._id || karyawan.user_id) : null;
-
-      // Prepare treatment payload for backend
       const treatmentPayload = {
-        karyawanId: karyawanId,
+        karyawanId: karyawan.id || karyawan._id || karyawan.user_id,
         nama: selectedTreatment.nama,
         tipeLayanan: selectedTreatment.category || "Treatment",
         tanggal: new Date().toISOString(),
@@ -467,23 +482,20 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         feeAmount: feeAmount,
       };
 
-      // Persist treatment to server (if authenticated)
       if (addTreatment) await addTreatment(treatmentPayload);
 
-      // Prepare gaji payload using existing kompensasi dari karyawan (fallbacks)
       const now = new Date();
-      const periode = `${String(now.getMonth() + 1).padStart(2, "0")}-${now.getFullYear()}`;
-
-      const gajiPokok = Number(karyawan?.gajiPokok || 0);
-      const tunjangan = Number(karyawan?.tunjangan || 0);
-      const potonganAsuransi = Number(karyawan?.asuransi || 0);
-      const potonganTax = Number(karyawan?.pajak || 0);
+    const periode = `${new Intl.DateTimeFormat("id-ID", { month: "long" }).format(now)} ${now.getFullYear()}`;
+      const gajiPokok = Number(karyawan.gajiPokok || 0);
+      const tunjangan = Number(karyawan.tunjangan || 0);
+      const potonganAsuransi = Number(karyawan.asuransi || 0);
+      const potonganTax = Number(karyawan.pajak || 0);
 
       const gajiKotor = gajiPokok + feeAmount + tunjangan;
       const gajiNetto = gajiKotor - potonganAsuransi - potonganTax;
 
       const gajiPayload = {
-        karyawanId: karyawanId,
+        karyawanId: karyawan.id || karyawan._id || karyawan.user_id,
         karyawan: bidanTerpilih,
         nama: bidanTerpilih,
         tanggal: new Date().toISOString(),
@@ -503,7 +515,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
         potonganAsuransi,
         potonganTax,
         gajiKotor,
-        gajiNetto
+        gajiNetto,
       };
 
       if (addGaji) await addGaji(gajiPayload);
@@ -602,7 +614,7 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
           placeholder="Masukkan nama pasien - Klinik/Home Service"
           className="w-full border border-gray-300 px-4 py-2.5 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all bg-white text-gray-700"
         />
-        <p className="text-xs text-gray-500 mt-2">Tulis nama pasien dan layanan Klinik/Home Service dalam satu kotak, misal: Budi - Klinik Demara.</p>
+        <p className="text-xs text-gray-500 mt-2">Tulis nama pasien dan layanan Klinik/Home Service dalam satu kotak, misal: Budi - Klinik Demara. Bagian layanan bisa dikosongkan jika tidak tersedia.</p>
       </div>
 
       <div className="flex justify-end gap-2">
@@ -616,8 +628,12 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
 
         <button
           type="button"
-          onClick={simpanTreatment}
-          className="px-4 py-2 bg-green-600 text-white rounded"
+          onClick={(e) => {
+            e.preventDefault();
+            simpanTreatment();
+          }}
+          disabled={!isTreatmentReady}
+          className={`px-4 py-2 rounded font-semibold transition-all ${isTreatmentReady ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer' : 'bg-gray-300 text-gray-600 cursor-not-allowed'}`}
         >
           Simpan
         </button>
@@ -726,7 +742,10 @@ const [catatanTreatment, setCatatanTreatment] = useState([]);
 
                       <button
                         type="button"
-                        onClick={() => handleCatatTreatment(t)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleCatatTreatment(t);
+                        }}
                         className="text-green-600 font-bold hover:text-green-700 transition-colors"
                       >
                         Catat

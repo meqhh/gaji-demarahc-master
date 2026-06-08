@@ -7,27 +7,78 @@ const monthNames = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-const getMonthLabel = (dateString) => {
-  if (!dateString) return "";
-  const parsed = new Date(dateString);
-  if (!isNaN(parsed.getTime())) {
-    return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+const monthNameMap = {
+  januari: 1,
+  februari: 2,
+  maret: 3,
+  april: 4,
+  mei: 5,
+  juni: 6,
+  juli: 7,
+  agustus: 8,
+  september: 9,
+  oktober: 10,
+  november: 11,
+  desember: 12,
+  january: 1,
+  february: 2,
+  march: 3,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  october: 10,
+  december: 12,
+};
+
+const normalizeMonthLabel = (value) => {
+  if (!value) return "";
+  let str = String(value).trim();
+  const mmYYYY = /^([0-1]?\d)[-/](\d{4})$/;
+  const yyyyMM = /^(\d{4})[-/](\d{1,2})(?:-[0-3]?\d)?$/;
+  const ddmmyyyy = /^([0-3]?\d)[/-]([0-1]?\d)[/-](\d{4})$/;
+  const namedMonthYear = /^([A-Za-zÀ-ÖØ-öø-ÿ]+)\s+(\d{4})$/;
+
+  let parsedDate;
+  const namedMatch = str.match(namedMonthYear);
+  if (namedMatch) {
+    const [, monthName, year] = namedMatch;
+    const monthIndex = monthNameMap[monthName.toLowerCase()];
+    if (monthIndex) {
+      parsedDate = new Date(`${year}-${String(monthIndex).padStart(2, '0')}-01T00:00:00`);
+    }
+  }
+
+  if (!parsedDate) {
+    if (yyyyMM.test(str)) {
+      const [, year, month] = str.match(yyyyMM);
+      parsedDate = new Date(`${year}-${month.padStart(2, '0')}-01T00:00:00`);
+    } else if (mmYYYY.test(str)) {
+      const [, month, year] = str.match(mmYYYY);
+      parsedDate = new Date(`${year}-${month.padStart(2, '0')}-01T00:00:00`);
+    } else if (ddmmyyyy.test(str)) {
+      const [, day, month, year] = str.match(ddmmyyyy);
+      parsedDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`);
+    } else {
+      parsedDate = new Date(str);
+    }
+  }
+
+  if (!isNaN(parsedDate.getTime())) {
+    return `${monthNames[parsedDate.getMonth()]} ${parsedDate.getFullYear()}`;
   }
   return "";
 };
 
-const normalizePeriode = (periode, dateValue) => {
-  if (!periode && !dateValue) return "Tanpa Periode";
-  if (periode && typeof periode === 'string') {
-    const normalized = getMonthLabel(periode);
-    if (normalized) return normalized;
-    return periode;
-  }
-  return getMonthLabel(dateValue) || String(periode || "Tanpa Periode");
+const normalizeSlipKey = (item) => {
+  if (!item || typeof item !== 'object') return "";
+  const nama = String(item.nama || item.karyawan || item.employee?.name || "").trim().toLowerCase();
+  const periode = String(normalizeMonthLabel(item.periode || item.date || item.tanggal || item.createdAt) || item.periode || "").trim().toLowerCase();
+  return `${nama}||${periode}`;
 };
 
 function SlipGaji() {
-  const { karyawanData = [], slipGajiData = [], gajiData = [], absensiData = [], addSlipGaji, deleteSlipGaji, setSlipGajiData } = useContext(AppContext);
+  const { karyawanData = [], slipGajiData = [], gajiData = [], deleteSlipGaji, deleteGaji, setSlipGajiData } = useContext(AppContext);
   
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
@@ -66,11 +117,6 @@ function SlipGaji() {
   };
 
   // Format number for input display (with Rp prefix)
-  const formatInputNumber = (num) => {
-    const n = parseInt(num) || 0;
-    return `Rp ${n.toLocaleString("id-ID")}`;
-  };
-
   const formatPrintRupiah = (value) => {
     const normalized = typeof value === 'string'
       ? Number(String(value).replace(/[^0-9,-]/g, '').replace(',', '.'))
@@ -80,7 +126,7 @@ function SlipGaji() {
   };
 
   const normalizeAdminSlipForPrint = (item) => {
-    const month = item.periode || getMonthLabel(item.date || item.tanggal || item.createdAt) || 'Tanpa Periode';
+    const month = item.periode || normalizeMonthLabel(item.date || item.tanggal || item.createdAt) || 'Tanpa Periode';
     const transactionDetails = Array.isArray(item.transactionDetails)
       ? item.transactionDetails.map((trans) => ({
           tanggal: trans.tanggal || trans.date || trans.createdAt || '',
@@ -102,6 +148,11 @@ function SlipGaji() {
         ? [{ nama: 'Fee Paket', jumlah: Number(item.feePaket) }]
         : [];
 
+    const potonganBPJS = Number(item.potonganAsuransi || item.potonganBPJS || item.bpjs || item.asuransi || 0);
+    const potonganPajak = Number(item.potonganPajak || item.potonganTax || item.pajak || 0);
+    const totalPotongan = Number(item.totalPotongan ?? potonganBPJS + potonganPajak);
+    const gajiNettoValue = Number(item.gajiNetto ?? item.totalPenghasilan ?? item.gajiKotor ?? 0) - totalPotongan;
+
     return {
       month,
       employee: {
@@ -112,8 +163,10 @@ function SlipGaji() {
       uangTransport: Number(item.tunjanganTransport || item.tunjangan || item.transport || 0),
       feeTindakan: Number(item.feeTindakan || item.bonus || item.totalFeeTindakan || 0),
       feePaket: feePaketArray,
-      potongBpjsTk: Number(item.potonganAsuransi || item.potonganBPJS || 0),
-      potonganBPJS: Number(item.potonganAsuransi || item.potonganBPJS || 0),
+      potonganBPJS,
+      potonganPajak,
+      totalPotongan,
+      gajiNetto: Number(item.gajiNetto ?? gajiNettoValue),
       amount: formatPrintRupiah(item.gajiNetto ?? item.totalPenghasilan ?? item.gajiKotor ?? 0),
       transactionDetails,
     };
@@ -150,6 +203,7 @@ function SlipGaji() {
 
     return {
       ...item,
+      periode: normalizeMonthLabel(item.periode || item.date || item.tanggal || item.createdAt) || item.periode,
       gajiPokok,
       tunjanganTransport,
       feeTindakan,
@@ -279,7 +333,9 @@ function SlipGaji() {
       <div class="summary-box">
         <h3>POTONGAN</h3>
         <div class="summary-row"><span class="summary-label">POTONG BPJS TK</span><span class="summary-value">${formatPrintRupiah(slip.potonganBPJS)}</span></div>
-        <div class="summary-row total"><span class="summary-label">TOTAL GAJI</span><span class="summary-value">${slip.amount}</span></div>
+        <div class="summary-row"><span class="summary-label">POTONG PAJAK</span><span class="summary-value">${formatPrintRupiah(slip.potonganPajak)}</span></div>
+        <div class="summary-row total"><span class="summary-label">TOTAL POTONGAN</span><span class="summary-value">${formatPrintRupiah(slip.totalPotongan)}</span></div>
+        <div class="summary-row total"><span class="summary-label">GAJI NETTO</span><span class="summary-value">${formatPrintRupiah(slip.gajiNetto)}</span></div>
       </div>
     </div>
     <div class="footer-section">
@@ -339,13 +395,12 @@ function SlipGaji() {
       const nama = record.karyawan || record.nama || "";
       if (!nama) return;
 
-      const dateValue = record.tanggal || record.date || record.createdAt || new Date().toISOString();
-      const periode = getMonthLabel(dateValue) || "Tanpa Periode";
-      const key = `${nama}||${periode}`;
+      const periode = normalizeMonthLabel(record.periode || record.tanggal || record.date || record.createdAt || new Date().toISOString()) || "Tanpa Periode";
+      const key = `${String(nama).trim().toLowerCase()}||${String(periode).trim().toLowerCase()}`;
 
       if (!groups[key]) {
         const karyawan = Array.isArray(karyawanData)
-          ? karyawanData.find((k) => String(k.nama || k.name) === String(nama))
+          ? karyawanData.find((k) => String(k.nama || k.name).trim().toLowerCase() === String(nama).trim().toLowerCase())
           : null;
 
         groups[key] = {
@@ -366,7 +421,7 @@ function SlipGaji() {
           transactionDetails: [],
           periode,
           status: record.status || "Selesai",
-          date: dateValue
+          date: record.tanggal || record.date || record.createdAt || new Date().toISOString()
         };
       }
 
@@ -419,9 +474,23 @@ function SlipGaji() {
 
   const getSlipNormalizedKey = (item) => {
     if (!item) return "";
-    const name = String(item.nama || item.karyawan || item.employee?.name || "").trim().toLowerCase();
-    const periode = String(item.periode || getMonthLabel(item.date || item.tanggal || item.createdAt) || "Tanpa Periode").trim().toLowerCase();
-    return `${name}||${periode}`;
+    return normalizeSlipKey(item);
+  };
+
+  const addSlipTombstoneForKey = (key, sourceItem) => {
+    if (!key) return;
+
+    const tombstoneItem = {
+      id: `TOMBSTONE-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      _tombstone: true,
+      nama: sourceItem?.nama || sourceItem?.karyawan || sourceItem?.employee?.name || '',
+      periode: sourceItem?.periode || sourceItem?.date || sourceItem?.tanggal || sourceItem?.createdAt || '',
+    };
+
+    setSlipGajiData((prev) => {
+      const existing = Array.isArray(prev) ? prev.filter((item) => !(item?._tombstone && getSlipNormalizedKey(item) === key)) : [];
+      return [...existing, tombstoneItem];
+    });
   };
 
   const combinedSlipGajiData = useMemo(() => {
@@ -436,12 +505,10 @@ function SlipGaji() {
   // Filter data
   const filteredData = useMemo(() => {
     return combinedSlipGajiData.filter((item) => {
-      // hide tombstone entries
       if (item._tombstone) return false;
       const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
-      // More flexible periode matching: if periode is not set or is null, show it anyway
-      // This helps with newly created gaji records without explicit periode
-      const matchPeriode = !item.periode || item.periode === "Tanpa Periode" || item.periode === bulan || getMonthLabel(item.periode) === bulan;
+      const itemPeriode = normalizeMonthLabel(item.periode || item.date || item.tanggal || item.createdAt) || item.periode || "";
+      const matchPeriode = !itemPeriode || itemPeriode === "Tanpa Periode" || itemPeriode === bulan;
       const matchSearch = searchQuery === "" || 
         item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -477,36 +544,48 @@ function SlipGaji() {
     setShowDetail(true);
   };
 
-  const handleDelete = (item) => {
+  const handleDelete = async (item) => {
     if (!item) return;
     const idOrAlt = item.id || item._id || '';
+    const slipKey = getSlipNormalizedKey(item);
     const isDerived = String(idOrAlt).startsWith('AUTO-SLIP-');
     const isLocalTempSlip = String(idOrAlt).startsWith('SLIP-');
-    const matchingGajiRecord = Array.isArray(gajiData) ? gajiData.some((g) => {
-      const namaMatch = (g.nama || g.karyawan || '').toLowerCase() === (item.nama || '').toLowerCase();
-      const periodeMatch = normalizePeriode(g.periode, g.tanggal || g.date) === normalizePeriode(item.periode, item.date);
-      return namaMatch && periodeMatch;
-    }) : false;
-    const shouldTombstone = isDerived || item.gajiId || matchingGajiRecord;
 
-    if (shouldTombstone) {
-      const tomb = {
-        id: `TOMB-${Date.now()}`,
-        nama: item.nama,
-        periode: item.periode || bulan,
-        _tombstone: true
-      };
-      setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tomb] : [tomb]);
+    const matchingGajiRecords = Array.isArray(gajiData)
+      ? gajiData.filter((g) => getSlipNormalizedKey(g) === slipKey)
+      : [];
+
+    const matchingGajiIds = matchingGajiRecords
+      .map((g) => g.id || g._id)
+      .filter(Boolean);
+
+    if (matchingGajiRecords.length > 0 && deleteGaji) {
+      try {
+        await Promise.all(matchingGajiIds.map((gajiId) => deleteGaji(gajiId)));
+      } catch (e) {
+        console.error('Failed to delete linked gaji records for slip deletion:', e);
+      }
     }
+
+    setSlipGajiData((prev) =>
+      Array.isArray(prev)
+        ? prev.filter((s) => {
+            const currentKey = getSlipNormalizedKey(s);
+            const isDeletedTombstone = s?._tombstone && currentKey === slipKey;
+            const isDeletedSlip = String(s.id) === String(idOrAlt) || String(s._id || '') === String(idOrAlt);
+            return !isDeletedTombstone && !isDeletedSlip;
+          })
+        : []
+    );
+
+    addSlipTombstoneForKey(slipKey, item);
 
     if (!isDerived && !isLocalTempSlip) {
       const serverId = item.id || item._id || idOrAlt;
       deleteSlipGaji(serverId);
-    } else {
-      setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => String(s.id) !== String(idOrAlt) && String(s._id || '') !== String(idOrAlt)) : []);
     }
 
-    showToast("✗ Slip gaji berhasil dihapus!");
+    showToast('✗ Slip gaji berhasil dihapus!');
   };
 
   const handlePrint = (item) => {

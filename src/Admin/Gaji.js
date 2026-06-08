@@ -504,6 +504,7 @@ function Gaji() {
   treatmentData = [],
   gajiData = [],
   slipGajiData = [],
+  setSlipGajiData,
   addSlipGaji,
   updateSlipGaji,
   deleteGaji
@@ -780,6 +781,33 @@ function Gaji() {
     return `${month}-${year}`;
   };
 
+  const normalizeSlipPeriod = (value) => {
+    if (!value) return "";
+    const normalizedLabel = getMonthLabel(value);
+    if (normalizedLabel) return normalizedLabel;
+
+    const trimmed = String(value).trim();
+    const mmYYYY = trimmed.match(/^([0-1]?\d)[-/](\d{4})$/);
+    if (mmYYYY) {
+      const month = Number(mmYYYY[1]);
+      const year = mmYYYY[2];
+      if (month >= 1 && month <= 12) {
+        return `${monthNames[month - 1]} ${year}`;
+      }
+    }
+
+    const yyyyMM = trimmed.match(/^(\d{4})[-/](\d{1,2})$/);
+    if (yyyyMM) {
+      const year = Number(yyyyMM[1]);
+      const month = Number(yyyyMM[2]);
+      if (month >= 1 && month <= 12) {
+        return `${monthNames[month - 1]} ${year}`;
+      }
+    }
+
+    return trimmed;
+  };
+
   // Filter gaji data based on selected filters
   const filteredGajiData = useMemo(() => {
     let data = Array.isArray(gajiData) ? [...gajiData] : [];
@@ -865,7 +893,7 @@ function Gaji() {
   const getPeriodeFromGajiItem = (item) => {
     if (!item) return "";
     if (item.periode) {
-      return String(item.periode).trim();
+      return normalizeSlipPeriod(String(item.periode).trim());
     }
     const rawDate = item.tanggal || item.date || item.createdAt || item.dateString;
     return getMonthLabel(rawDate);
@@ -1219,25 +1247,48 @@ function Gaji() {
                   // Debug log
                   console.log("Admin saving slip gaji:", slipData);
 
+                  const normalizedPeriode = normalizeSlipPeriod(currentPeriode);
+                  const normalizedSlipData = { ...slipData, periode: normalizedPeriode };
+
                   // Add to context
                   // Cek apakah slip untuk karyawan+periode ini sudah ada (UPSERT)
                   const existingSlip = Array.isArray(slipGajiData)
-                    ? slipGajiData.find(s =>
-                        !s._tombstone &&
-                        String(s.nama || "").toLowerCase() === String(selectedKaryawan.nama || "").toLowerCase() &&
-                        String(s.periode || "") === String(currentPeriode)
-                      )
+                    ? slipGajiData.find((s) => {
+                        if (s?._tombstone) return false;
+                        const slipPeriod = normalizeSlipPeriod(s.periode || s.date || s.tanggal || s.createdAt || '');
+                        const slipName = String(s.nama || '').trim().toLowerCase();
+                        return (
+                          slipName === String(selectedKaryawan.nama || '').trim().toLowerCase() &&
+                          slipPeriod === normalizedPeriode
+                        );
+                      })
                     : null;
 
                   try {
                     if (existingSlip && updateSlipGaji) {
                       // UPDATE slip yang sudah ada — JANGAN bikin baru
-                      const updatedSlip = { ...existingSlip, ...slipData, id: existingSlip.id };
+                      const updatedSlip = { ...existingSlip, ...normalizedSlipData, id: existingSlip.id };
                       await updateSlipGaji(existingSlip.id, updatedSlip);
                       console.log("Slip gaji updated successfully", existingSlip.id);
                       alert(`Slip Gaji untuk ${selectedKaryawan.nama} berhasil DIPERBARUI! ✏️`);
                     } else {
-                      await addSlipGaji(slipData);
+                      await addSlipGaji(normalizedSlipData);
+                      if (setSlipGajiData) {
+                        const slipKey = `${String(normalizedSlipData.nama || '').trim().toLowerCase()}||${String(normalizedSlipData.periode || '').trim().toLowerCase()}`;
+                        setSlipGajiData((prev) => {
+                          const filteredPrev = Array.isArray(prev)
+                            ? prev.filter((item) => {
+                                const itemKey = `${String(item?.nama || '').trim().toLowerCase()}||${String(item?.periode || '').trim().toLowerCase()}`;
+                                return !(item?._tombstone && itemKey === slipKey);
+                              })
+                            : [];
+                          const alreadyExists = filteredPrev.some((item) => {
+                            const itemKey = `${String(item?.nama || '').trim().toLowerCase()}||${String(item?.periode || '').trim().toLowerCase()}`;
+                            return itemKey === slipKey;
+                          });
+                          return alreadyExists ? filteredPrev : [...filteredPrev, normalizedSlipData];
+                        });
+                      }
                       console.log("Slip gaji created successfully");
                       alert(`Slip Gaji untuk ${selectedKaryawan.nama} berhasil disimpan! ✅`);
                     }

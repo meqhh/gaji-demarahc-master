@@ -260,7 +260,8 @@ export default function SlipgajiKaryawan() {
 		const gajiPokokNum = parseRupiah(slip.gajiPokok);
 		const uangTransportNum = parseRupiah(slip.uangTransport);
 		const feeTindakanNum = parseRupiah(slip.feeTindakan);
-		const potongBpjsNum = parseRupiah(slip.potongBpjsTk);
+		const potongBpjsNum = parseRupiah(slip.potonganBPJS || slip.potongBpjsTk || 0);
+		const potongPajakNum = parseRupiah(slip.potonganTax || slip.potonganPajak || slip.pajak || 0);
 		
 		// Calculate totals from transaction details
 		const totalFeeTindakan = slip.transactionDetails?.reduce((sum, t) => {
@@ -275,6 +276,8 @@ export default function SlipgajiKaryawan() {
 		const totalFeePaket = normalizeFeePaket(slip.feePaket).reduce((sum, p) => sum + parseRupiah(p.jumlah || p.fee || 0), 0) || 0;
 		
 		const totalGajiSebelumPotongan = gajiPokokNum + uangTransportNum + totalFeePaket + totalFeeTindakan;
+		const totalPotonganSlip = potongBpjsNum + potongPajakNum;
+		const gajiNettoSlip = totalGajiSebelumPotongan - totalPotonganSlip;
 
 		return `
 <!DOCTYPE html>
@@ -575,11 +578,19 @@ export default function SlipgajiKaryawan() {
 				<h3>POTONGAN</h3>
 				<div class="summary-row">
 					<span class="summary-label">POTONG BPJS TK</span>
-					<span class="summary-value">${formatRupiah(slip.potonganBPJS || 0)}</span>
+					<span class="summary-value">${formatRupiah(potongBpjsNum)}</span>
+				</div>
+				<div class="summary-row">
+					<span class="summary-label">POTONG PAJAK</span>
+					<span class="summary-value">${formatRupiah(potongPajakNum)}</span>
 				</div>
 				<div class="summary-row total">
-					<span class="summary-label">TOTAL GAJI</span>
-					<span class="summary-value">${slip.amount}</span>
+					<span class="summary-label">TOTAL POTONGAN</span>
+					<span class="summary-value">${formatRupiah(totalPotonganSlip)}</span>
+				</div>
+				<div class="summary-row total">
+					<span class="summary-label">GAJI NETTO</span>
+					<span class="summary-value">${formatRupiah(gajiNettoSlip)}</span>
 				</div>
 			</div>
 		</div>
@@ -824,30 +835,44 @@ export default function SlipgajiKaryawan() {
 													return 0;
 												};
 												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-												return formatRupiah(parseRupiah(selected.potonganBPJS));
-											})()}
-										</span></div>
-										<div className="flex justify-between border-t pt-2 mt-2 font-bold text-red-900 bg-red-50 p-2 rounded"><span>Total Potongan</span><span>-
-											{(() => {
-												const parseRupiah = (str) => {
-													if (typeof str === 'number') return str;
-													if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
-													return 0;
-												};
-												const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
-												return formatRupiah(parseRupiah(selected.potonganBPJS));
-											})()}
-										</span></div>
-									</div>
-								</div>
+								return formatRupiah(parseRupiah(selected.potonganBPJS || selected.potongBpjsTk || 0));
+							})()}
+						</span></div>
+						<div className="flex justify-between"><span className="text-gray-600">Pajak</span><span className="font-medium">-
+							{(() => {
+								const parseRupiah = (str) => {
+									if (typeof str === 'number') return str;
+									if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+									return 0;
+								};
+								const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+								return formatRupiah(parseRupiah(selected.potonganPajak || selected.potonganTax || selected.pajak || 0));
+							})()}
+						</span></div>
+						<div className="flex justify-between border-t pt-2 mt-2 font-bold text-red-900 bg-red-50 p-2 rounded"><span>Total Potongan</span><span>-
+							{(() => {
+								const parseRupiah = (str) => {
+									if (typeof str === 'number') return str;
+									if (typeof str === 'string') return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+									return 0;
+								};
+								const formatRupiah = (num) => `Rp ${num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+								return formatRupiah(
+									parseRupiah(selected.potonganBPJS || selected.potongBpjsTk || 0) +
+									parseRupiah(selected.potonganPajak || selected.potonganTax || selected.pajak || 0)
+								);
+							})()}
+							</span></div>
+						</div>
+					</div>
 
-								<div className="bg-green-50 border border-green-200 rounded p-4 flex flex-col justify-center items-center">
-									<p className="text-xs font-semibold text-green-600 mb-2">GAJI BERSIH</p>
-									<p className="text-3xl font-bold text-green-900">{selected.amount}</p>
-								</div>
-							</div>
+					<div className="bg-green-50 border border-green-200 rounded p-4 flex flex-col justify-center items-center">
+						<p className="text-xs font-semibold text-green-600 mb-2">GAJI BERSIH</p>
+						<p className="text-3xl font-bold text-green-900">{selected.amount}</p>
+					</div>
+				</div>
 
-							{/* Tabel Detail Transaksi */}
+				{/* Tabel Detail Transaksi */}
 							{selected.transactionDetails && selected.transactionDetails.length > 0 && (
 								<div className="border border-gray-200 rounded p-4 bg-gray-50">
 									<h3 className="font-bold text-sm text-gray-900 mb-4 pb-2 border-b">Detail Tindakan ({selected.transactionDetails.length})</h3>

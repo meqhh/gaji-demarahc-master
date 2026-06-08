@@ -69,6 +69,13 @@ const dedupeKaryawanList = (items) => {
   return deduped;
 };
 
+const normalizeSlipKey = (item) => {
+  if (!item || typeof item !== 'object') return '';
+  const nama = String(item.nama || item.karyawan || item.employee?.name || '').trim().toLowerCase();
+  const periode = String(item.periode || item.date || item.tanggal || item.createdAt || '').trim().toLowerCase();
+  return `${nama}||${periode}`;
+};
+
 const isSameAbsensiRecord = (left, right) => {
   if (!left || !right) return false;
   if (left.id !== undefined && right.id !== undefined && String(left.id) === String(right.id)) return true;
@@ -341,16 +348,21 @@ export const AppContextProvider = ({ children }) => {
             const savedLocal = JSON.parse(localStorage.getItem('slipGajiData')) || [];
             if (Array.isArray(savedLocal) && savedLocal.length > 0) {
               const merged = normalizedServer.map(serverItem => {
-                const localMatch = savedLocal.find(l => String(l.id) === String(serverItem.id));
+                const localMatch = savedLocal.find(l =>
+                  String(l.id) === String(serverItem.id) ||
+                  (normalizeSlipKey(l) && normalizeSlipKey(l) === normalizeSlipKey(serverItem))
+                );
                 if (localMatch) {
                   return { ...serverItem, ...localMatch, id: serverItem.id };
                 }
                 return serverItem;
               });
-              const localOnly = savedLocal.filter(l =>
-                (String(l.id || '').startsWith('TOMB-') || String(l.id || '').startsWith('SLIP-')) &&
-                !merged.some(m => String(m.id) === String(l.id))
-              );
+              const localOnly = savedLocal.filter(l => {
+                const idStr = String(l.id || '');
+                if (!idStr.startsWith('TOMB-') && !idStr.startsWith('SLIP-')) return false;
+                const localKey = normalizeSlipKey(l);
+                return localKey ? !merged.some(m => normalizeSlipKey(m) === localKey) : !merged.some(m => String(m.id) === String(l.id));
+              });
               const finalData = [...merged, ...localOnly];
               setSlipGajiData(finalData);
               saveToLocalStorage('slipGajiData', finalData);
@@ -714,7 +726,11 @@ export const AppContextProvider = ({ children }) => {
     addSlipGaji: async (slip) => {
       const tempId = slip.id || `SLIP${Date.now()}`;
       const tempItem = { ...slip, id: tempId };
-      setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
+      const tempKey = normalizeSlipKey(tempItem);
+      setSlipGajiData(prev => {
+        const existing = Array.isArray(prev) ? prev.filter(item => normalizeSlipKey(item) !== tempKey && String(item.id) !== String(tempId)) : [];
+        return [...existing, tempItem];
+      });
       const token = localStorage.getItem('token');
       if (token) {
         try {
@@ -722,12 +738,20 @@ export const AppContextProvider = ({ children }) => {
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
             const normalized = { ...serverItem, id: serverItem.id || serverItem._id || tempId };
-            setSlipGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? normalized : p) : [normalized]);
+            const normalizedKey = normalizeSlipKey(normalized);
+            setSlipGajiData(prev => {
+              const filtered = Array.isArray(prev)
+                ? prev.filter(item => normalizeSlipKey(item) !== normalizedKey || String(item.id) === String(normalized.id))
+                : [];
+              return [...filtered, normalized];
+            });
+            return normalized;
           }
         } catch (e) {
           console.error('Failed to create slip gaji on server:', e);
         }
       }
+      return tempItem;
     },
     updateSlipGaji: async (id, updates) => {
       const prevSnapshot = Array.isArray(slipGajiData) ? slipGajiData.slice() : [];
