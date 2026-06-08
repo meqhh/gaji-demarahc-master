@@ -312,28 +312,23 @@ export const AppContextProvider = ({ children }) => {
           try {
             const savedLocal = JSON.parse(localStorage.getItem('gajiData')) || [];
             if (Array.isArray(savedLocal) && savedLocal.length > 0) {
-              // Merge: ambil field lengkap dari localStorage, server cuma override yg non-empty
               const merged = normalizedServer.map(serverItem => {
                 const localMatch = savedLocal.find(l => String(l.id) === String(serverItem.id));
                 if (localMatch) {
-                  const filteredServer = Object.fromEntries(
-                    Object.entries(serverItem).filter(([k, v]) => v !== null && v !== undefined && v !== '')
-                  );
-                  return { ...localMatch, ...filteredServer, id: serverItem.id };
+                  return { ...serverItem, ...localMatch, id: serverItem.id };
                 }
                 return serverItem;
               });
-              // Pertahankan item lokal yg belum sinkron ke server (tempId "GAJI...")
               const localOnly = savedLocal.filter(l =>
                 String(l.id || '').startsWith('GAJI') &&
-                !normalizedServer.some(s => String(s.id) === String(l.id))
+                !merged.some(m => String(m.id) === String(l.id))
               );
               const finalData = [...merged, ...localOnly];
               setGajiData(finalData);
-              try { localStorage.setItem('gajiData', JSON.stringify(finalData)); } catch (e) {}
+              saveToLocalStorage('gajiData', finalData);
             } else {
               setGajiData(normalizedServer);
-              try { localStorage.setItem('gajiData', JSON.stringify(normalizedServer)); } catch (e) {}
+              saveToLocalStorage('gajiData', normalizedServer);
             }
           } catch (e) {
             setGajiData(normalizedServer);
@@ -348,21 +343,20 @@ export const AppContextProvider = ({ children }) => {
               const merged = normalizedServer.map(serverItem => {
                 const localMatch = savedLocal.find(l => String(l.id) === String(serverItem.id));
                 if (localMatch) {
-                  const filteredServer = Object.fromEntries(
-                    Object.entries(serverItem).filter(([k, v]) => v !== null && v !== undefined && v !== '')
-                  );
-                  return { ...localMatch, ...filteredServer, id: serverItem.id };
+                  return { ...serverItem, ...localMatch, id: serverItem.id };
                 }
                 return serverItem;
               });
-              // Pertahankan tombstone (TOMB-) dan slip lokal yg belum sync (SLIP-)
               const localOnly = savedLocal.filter(l =>
                 (String(l.id || '').startsWith('TOMB-') || String(l.id || '').startsWith('SLIP-')) &&
-                !normalizedServer.some(s => String(s.id) === String(l.id))
+                !merged.some(m => String(m.id) === String(l.id))
               );
-              setSlipGajiData([...merged, ...localOnly]);
+              const finalData = [...merged, ...localOnly];
+              setSlipGajiData(finalData);
+              saveToLocalStorage('slipGajiData', finalData);
             } else {
               setSlipGajiData(normalizedServer);
+              saveToLocalStorage('slipGajiData', normalizedServer);
             }
           } catch (e) {
             setSlipGajiData(normalizedServer);
@@ -659,7 +653,11 @@ export const AppContextProvider = ({ children }) => {
         }
 
         setGajiData(prevSnapshot);
-        alert(`Gagal menghapus data dari server: ${errorMsg}. Data telah dikembalikan.`);
+        if (errorMsg.toLowerCase().includes('hanya admin') || errorMsg.toLowerCase().includes('admin')) {
+          alert('Silakan login sebagai admin untuk menghapus data gaji. Data telah dikembalikan.');
+        } else {
+          alert(`Gagal menghapus data dari server: ${errorMsg}. Data telah dikembalikan.`);
+        }
       }
     },
     getGajiByKaryawan: (nama) => Array.isArray(gajiData) ? gajiData.find(g => g.nama === nama) : undefined,
@@ -829,16 +827,20 @@ export const AppContextProvider = ({ children }) => {
       }
     },
     deleteCuti: async (id) => {
+      const normalizedId = id ?? '';
+      const isTempLocal = String(normalizedId).startsWith('CUTI');
       const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
-      setCutiData(prev => Array.isArray(prev) ? prev.filter(c => String(c.id) !== String(id) && String(c._id) !== String(id)) : []);
+      setCutiData(prev => Array.isArray(prev) ? prev.filter(c => String(c.id || c._id) !== String(normalizedId)) : []);
       const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          await cutiApi.delete(token, id);
-        } catch (e) {
-          console.error('Failed to delete cuti on server:', e);
-          setCutiData(prevSnapshot);
-        }
+      if (!token || isTempLocal) {
+        return;
+      }
+
+      try {
+        await cutiApi.delete(token, normalizedId);
+      } catch (e) {
+        console.error('Failed to delete cuti on server:', e);
+        setCutiData(prevSnapshot);
       }
     },
     getCutiByKaryawan: (nama) => Array.isArray(cutiData) ? cutiData.filter(c => c.nama === nama) : [],

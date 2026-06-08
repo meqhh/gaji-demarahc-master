@@ -98,7 +98,9 @@ function SlipGaji() {
           nama: p.nama || p.namaPaket || '',
           jumlah: Number(p.jumlah || p.fee || p.amount || 0),
         }))
-      : [];
+      : typeof item.feePaket === 'number'
+        ? [{ nama: 'Fee Paket', jumlah: Number(item.feePaket) }]
+        : [];
 
     return {
       month,
@@ -106,13 +108,57 @@ function SlipGaji() {
         name: item.nama || item.karyawan || '',
         position: item.posisi || item.departemen || '',
       },
-      gajiPokok: Number(item.gajiPokok || item.gaji || 0),
-      uangTransport: Number(item.tunjanganTransport || item.tunjangan || 0),
-      feeTindakan: Number(item.feeTindakan || item.bonus || 0),
+      gajiPokok: Number(item.gajiPokok || item.gaji || item.totalGajiPokok || 0),
+      uangTransport: Number(item.tunjanganTransport || item.tunjangan || item.transport || 0),
+      feeTindakan: Number(item.feeTindakan || item.bonus || item.totalFeeTindakan || 0),
       feePaket: feePaketArray,
       potongBpjsTk: Number(item.potonganAsuransi || item.potonganBPJS || 0),
       potonganBPJS: Number(item.potonganAsuransi || item.potonganBPJS || 0),
-      amount: formatPrintRupiah(item.gajiNetto ?? item.totalPenghasilan ?? 0),
+      amount: formatPrintRupiah(item.gajiNetto ?? item.totalPenghasilan ?? item.gajiKotor ?? 0),
+      transactionDetails,
+    };
+  };
+
+  const normalizeAdminSlipForDisplay = (item) => {
+    if (!item || typeof item !== 'object') return item;
+
+    const gajiPokok = Number(item.gajiPokok || item.gaji || item.totalGajiPokok || 0);
+    const tunjanganTransport = Number(item.tunjanganTransport || item.tunjangan || 0);
+    const feeTindakan = Number(item.feeTindakan || item.bonus || item.totalFeeTindakan || 0);
+    const feePaket = Array.isArray(item.feePaket)
+      ? item.feePaket.reduce((sum, fee) => sum + Number((fee.total ?? fee.amount ?? fee.jumlah ?? fee.fee) || 0), 0)
+      : Number(item.feePaket || item.totalFeePaket || 0);
+    const potonganBPJS = Number(item.potonganBPJS || item.potonganAsuransi || item.bpjs || item.asuransi || 0);
+    const potonganPajak = Number(item.potonganPajak || item.potonganTax || item.pajak || 0);
+    const totalPenghasilan = Number(item.totalPenghasilan ?? item.gajiKotor ?? gajiPokok + tunjanganTransport + feeTindakan + feePaket);
+    const totalPotongan = Number(item.totalPotongan ?? potonganBPJS + potonganPajak);
+    const gajiNetto = Number(item.gajiNetto ?? totalPenghasilan - totalPotongan);
+
+    const transactionDetails = Array.isArray(item.transactionDetails)
+      ? item.transactionDetails.map((trans) => ({
+          ...trans,
+          tanggal: trans.tanggal || trans.date || trans.createdAt || '',
+          namaPasien: trans.namaPasien || trans.pasien || '',
+          klinikHomeService: trans.klinikHomeService || trans.klinik || '',
+          tindakan: trans.tindakan || trans.treatment || '',
+          harga: Number(trans.harga || 0),
+          feePercent: Number(trans.feePercent ?? trans.feePersen ?? 0),
+          totalFee: Number(trans.totalFee || Math.round((Number(trans.harga || 0) * Number((trans.feePercent ?? trans.feePersen) || 0)) / 100)),
+          feeTransport: Number(trans.feeTransport || 0),
+        }))
+      : [];
+
+    return {
+      ...item,
+      gajiPokok,
+      tunjanganTransport,
+      feeTindakan,
+      feePaket,
+      potonganBPJS,
+      potonganPajak,
+      totalPenghasilan,
+      totalPotongan,
+      gajiNetto,
       transactionDetails,
     };
   };
@@ -258,17 +304,17 @@ function SlipGaji() {
       gajiNetto: 0,
     };
 
-    const gajiPokok = Number(item.gajiPokok || item.gaji || 0);
+    const gajiPokok = Number(item.gajiPokok || item.gaji || item.totalGajiPokok || 0);
     const tunjanganTransport = Number(item.tunjanganTransport || item.tunjangan || 0);
-    const feeTindakan = Number(item.feeTindakan || item.bonus || 0);
+    const feeTindakan = Number(item.feeTindakan || item.bonus || item.totalFeeTindakan || 0);
     const feePaket = Array.isArray(item.feePaket)
-      ? item.feePaket.reduce((sum, fee) => sum + Number(fee.total || fee.amount || 0), 0)
-      : Number(item.feePaket || 0);
-    const totalGross = gajiPokok + tunjanganTransport + feeTindakan + feePaket;
+      ? item.feePaket.reduce((sum, fee) => sum + Number(fee.total ?? fee.amount ?? fee.jumlah ?? fee.fee ?? 0), 0)
+      : Number(item.feePaket || item.totalFeePaket || 0);
+    const totalGross = Number(item.totalPenghasilan ?? item.gajiKotor ?? gajiPokok + tunjanganTransport + feeTindakan + feePaket);
     const potonganBPJS = Number(item.potonganBPJS || item.potonganAsuransi || item.bpjs || item.asuransi || 0);
     const potonganPajak = Number(item.potonganPajak || item.potonganTax || item.pajak || 0);
-    const totalPotongan = potonganBPJS + potonganPajak;
-    const gajiNetto = Number(item.gajiNetto ?? item.gajiKotor ?? totalGross - totalPotongan);
+    const totalPotongan = Number(item.totalPotongan ?? potonganBPJS + potonganPajak);
+    const gajiNetto = Number(item.gajiNetto ?? item.totalPenghasilan ?? totalGross - totalPotongan);
 
     return {
       gajiPokok,
@@ -371,11 +417,18 @@ function SlipGaji() {
     });
   }, [gajiData, karyawanData]);
 
+  const getSlipNormalizedKey = (item) => {
+    if (!item) return "";
+    const name = String(item.nama || item.karyawan || item.employee?.name || "").trim().toLowerCase();
+    const periode = String(item.periode || getMonthLabel(item.date || item.tanggal || item.createdAt) || "Tanpa Periode").trim().toLowerCase();
+    return `${name}||${periode}`;
+  };
+
   const combinedSlipGajiData = useMemo(() => {
     if (!Array.isArray(slipGajiData)) return deriveSlipsFromGajiData;
-    const existingKeys = new Set(slipGajiData.map((item) => `${item.nama}-${item.periode}`));
+    const existingKeys = new Set(slipGajiData.map((item) => getSlipNormalizedKey(item)));
     const derived = Array.isArray(deriveSlipsFromGajiData)
-      ? deriveSlipsFromGajiData.filter((item) => !existingKeys.has(`${item.nama}-${item.periode}`))
+      ? deriveSlipsFromGajiData.filter((item) => !existingKeys.has(getSlipNormalizedKey(item)))
       : [];
     return [...slipGajiData, ...derived];
   }, [slipGajiData, deriveSlipsFromGajiData]);
@@ -395,6 +448,10 @@ function SlipGaji() {
       return matchKaryawan && matchPeriode && matchSearch;
     });
   }, [combinedSlipGajiData, filterKaryawan, bulan, searchQuery]);
+
+  const displaySlipData = useMemo(() => {
+    return Array.isArray(filteredData) ? filteredData.map(normalizeAdminSlipForDisplay) : [];
+  }, [filteredData]);
 
   // Stats
   const stats = useMemo(() => {
@@ -416,7 +473,7 @@ function SlipGaji() {
   }, [gajiData, deriveSlipsFromGajiData, combinedSlipGajiData, filteredData, bulan, stats]);
 
   const handleDetail = (item) => {
-    setSelectedData(item);
+    setSelectedData(normalizeAdminSlipForDisplay(item));
     setShowDetail(true);
   };
 
@@ -458,7 +515,8 @@ function SlipGaji() {
       alert('Silakan izinkan popup agar dapat mencetak slip gaji.');
       return;
     }
-    const content = generateAdminPrintableSlip(item);
+    const normalizedItem = normalizeAdminSlipForDisplay(item);
+    const content = generateAdminPrintableSlip(normalizedItem);
     printWindow.document.write(content);
     printWindow.document.close();
     printWindow.focus();
@@ -557,8 +615,8 @@ function SlipGaji() {
               </tr>
             </thead>
             <tbody>
-              {filteredData.length > 0 ? (
-                filteredData.map((item, idx) => (
+              {displaySlipData.length > 0 ? (
+                displaySlipData.map((item, idx) => (
                   <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="px-6 py-3 text-gray-700 font-medium">{idx + 1}</td>
                     <td className="px-6 py-3 text-gray-900 font-medium">{item.nama}</td>

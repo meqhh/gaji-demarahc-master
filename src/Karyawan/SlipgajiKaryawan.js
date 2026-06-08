@@ -163,15 +163,21 @@ export default function SlipgajiKaryawan() {
 				"Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 			const month = `${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
 
-			// Calculate totals
+			// Calculate totals (robust fallbacks to match Admin logic)
 			const feePaketItems = normalizeFeePaket(slip.feePaket);
-			const totalFeePaket = feePaketItems.reduce((sum, p) => sum + (p.jumlah || p.fee || 0), 0);
-			const totalPenghasilan = (slip.gajiPokok || 0) + 
-				(slip.uangTransport || 0) + 
-				totalFeePaket + 
-				(slip.feeTindakan || 0);
-			const totalPotongan = slip.potongBpjsTk || slip.potonganBPJS || 0;
-			const total = totalPenghasilan - totalPotongan;
+			const totalFeePaket = feePaketItems.reduce((sum, p) => sum + (Number(p.jumlah || p.fee || 0) || 0), 0);
+
+			const gajiPokokNum = Number(slip.gajiPokok || slip.gaji || slip.totalGajiPokok || 0);
+			const uangTransportNum = Number(slip.uangTransport || slip.tunjanganTransport || slip.tunjangan || 0);
+			const feeTindakanNum = Number(slip.feeTindakan || slip.bonus || slip.totalFeeTindakan || 0);
+
+			const totalPenghasilan = Number(slip.totalPenghasilan ?? slip.gajiKotor ?? (gajiPokokNum + uangTransportNum + feeTindakanNum + totalFeePaket));
+
+			const potonganBPJSNum = Number(slip.potonganBPJS || slip.potonganAsuransi || slip.potongBpjsTk || 0);
+			const potonganPajakNum = Number(slip.potonganPajak || slip.potonganTax || slip.pajak || 0);
+			const totalPotongan = Number(slip.totalPotongan ?? (potonganBPJSNum + potonganPajakNum));
+
+			const total = Number(slip.gajiNetto ?? slip.gajiKotor ?? totalPenghasilan - totalPotongan);
 
 			return {
 				id: slip.id || index + 1,
@@ -179,15 +185,15 @@ export default function SlipgajiKaryawan() {
 				date: slip.date || dateObj.toISOString().slice(0, 10),
 				amount: formatRupiah(total),
 				employee: getKaryawanInfo(slip.nama),
-				gajiPokok: formatRupiah(slip.gajiPokok || 0),
-				uangTransport: formatRupiah(slip.uangTransport || 0),
-				tunjangan: formatRupiah(slip.uangTransport || 0),
+				gajiPokok: formatRupiah(gajiPokokNum),
+				uangTransport: formatRupiah(uangTransportNum),
+				tunjangan: formatRupiah(uangTransportNum),
 				feePaket: normalizeFeePaket(slip.feePaket),
-				feeTindakan: formatRupiah(slip.feeTindakan || 0),
-				potongBpjsTk: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
-				potonganBPJS: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
-				potonganAsuransi: formatRupiah(slip.potongBpjsTk || slip.potonganBPJS || 0),
-				potonganTax: formatRupiah(slip.potonganTax || slip.potonganPajak || 0),
+				feeTindakan: formatRupiah(feeTindakanNum),
+				potongBpjsTk: formatRupiah(potonganBPJSNum),
+				potonganBPJS: formatRupiah(potonganBPJSNum),
+				potonganAsuransi: formatRupiah(potonganBPJSNum),
+				potonganTax: formatRupiah(potonganPajakNum),
 				totalPenghasilan: formatRupiah(totalPenghasilan),
 				totalPotongan: formatRupiah(totalPotongan),
 				gajiNetto: formatRupiah(total),

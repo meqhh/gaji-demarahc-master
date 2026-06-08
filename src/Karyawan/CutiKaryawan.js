@@ -145,13 +145,22 @@ export default function CutiKaryawan() {
 
   // Hapus data cuti
   const handleDelete = (item) => {
-    setDeleteData(item);
+    setDeleteData({ ...item, id: item.id || item._id });
     setShowDelete(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteData) {
-      deleteCuti(deleteData.id);
+      const idToDelete = deleteData.id || deleteData._id;
+      if (idToDelete) {
+        // Remove instantly from local UI while backend delete is pending
+        setCutiData(prev => Array.isArray(prev) ? prev.filter(c => String(c.id || c._id) !== String(idToDelete)) : []);
+        try {
+          await deleteCuti(idToDelete);
+        } catch (error) {
+          console.error('Gagal menghapus cuti:', error);
+        }
+      }
       setShowDelete(false);
       setDeleteData(null);
     }

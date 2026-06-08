@@ -1169,6 +1169,14 @@ function Gaji() {
                     alert("Silakan pilih karyawan terlebih dahulu");
                     return;
                   }
+                  if (!filterTanggal) {
+                    alert("Silakan pilih tanggal periode gaji terlebih dahulu sebelum menyimpan slip gaji.");
+                    return;
+                  }
+                  if (currentPeriode === "Beberapa Periode") {
+                    alert("Data gaji mencakup beberapa periode. Pilih satu periode tunggal terlebih dahulu.");
+                    return;
+                  }
 
                   // Create slip gaji data
                   const slipData = {
@@ -1239,23 +1247,7 @@ function Gaji() {
                     return;
                   }
 
-                  // Reset form
-                  setKompGaji({
-                    gajiPokok: 0,
-                    tunjanganTransport: 0,
-                    lemburJam: 0,
-                    nilaiKinerja: 0,
-                    bonusKehadiran: 0,
-                    bonusLembur: 0,
-                    bonusKinerja: 0,
-                    bonusJabatan: 0,
-                    potonganPajak: 0,
-                    potonganKasbon: 0,
-                    potonganAlpha: 0,
-                    potonganTelat: 0,
-                    potonganBPJS: 0
-                  });
-                  setFeePaketData([]);
+                  // Tetap pertahankan nilai di form setelah simpan agar tidak hilang dari tampilan
                 }}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
               >
