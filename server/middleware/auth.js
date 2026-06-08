@@ -21,7 +21,7 @@ export const auth = (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
+  if (!req.user?.role || req.user.role.toString().toLowerCase() !== 'admin') {
     return res.status(403).json({ message: 'Hanya admin yang bisa akses' });
   }
   next();

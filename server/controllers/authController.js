@@ -36,7 +36,7 @@ export const register = async (req, res) => {
       name: nama,
       email,
       password: hashedPassword,
-      role: role || 'karyawan'
+      role: (role || 'karyawan').toString().toLowerCase()
     };
 
     const savedUser = await usersDB.save(newUser);
