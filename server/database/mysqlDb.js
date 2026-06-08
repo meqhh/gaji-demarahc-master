@@ -2,8 +2,19 @@ import pool from './mysql.js';
 
 const tableColumnsCache = new Map();
 
-const getTableColumns = async (tableName) => {
-  if (tableColumnsCache.has(tableName)) {
+// Function to clear cache (useful after schema migrations)
+const clearTableColumnsCache = (tableName) => {
+  if (tableName) {
+    tableColumnsCache.delete(tableName);
+    console.log(`🔄 Cleared cache for table: ${tableName}`);
+  } else {
+    tableColumnsCache.clear();
+    console.log(`🔄 Cleared all table column cache`);
+  }
+};
+
+const getTableColumns = async (tableName, forceRefresh = false) => {
+  if (!forceRefresh && tableColumnsCache.has(tableName)) {
     return tableColumnsCache.get(tableName);
   }
 
@@ -627,8 +638,12 @@ const gajiDB = {
   save: async (gaji) => {
     try {
       const conn = await pool.getConnection();
-      const tableColumns = await getTableColumns('gaji');
-      gaji.created_at = new Date();
+      // Force refresh columns for gaji table to pick up any schema changes
+      const tableColumns = await getTableColumns('gaji', true);
+      
+      if (!gaji.created_at) {
+        gaji.created_at = new Date();
+      }
       
       if (gaji.id) {
         // Check if record exists first
@@ -641,6 +656,7 @@ const gajiDB = {
           values.push(gaji.id);
           
           const setClause = fields.map((f) => `${f} = ?`).join(', ');
+          console.log('Updating gaji with fields:', fields);
           await conn.query(`UPDATE gaji SET ${setClause} WHERE id = ?`, values);
         } else {
           // Record doesn't exist, do INSERT with the provided ID
@@ -648,6 +664,7 @@ const gajiDB = {
           const placeholders = keys.map(() => '?').join(', ');
           const values = keys.map((k) => gaji[k]);
           
+          console.log('Inserting gaji with fields:', keys);
           await conn.query(
             `INSERT INTO gaji (${keys.join(', ')}) VALUES (${placeholders})`,
             values
@@ -659,6 +676,7 @@ const gajiDB = {
         const placeholders = keys.map(() => '?').join(', ');
         const values = keys.map((k) => gaji[k]);
         
+        console.log('Inserting new gaji with auto-increment ID. Fields:', keys);
         const [result] = await conn.query(
           `INSERT INTO gaji (${keys.join(', ')}) VALUES (${placeholders})`,
           values
@@ -724,8 +742,15 @@ const treatmentDB = {
   save: async (treatment) => {
     try {
       const conn = await pool.getConnection();
-      const tableColumns = await getTableColumns('treatment');
-      treatment.created_at = new Date();
+      // Force refresh columns for treatment table
+      const tableColumns = await getTableColumns('treatment', true);
+      
+      if (!treatment.created_at) {
+        treatment.created_at = new Date();
+      }
+      
+      console.log('Treatment save - tableColumns:', Array.from(tableColumns));
+      console.log('Treatment save - treatment keys:', Object.keys(treatment));
       
       if (treatment.id) {
         // Check if record exists first
@@ -738,6 +763,7 @@ const treatmentDB = {
           values.push(treatment.id);
           
           const setClause = fields.map((f) => `${f} = ?`).join(', ');
+          console.log('Updating treatment with fields:', fields);
           await conn.query(`UPDATE treatment SET ${setClause} WHERE id = ?`, values);
         } else {
           // Record doesn't exist, do INSERT with the provided ID
@@ -745,6 +771,7 @@ const treatmentDB = {
           const placeholders = keys.map(() => '?').join(', ');
           const values = keys.map((k) => treatment[k]);
           
+          console.log('Inserting treatment with ID. Fields:', keys);
           await conn.query(
             `INSERT INTO treatment (${keys.join(', ')}) VALUES (${placeholders})`,
             values
@@ -755,6 +782,14 @@ const treatmentDB = {
         const placeholders = keys.map(() => '?').join(', ');
         const values = keys.map((k) => treatment[k]);
         
+        if (keys.length === 0) {
+          console.error('ERROR: No matching columns found in treatment table!');
+          console.error('Available columns:', Array.from(tableColumns));
+          console.error('Provided fields:', Object.keys(treatment));
+          throw new Error(`No matching columns. Available: ${Array.from(tableColumns).join(', ')}`);
+        }
+        
+        console.log('Inserting new treatment with auto-increment ID. Fields:', keys);
         const [result] = await conn.query(
           `INSERT INTO treatment (${keys.join(', ')}) VALUES (${placeholders})`,
           values
@@ -771,5 +806,5 @@ const treatmentDB = {
   }
 };
 
-export { usersDB, karyawanDB, slipGajiDB, cutiDB, absensiDB, gajiDB, treatmentDB };
-export default { usersDB, karyawanDB, slipGajiDB, cutiDB, absensiDB, gajiDB, treatmentDB };
+export { usersDB, karyawanDB, slipGajiDB, cutiDB, absensiDB, gajiDB, treatmentDB, clearTableColumnsCache };
+export default { usersDB, karyawanDB, slipGajiDB, cutiDB, absensiDB, gajiDB, treatmentDB, clearTableColumnsCache };

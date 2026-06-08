@@ -47,15 +47,19 @@ export const getTreatmentByKaryawan = async (req, res) => {
 // Create treatment
 export const createTreatment = async (req, res) => {
   try {
-    const { karyawanId, nama, tipeLayanan, tanggal } = req.body;
+    const { karyawanId, nama, tipeLayanan, tanggal, harga } = req.body;
     
-    if (!karyawanId || !nama || !tipeLayanan || !tanggal) {
-      return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
+    // Use nama for nama_treatment if namaTreatment not provided
+    const namaTreatment = req.body.namaTreatment || nama;
+    const treatmentHarga = harga || req.body.harga || 0;
+    
+    if (!namaTreatment) {
+      return res.status(400).json({ success: false, message: 'Data tidak lengkap: nama treatment wajib diisi' });
     }
     
     const newTreatment = await treatmentDB.save({
-      ...camelToSnake(req.body),
-      karyawan_id: karyawanId,
+      nama_treatment: namaTreatment,
+      harga: treatmentHarga,
       created_at: new Date()
     });
     
@@ -65,6 +69,7 @@ export const createTreatment = async (req, res) => {
       data: snakeToCamel(newTreatment)
     });
   } catch (error) {
+    console.error('Error in createTreatment:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

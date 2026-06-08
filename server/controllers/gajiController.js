@@ -72,12 +72,34 @@ const parsePeriodeToMonthYear = (periode, tanggal) => {
   return result;
 };
 
+// Convert ISO datetime to MySQL DATETIME format (YYYY-MM-DD HH:MM:SS)
+const formatDateTimeForMySQL = (dateValue) => {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return null;
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (err) {
+    console.error('Error formatting datetime:', err);
+    return null;
+  }
+};
+
 export const createGaji = async (req, res) => {
   try {
     const { karyawanId, nama, periode, tanggal, gajiPokok, gajiKotor, gajiNetto } = req.body;
 
     if (!karyawanId || !nama || (!periode && !tanggal) || gajiPokok === undefined || gajiKotor === undefined || gajiNetto === undefined) {
-      return res.status(400).json({ success: false, message: 'Data tidak lengkap' });
+      console.error('Validation failed:', { karyawanId, nama, periode, tanggal, gajiPokok, gajiKotor, gajiNetto });
+      return res.status(400).json({ success: false, message: 'Data tidak lengkap: karyawanId, nama, periode/tanggal, gajiPokok, gajiKotor, gajiNetto wajib diisi' });
     }
 
     const monthYear = parsePeriodeToMonthYear(periode, tanggal);
@@ -88,8 +110,17 @@ export const createGaji = async (req, res) => {
       created_at: new Date()
     };
     delete dbPayload.periode;
+    
+    // Convert tanggal to MySQL datetime format
+    if (dbPayload.tanggal) {
+      dbPayload.tanggal = formatDateTimeForMySQL(dbPayload.tanggal);
+    }
+
+    console.log('Creating gaji with payload:', dbPayload);
 
     const newGaji = await gajiDB.save(dbPayload);
+    
+    console.log('Gaji created successfully:', newGaji);
 
     res.status(201).json({
       success: true,
@@ -97,7 +128,8 @@ export const createGaji = async (req, res) => {
       data: normalizeGajiResponse(newGaji)
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Error in createGaji:', error);
+    res.status(500).json({ success: false, message: `Error: ${error.message}` });
   }
 };
 
@@ -112,13 +144,20 @@ export const updateGaji = async (req, res) => {
     const { periode, tanggal } = req.body;
     const monthYear = parsePeriodeToMonthYear(periode, tanggal);
 
-    const updatedGaji = await gajiDB.save({
+    const updatePayload = {
       ...existingGaji,
       ...camelToSnake(req.body),
       ...monthYear,
       id: req.params.id,
       updated_at: new Date()
-    });
+    };
+    
+    // Convert tanggal to MySQL datetime format
+    if (updatePayload.tanggal) {
+      updatePayload.tanggal = formatDateTimeForMySQL(updatePayload.tanggal);
+    }
+
+    const updatedGaji = await gajiDB.save(updatePayload);
 
     res.json({
       success: true,
@@ -133,11 +172,6 @@ export const updateGaji = async (req, res) => {
 // Delete gaji
 export const deleteGaji = async (req, res) => {
   try {
-    const existingGaji = await gajiDB.findById(req.params.id);
-    if (!existingGaji) {
-      return res.status(404).json({ success: false, message: 'Data gaji tidak ditemukan' });
-    }
-
     await gajiDB.delete(req.params.id);
     res.json({
       success: true,
