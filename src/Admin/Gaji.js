@@ -498,12 +498,14 @@ function FeePaketModal({ show, onClose, onSubmit, initialData }) {
 
 // === Halaman Gaji === //
 function Gaji() {
-  const {
+ const {
   absensiData = [],
   karyawanData = [],
   treatmentData = [],
   gajiData = [],
+  slipGajiData = [],
   addSlipGaji,
+  updateSlipGaji,
   deleteGaji
   } = useContext(AppContext);
   console.log("treatmentData:", treatmentData);
@@ -1210,16 +1212,33 @@ function Gaji() {
                   console.log("Admin saving slip gaji:", slipData);
 
                   // Add to context
+                  // Cek apakah slip untuk karyawan+periode ini sudah ada (UPSERT)
+                  const existingSlip = Array.isArray(slipGajiData)
+                    ? slipGajiData.find(s =>
+                        !s._tombstone &&
+                        String(s.nama || "").toLowerCase() === String(selectedKaryawan.nama || "").toLowerCase() &&
+                        String(s.periode || "") === String(currentPeriode)
+                      )
+                    : null;
+
                   try {
-                    await addSlipGaji(slipData);
-                    console.log("Slip gaji saved successfully");
+                    if (existingSlip && updateSlipGaji) {
+                      // UPDATE slip yang sudah ada — JANGAN bikin baru
+                      const updatedSlip = { ...existingSlip, ...slipData, id: existingSlip.id };
+                      await updateSlipGaji(existingSlip.id, updatedSlip);
+                      console.log("Slip gaji updated successfully", existingSlip.id);
+                      alert(`Slip Gaji untuk ${selectedKaryawan.nama} berhasil DIPERBARUI! ✏️`);
+                    } else {
+                      await addSlipGaji(slipData);
+                      console.log("Slip gaji created successfully");
+                      alert(`Slip Gaji untuk ${selectedKaryawan.nama} berhasil disimpan! ✅`);
+                    }
                   } catch (error) {
                     console.error("Error saving slip gaji:", error);
+                    alert(`Gagal menyimpan slip gaji: ${error?.message || error}`);
+                    return;
                   }
-                  
-                  // Show success message
-                  alert(`Slip Gaji untuk ${selectedKaryawan.nama} berhasil disimpan!`);
-                  
+
                   // Reset form
                   setKompGaji({
                     gajiPokok: 0,

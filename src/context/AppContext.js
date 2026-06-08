@@ -38,31 +38,23 @@ const normalizeCutiItem = (item) => {
   if (normalized.tanggal === undefined && normalized.tanggal_mulai !== undefined) {
     normalized.tanggal = normalized.tanggal_mulai;
   }
-  if (normalized.lama === undefined && normalized.lama !== undefined) {
-    normalized.lama = normalized.lama;
-  }
   return normalized;
 };
 
 const isSameKaryawanRecord = (left, right) => {
   if (!left || !right) return false;
-
   const leftId = left.id;
   const rightId = right.id;
   if (leftId !== undefined && rightId !== undefined && String(leftId) === String(rightId)) return true;
-
   const leftUserId = left.user_id ?? left.userId;
   const rightUserId = right.user_id ?? right.userId;
   if (leftUserId !== undefined && rightUserId !== undefined && String(leftUserId) === String(rightUserId)) return true;
-
   const leftEmail = normalizeText(left.email);
   const rightEmail = normalizeText(right.email);
   if (leftEmail && rightEmail && leftEmail === rightEmail) return true;
-
   const leftNama = normalizeText(left.nama || left.name);
   const rightNama = normalizeText(right.nama || right.name);
   if (leftNama && rightNama && leftNama === rightNama) return true;
-
   return false;
 };
 
@@ -95,7 +87,6 @@ const isSameAbsensiRecord = (left, right) => {
 const mergeAbsensiData = (serverArr, localArr) => {
   if (!Array.isArray(serverArr)) return Array.isArray(localArr) ? localArr : [];
   if (!Array.isArray(localArr) || localArr.length === 0) return serverArr;
-
   const merged = [...serverArr];
   for (const localItem of localArr) {
     if (!localItem) continue;
@@ -111,20 +102,19 @@ const mergeAbsensiData = (serverArr, localArr) => {
 
 export const AppContextProvider = ({ children }) => {
   const getCurrentRole = () => {
-  try {
-    const user = JSON.parse(localStorage.getItem('userProfile'));
-    return (user?.role || '').toLowerCase();
-  } catch {
-    return '';
-  }
-};
-  // User Profile Data - Load from API if authenticated
+    try {
+      const user = JSON.parse(localStorage.getItem('userProfile'));
+      return (user?.role || '').toLowerCase();
+    } catch {
+      return '';
+    }
+  };
+
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem('userProfile');
     if (!saved) return null;
     try {
       const parsed = JSON.parse(saved);
-      // Normalize backend field `nama` to `name` for frontend components
       if (parsed && parsed.nama && !parsed.name) parsed.name = parsed.nama;
       return parsed;
     } catch (e) {
@@ -135,7 +125,6 @@ export const AppContextProvider = ({ children }) => {
   const [userLoading, setUserLoading] = useState(true);
   const [userError, setUserError] = useState(null);
 
-  // Karyawan Data
   const [karyawanData, setKaryawanData] = useState(() => {
     const saved = localStorage.getItem('karyawanData');
     return saved ? JSON.parse(saved) : [];
@@ -143,61 +132,50 @@ export const AppContextProvider = ({ children }) => {
   const [karyawanLoading, setKaryawanLoading] = useState(false);
   const [karyawanError, setKaryawanError] = useState(null);
 
-  // Absensi Data
   const [absensiData, setAbsensiData] = useState(() => {
     const saved = localStorage.getItem('absensiData');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Gaji Data
   const [gajiData, setGajiData] = useState(() => {
     const saved = localStorage.getItem('gajiData');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Catatan Treatment
   const [catatanTreatment, setCatatanTreatment] = useState(() => {
     const saved = localStorage.getItem('catatanTreatment');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Treatment Data
   const [treatmentData, setTreatmentData] = useState(() => {
     const saved = localStorage.getItem('treatmentData');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Slip Gaji Data
   const [slipGajiData, setSlipGajiData] = useState(() => {
     const saved = localStorage.getItem('slipGajiData');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Cuti Data
   const [cutiData, setCutiData] = useState(() => {
     const saved = localStorage.getItem('cutiData');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Simpan user profile ke localStorage
   useEffect(() => {
     saveToLocalStorage('userProfile', userProfile);
   }, [userProfile]);
 
-  // Load user profile dari API jika ada token
   useEffect(() => {
     const token = localStorage.getItem('token');
-    
     if (token) {
       setUserLoading(true);
       getCurrentUser(token)
         .then(res => {
           if (res.success && res.data) {
-            // Normalize backend `nama` -> `name` to keep frontend consistent
             const user = { ...res.data };
             if (user.nama && !user.name) user.name = user.nama;
             setUserProfile(user);
-            // Update localStorage userProfile dengan data fresh dari API
             saveToLocalStorage('userProfile', user);
             setUserError(null);
           }
@@ -205,7 +183,6 @@ export const AppContextProvider = ({ children }) => {
         .catch(err => {
           console.error('Failed to load user profile:', err);
           setUserError(err.message);
-          // Clear invalid data jika token tidak valid
           setUserProfile(null);
           localStorage.removeItem('userProfile');
         })
@@ -213,14 +190,12 @@ export const AppContextProvider = ({ children }) => {
           setUserLoading(false);
         });
     } else {
-      // Tidak ada token, pastikan userProfile kosong
       setUserProfile(null);
       localStorage.removeItem('userProfile');
       setUserLoading(false);
     }
   }, []);
 
-  // Fetch karyawan list from backend when authenticated
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -230,9 +205,7 @@ export const AppContextProvider = ({ children }) => {
 
     getKaryawanList(token)
       .then(res => {
-        // Support API shapes { success, data } or direct array
         if (!res) return;
-        // Extract server array
         let serverArr = [];
         if (res.success && res.data) serverArr = Array.isArray(res.data) ? res.data : [];
         else if (Array.isArray(res)) serverArr = res;
@@ -242,8 +215,6 @@ export const AppContextProvider = ({ children }) => {
           if (Array.isArray(arr)) serverArr = arr;
         }
 
-        // Merge serverArr with any local-only or locally updated entries stored in localStorage.
-        // Local changes should override the server values for the same karyawan record.
         try {
           const localStr = localStorage.getItem('karyawanData');
           const localArr = localStr ? JSON.parse(localStr) : [];
@@ -282,7 +253,6 @@ export const AppContextProvider = ({ children }) => {
       .finally(() => setKaryawanLoading(false));
   }, [userProfile]);
 
-  // Fetch other datasets (absensi, gaji, slip gaji, cuti, treatment) when authenticated
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -306,12 +276,10 @@ export const AppContextProvider = ({ children }) => {
             'Authorization': `Bearer ${token}`
           }
         });
-
         if (!res.ok) {
           const txt = await res.text();
           throw new Error(txt || `${res.status} ${res.statusText}`);
         }
-
         const json = await res.json();
         return json && json.data ? json.data : json;
       } catch (e) {
@@ -338,34 +306,795 @@ export const AppContextProvider = ({ children }) => {
             setAbsensiData(absensiRes);
           }
         }
+
         if (Array.isArray(gajiRes)) {
+          const normalizedServer = gajiRes.map(g => ({ ...g, id: g.id || g._id }));
           try {
-            const savedLocal = localStorage.getItem('gajiData');
-            const localArr = savedLocal ? JSON.parse(savedLocal) : [];
-            if (Array.isArray(localArr) && localArr.length > 0) {
-              const mergedGajiData = [...gajiRes];
-              localArr.forEach(localItem => {
-                if (!localItem) return;
-                const existingIndex = mergedGajiData.findIndex(serverItem => {
-                  if (!serverItem) return false;
-                  if (serverItem.id !== undefined && localItem.id !== undefined && String(serverItem.id) === String(localItem.id)) return true;
-                  if (serverItem._id !== undefined && localItem._id !== undefined && String(serverItem._id) === String(localItem._id)) return true;
-                  return false;
-                });
-                if (existingIndex === -1) mergedGajiData.push(localItem);
+            const savedLocal = JSON.parse(localStorage.getItem('gajiData')) || [];
+            if (Array.isArray(savedLocal) && savedLocal.length > 0) {
+              // Merge: ambil field lengkap dari localStorage, server cuma override yg non-empty
+              const merged = normalizedServer.map(serverItem => {
+                const localMatch = savedLocal.find(l => String(l.id) === String(serverItem.id));
+                if (localMatch) {
+                  const filteredServer = Object.fromEntries(
+                    Object.entries(serverItem).filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                  );
+                  return { ...localMatch, ...filteredServer, id: serverItem.id };
+                }
+                return serverItem;
               });
-              setGajiData(mergedGajiData);
+              // Pertahankan item lokal yg belum sinkron ke server (tempId "GAJI...")
+              const localOnly = savedLocal.filter(l =>
+                String(l.id || '').startsWith('GAJI') &&
+                !normalizedServer.some(s => String(s.id) === String(l.id))
+              );
+              const finalData = [...merged, ...localOnly];
+              setGajiData(finalData);
+              try { localStorage.setItem('gajiData', JSON.stringify(finalData)); } catch (e) {}
             } else {
-              setGajiData(gajiRes);
+              setGajiData(normalizedServer);
+              try { localStorage.setItem('gajiData', JSON.stringify(normalizedServer)); } catch (e) {}
             }
           } catch (e) {
-            setGajiData(gajiRes);
+            setGajiData(normalizedServer);
           }
         }
+
+       setGajiData(normalizedServer);
+          }
+
         if (Array.isArray(slipRes)) {
-          // normalize server slip items to always have `id` for frontend convenience
-          const normalized = slipRes.map(s => ({ ...s, id: s.id || s._id || s.id }));
+          const normalizedServer = slipRes.map(s => ({ ...s, id: s.id || s._id }));
+          try {
+            const savedLocal = JSON.parse(localStorage.getItem('slipGajiData')) || [];
+            if (Array.isArray(savedLocal) && savedLocal.length > 0) {
+              const merged = normalizedServer.map(serverItem => {
+                const localMatch = savedLocal.find(l => String(l.id) === String(serverItem.id));
+                if (localMatch) {
+                  const filteredServer = Object.fromEntries(
+                    Object.entries(serverItem).filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                  );
+                  return { ...localMatch, ...filteredServer, id: serverItem.id };
+                }
+                return serverItem;
+              });
+              // Pertahankan tombstone (TOMB-) dan slip lokal yg belum sync (SLIP-)
+              const localOnly = savedLocal.filter(l =>
+                (String(l.id || '').startsWith('TOMB-') || String(l.id || '').startsWith('SLIP-')) &&
+                !normalizedServer.some(s => String(s.id) === String(l.id))
+              );
+              setSlipGajiData([...merged, ...localOnly]);
+            } else {
+              setSlipGajiData(normalizedServer);
+            }
+          } catch (e) {
+            setSlipGajiData(normalizedServer);
+          }
+        }
+
+import React, { useState, useEffect, useContext, useMemo } from "react";
+import { AppContext } from "../context/AppContext";
+import Logo from "../Images/demaralogo.png";
+
+const monthNames = [
+"Januari", "Februari", "Maret", "April", "Mei", "Juni",
+
+"Juli", "Agustus", "September", "Oktober", "November", "Desember"
+
+];
+
+const getMonthLabel = (dateString) => {
+  if (!dateString) return "";
+  const parsed = new Date(dateString);
+  if (!isNaN(parsed.getTime())) {
+    return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+  }
+  return "";
+};
+
+const normalizePeriode = (periode, dateValue) => {
+  if (!periode && !dateValue) return "Tanpa Periode";
+  if (periode && typeof periode === 'string') {
+    const normalized = getMonthLabel(periode);
+    if (normalized) return normalized;
+    return periode;
+  }
+  return getMonthLabel(dateValue) || String(periode || "Tanpa Periode");
+};
+
+function SlipGaji() {
+  const { karyawanData = [], slipGajiData = [], gajiData = [], absensiData = [], addSlipGaji, deleteSlipGaji, setSlipGajiData } = useContext(AppContext);
+  
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
+  const [bulan, setBulan] = useState(`${monthNames[new Date().getMonth()]} ${new Date().getFullYear()}`);
+  const [filterKaryawan, setFilterKaryawan] = useState("Semua");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDetail, setShowDetail] = useState(false);
+  const [selectedData, setSelectedData] = useState(null);
+
+  // Generate month/year options
+  const monthYearOptions = useMemo(() => {
+    const monthNames = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+    const options = [];
+    for (let year = 2024; year <= 2030; year++) {
+      for (let month = 0; month < 12; month++) {
+        options.push(`${monthNames[month]} ${year}`);
+      }
+    }
+    return options;
+  }, []);
+
+  // Toast
+  const showToast = (message) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3000);
+  };
+
+  // Format Rupiah
+  const formatRupiah = (angka) => {
+    if (!angka) return "Rp 0";
+    return `Rp ${parseInt(angka).toLocaleString("id-ID")}`;
+  };
+
+  // Format number for input display (with Rp prefix)
+  const formatInputNumber = (num) => {
+    const n = parseInt(num) || 0;
+    return `Rp ${n.toLocaleString("id-ID")}`;
+  };
+
+  const formatPrintRupiah = (value) => {
+    const normalized = typeof value === 'string'
+      ? Number(String(value).replace(/[^0-9,-]/g, '').replace(',', '.'))
+      : Number(value);
+    const n = Number.isNaN(normalized) ? 0 : normalized;
+    return `Rp ${n.toLocaleString('id-ID')}`;
+  };
+
+  const normalizeAdminSlipForPrint = (item) => {
+    const month = item.periode || getMonthLabel(item.date || item.tanggal || item.createdAt) || 'Tanpa Periode';
+    const transactionDetails = Array.isArray(item.transactionDetails)
+      ? item.transactionDetails.map((trans) => ({
+          tanggal: trans.tanggal || trans.date || trans.createdAt || '',
+          namaPasien: trans.namaPasien || trans.pasien || '',
+          klinik: trans.klinikHomeService || trans.klinik || '',
+          tindakan: trans.tindakan || trans.treatment || '',
+          harga: Number(trans.harga || 0),
+          feePercent: Number(trans.feePercent ?? trans.feePersen ?? 0),
+          feeTransport: Number(trans.feeTransport || 0),
+        }))
+      : [];
+
+    const feePaketArray = Array.isArray(item.feePaket)
+      ? item.feePaket.map((p) => ({
+          nama: p.nama || p.namaPaket || '',
+          jumlah: Number(p.jumlah || p.fee || p.amount || 0),
+        }))
+      : [];
+
+    return {
+      month,
+      employee: {
+        name: item.nama || item.karyawan || '',
+        position: item.posisi || item.departemen || '',
+      },
+      gajiPokok: Number(item.gajiPokok || item.gaji || 0),
+      uangTransport: Number(item.tunjanganTransport || item.tunjangan || 0),
+      feeTindakan: Number(item.feeTindakan || item.bonus || 0),
+      feePaket: feePaketArray,
+      potongBpjsTk: Number(item.potonganAsuransi || item.potonganBPJS || 0),
+      potonganBPJS: Number(item.potonganAsuransi || item.potonganBPJS || 0),
+      amount: formatPrintRupiah(item.gajiNetto ?? item.totalPenghasilan ?? 0),
+      transactionDetails,
+    };
+  };
+
+  const generateAdminPrintableSlip = (item) => {
+    const slip = normalizeAdminSlipForPrint(item);
+    const totalFeeTindakan = slip.transactionDetails.reduce((sum, t) => {
+      return sum + Math.round((Number(t.harga) || 0) * (Number(t.feePercent) || 0) / 100);
+    }, 0) || slip.feeTindakan;
+    const totalFeeTransport = slip.transactionDetails.reduce((sum, t) => sum + Number(t.feeTransport || 0), 0);
+    const totalFeePaket = slip.feePaket.reduce((sum, p) => sum + Number(p.jumlah || 0), 0);
+    const totalGajiSebelumPotongan = Number(slip.gajiPokok || 0) + Number(slip.uangTransport || 0) + totalFeePaket + totalFeeTindakan;
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Slip Gaji - ${slip.month}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; font-size: 12px; line-height: 1.5; }
+    @page { size: A4; margin: 10mm; }
+    .page { width: 210mm; min-height: 297mm; background: white; margin: 10px auto; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; }
+    .header-section { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #333; }
+    .logo-container { width: 70px; height: 70px; flex-shrink: 0; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+    .logo-container img { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+    .company-header { flex: 1; }
+    .company-header h1 { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 2px; }
+    .company-header .tagline { font-size: 11px; color: #666; font-weight: 600; margin-bottom: 6px; }
+    .company-header .address { font-size: 10px; color: #888; line-height: 1.3; }
+    .employee-section { margin-bottom: 15px; padding: 12px; background: #fafafa; border-left: 3px solid #007bff; font-size: 11px; }
+    .employee-section p { margin: 4px 0; display: flex; }
+    .employee-section strong { width: 100px; color: #333; }
+    .main-table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 10px; table-layout: fixed; }
+    .main-table thead { background: #e8e8e8; }
+    .main-table th, .main-table td { border: 1px solid #999; padding: 8px 4px; word-wrap: break-word; }
+    .main-table th { font-weight: 600; font-size: 9px; text-align: left; }
+    .main-table tr:nth-child(even) { background: #f9f9f9; }
+    .text-right { text-align: right; }
+    .total-row { background: #e8e8e8; font-weight: 600; }
+    .summary-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; flex-grow: 1; }
+    .summary-box { border: 1px solid #ddd; padding: 15px; background: #fafafa; }
+    .summary-box h3 { font-size: 11px; font-weight: 700; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #007bff; color: #333; }
+    .summary-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 11px; }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row.total { background: #f0f0f0; padding: 8px 5px; margin-top: 8px; font-weight: 700; border-top: 2px solid #333; border-bottom: 2px solid #333; }
+    .summary-label { font-weight: 600; color: #333; }
+    .summary-value { text-align: right; font-family: 'Courier New', monospace; font-weight: 600; color: #1a1a1a; }
+    .footer-section { text-align: center; font-size: 9px; color: #888; padding-top: 15px; border-top: 1px solid #ddd; margin-top: auto; }
+    .footer-section p { margin: 3px 0; }
+    @media print { body { background: white; margin: 0; padding: 0; } .page { margin: 0; padding: 15mm; box-shadow: none; width: auto; min-height: auto; } @page { margin: 10mm; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header-section">
+      <div class="logo-container"><img src="${Logo}" alt="Demara Logo" /></div>
+      <div class="company-header">
+        <h1>DEMARA HEALTH CARE</h1>
+        <div class="tagline">HAPPY MOMMY HEALTHY BABY</div>
+        <div class="address">Jl. Raya No. 123, Jakarta, Indonesia<br />Tel: (021) 1234567 | Email: info@demaracare.com</div>
+      </div>
+    </div>
+    <div class="employee-section">
+      <p><strong>Nama</strong> : ${slip.employee.name}</p>
+      <p><strong>Posisi</strong> : ${slip.employee.position}</p>
+      <p><strong>Periode</strong> : ${slip.month}</p>
+    </div>
+    <table class="main-table">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Tanggal</th>
+          <th style="width: 15%;">Nama Pasien</th>
+          <th style="width: 15%;">Klinik / Home Service</th>
+          <th style="width: 15%;">Tindakan</th>
+          <th style="width: 10%;" class="text-right">Harga</th>
+          <th style="width: 7%;" class="text-right">FEE</th>
+          <th style="width: 12%;" class="text-right">TOTAL</th>
+          <th style="width: 12%;" class="text-right">FEE TRANSPORT</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${slip.transactionDetails && slip.transactionDetails.length > 0 ? slip.transactionDetails.map((trans) => {
+          const totalFee = Math.round((Number(trans.harga) || 0) * (Number(trans.feePercent) || 0) / 100);
+          return `<tr>
+            <td>${trans.tanggal || '-'}</td>
+            <td>${trans.namaPasien || '-'}</td>
+            <td>${trans.klinik || '-'}</td>
+            <td>${trans.tindakan || '-'}</td>
+            <td class="text-right">${formatPrintRupiah(trans.harga)}</td>
+            <td class="text-right">${trans.feePercent || 0}%</td>
+            <td class="text-right">${formatPrintRupiah(totalFee)}</td>
+            <td class="text-right">${trans.feeTransport > 0 ? formatPrintRupiah(trans.feeTransport) : '-'}</td>
+          </tr>`
+        }).join('') : '<tr><td colspan="8" style="text-align: center; padding: 15px; color: #999;">Tidak ada data transaksi</td></tr>'}
+        ${slip.transactionDetails && slip.transactionDetails.length > 0 ? `
+          <tr class="total-row">
+            <td colspan="4" style="text-align: right; padding-right: 10px;"><strong>TOTAL</strong></td>
+            <td class="text-right">-</td>
+            <td class="text-right">-</td>
+            <td class="text-right"><strong>${formatPrintRupiah(totalFeeTindakan)}</strong></td>
+            <td class="text-right"><strong>${formatPrintRupiah(totalFeeTransport)}</strong></td>
+          </tr>` : ''}
+      </tbody>
+    </table>
+    <div class="summary-section">
+      <div class="summary-box">
+        <h3>RINCIAN GAJI</h3>
+        <div class="summary-row"><span class="summary-label">GAJI POKOK</span><span class="summary-value">${formatPrintRupiah(slip.gajiPokok)}</span></div>
+        <div class="summary-row"><span class="summary-label">UANG TRANSPORT</span><span class="summary-value">${formatPrintRupiah(slip.uangTransport)}</span></div>
+        ${slip.feePaket.map((p) => `
+          <div class="summary-row"><span class="summary-label">FEE PAKET ${p.nama || ''}</span><span class="summary-value">${formatPrintRupiah(p.jumlah)}</span></div>
+        `).join('')}
+        <div class="summary-row"><span class="summary-label">FEE TINDAKAN</span><span class="summary-value">${formatPrintRupiah(slip.feeTindakan)}</span></div>
+        <div class="summary-row total"><span class="summary-label">TOTAL GAJI</span><span class="summary-value">${formatPrintRupiah(totalGajiSebelumPotongan)}</span></div>
+      </div>
+      <div class="summary-box">
+        <h3>POTONGAN</h3>
+        <div class="summary-row"><span class="summary-label">POTONG BPJS TK</span><span class="summary-value">${formatPrintRupiah(slip.potonganBPJS)}</span></div>
+        <div class="summary-row total"><span class="summary-label">TOTAL GAJI</span><span class="summary-value">${slip.amount}</span></div>
+      </div>
+    </div>
+    <div class="footer-section">
+      <p>Dokumen ini dicetak pada ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} pukul ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+      <p>© Demara Health Care - Portal Admin</p>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const getSlipSummary = (item) => {
+    if (!item) return {
+      gajiPokok: 0,
+      tunjanganTransport: 0,
+      feeTindakan: 0,
+      feePaket: 0,
+      totalGross: 0,
+      potonganBPJS: 0,
+      potonganPajak: 0,
+      totalPotongan: 0,
+      gajiNetto: 0,
+    };
+
+    const gajiPokok = Number(item.gajiPokok || item.gaji || 0);
+    const tunjanganTransport = Number(item.tunjanganTransport || item.tunjangan || 0);
+    const feeTindakan = Number(item.feeTindakan || item.bonus || 0);
+    const feePaket = Array.isArray(item.feePaket)
+      ? item.feePaket.reduce((sum, fee) => sum + Number(fee.total || fee.amount || 0), 0)
+      : Number(item.feePaket || 0);
+    const totalGross = gajiPokok + tunjanganTransport + feeTindakan + feePaket;
+    const potonganBPJS = Number(item.potonganBPJS || item.potonganAsuransi || item.bpjs || item.asuransi || 0);
+    const potonganPajak = Number(item.potonganPajak || item.potonganTax || item.pajak || 0);
+    const totalPotongan = potonganBPJS + potonganPajak;
+    const gajiNetto = Number(item.gajiNetto ?? item.gajiKotor ?? totalGross - totalPotongan);
+
+    return {
+      gajiPokok,
+      tunjanganTransport,
+      feeTindakan,
+      feePaket,
+      totalGross,
+      potonganBPJS,
+      potonganPajak,
+      totalPotongan,
+      gajiNetto,
+    };
+  };
+
+  const deriveSlipsFromGajiData = useMemo(() => {
+    if (!Array.isArray(gajiData) || gajiData.length === 0) return [];
+
+    const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
+    const groups = {};
+
+    gajiData.forEach((record) => {
+      const nama = record.karyawan || record.nama || "";
+      if (!nama) return;
+
+      const dateValue = record.tanggal || record.date || record.createdAt || new Date().toISOString();
+      const periode = getMonthLabel(dateValue) || "Tanpa Periode";
+      const key = `${nama}||${periode}`;
+
+      if (!groups[key]) {
+        const karyawan = Array.isArray(karyawanData)
+          ? karyawanData.find((k) => String(k.nama || k.name) === String(nama))
+          : null;
+
+        groups[key] = {
+          id: `AUTO-SLIP-${nama}-${periode}`,
+          gajiId: record.id || record._id || "",
+          karyawanId: karyawan?.id || record.karyawanId || "",
+          nama,
+          nip: karyawan?.nip || "",
+          posisi: karyawan?.posisi || karyawan?.position || "",
+          departemen: karyawan?.departemen || karyawan?.department || "",
+          gajiPokok: Number(karyawan?.gajiPokok || record.gajiPokok || record.gaji || 0),
+          tunjangan: Number(karyawan?.tunjanganTransport || record.tunjanganTransport || record.tunjangan || 0),
+          bonus: Number(record.bonus || 0),
+          potonganAsuransi: Number(record.potonganAsuransi || record.potonganBPJS || 0) + BPJSTK_DEDUCTION,
+          potonganTax: Number(record.potonganTax || record.potonganPajak || 0),
+          feeTindakan: 0,
+          feePaket: [],
+          transactionDetails: [],
+          periode,
+          status: record.status || "Selesai",
+          date: dateValue
+        };
+      }
+
+      const group = groups[key];
+      const harga = Number(record.harga || 0);
+      const feePercent = Number(record.fee || 0);
+      const totalFee = Math.round((harga * feePercent) / 100);
+
+      group.feeTindakan += totalFee;
+      group.transactionDetails.push({
+        tanggal: record.tanggal || record.date || "",
+        namaPasien: record.pasien || record.namaPasien || "",
+        klinikHomeService: record.klinik || record.klinikHomeService || "",
+        tindakan: record.treatment || record.tindakan || "",
+        harga,
+        feePercent,
+        totalFee,
+        feeTransport: Number(record.feeTransport || 0)
+      });
+    });
+
+    return Object.values(groups).map((group) => {
+              const totalPenghasilan =
+          group.gajiPokok +
+          group.tunjangan +
+          group.bonus +
+          group.feeTindakan;
+
+        // BPJS sudah fixed
+        const bpjs = group.potonganAsuransi;
+
+        // 💥 PAJAK AUTO (misal 5% dari penghasilan)
+        const pajak = Math.round(totalPenghasilan * 0.05);
+
+        // total potongan sekarang
+        const totalPotongan = bpjs + pajak;
+
+        const gajiNetto = totalPenghasilan - totalPotongan;
+
+      return {
+        ...group,
+        totalPenghasilan,
+        bpjs,
+        pajak,
+        totalPotongan,
+        gajiNetto
+      };
+    });
+  }, [gajiData, karyawanData]);
+
+  const combinedSlipGajiData = useMemo(() => {
+    if (!Array.isArray(slipGajiData)) return deriveSlipsFromGajiData;
+    const existingKeys = new Set(slipGajiData.map((item) => `${item.nama}-${item.periode}`));
+    const derived = Array.isArray(deriveSlipsFromGajiData)
+      ? deriveSlipsFromGajiData.filter((item) => !existingKeys.has(`${item.nama}-${item.periode}`))
+      : [];
+    return [...slipGajiData, ...derived];
+  }, [slipGajiData, deriveSlipsFromGajiData]);
+
+  // Filter data
+  const filteredData = useMemo(() => {
+    return combinedSlipGajiData.filter((item) => {
+      // hide tombstone entries
+      if (item._tombstone) return false;
+      const matchKaryawan = filterKaryawan === "Semua" || item.nama === filterKaryawan;
+      // More flexible periode matching: if periode is not set or is null, show it anyway
+      // This helps with newly created gaji records without explicit periode
+      const matchPeriode = !item.periode || item.periode === "Tanpa Periode" || item.periode === bulan || getMonthLabel(item.periode) === bulan;
+      const matchSearch = searchQuery === "" || 
+        item.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.nip?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchKaryawan && matchPeriode && matchSearch;
+    });
+  }, [combinedSlipGajiData, filterKaryawan, bulan, searchQuery]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = combinedSlipGajiData.length;
+    const draft = combinedSlipGajiData.filter(d => d.status === "Draft").length;
+    const proses = combinedSlipGajiData.filter(d => d.status === "Proses").length;
+    const selesai = combinedSlipGajiData.filter(d => d.status === "Selesai").length;
+    return { total, draft, proses, selesai };
+  }, [combinedSlipGajiData]);
+
+  // Debug: Log data flow
+  useEffect(() => {
+    console.log('[SlipGaji] gajiData:', gajiData);
+    console.log('[SlipGaji] deriveSlipsFromGajiData:', deriveSlipsFromGajiData);
+    console.log('[SlipGaji] combinedSlipGajiData:', combinedSlipGajiData);
+    console.log('[SlipGaji] filteredData:', filteredData);
+    console.log('[SlipGaji] bulan filter:', bulan);
+    console.log('[SlipGaji] stats:', stats);
+  }, [gajiData, deriveSlipsFromGajiData, combinedSlipGajiData, filteredData, bulan, stats]);
+
+  const handleDetail = (item) => {
+    setSelectedData(item);
+    setShowDetail(true);
+  };
+
+  const handleDelete = (item) => {
+    if (!item) return;
+    const idOrAlt = item.id || item._id || '';
+    const isDerived = String(idOrAlt).startsWith('AUTO-SLIP-');
+    const isLocalTempSlip = String(idOrAlt).startsWith('SLIP-');
+    const matchingGajiRecord = Array.isArray(gajiData) ? gajiData.some((g) => {
+      const namaMatch = (g.nama || g.karyawan || '').toLowerCase() === (item.nama || '').toLowerCase();
+      const periodeMatch = normalizePeriode(g.periode, g.tanggal || g.date) === normalizePeriode(item.periode, item.date);
+      return namaMatch && periodeMatch;
+    }) : false;
+    const shouldTombstone = isDerived || item.gajiId || matchingGajiRecord;
+
+    if (shouldTombstone) {
+      const tomb = {
+        id: `TOMB-${Date.now()}`,
+        nama: item.nama,
+        periode: item.periode || bulan,
+        _tombstone: true
+      };
+      setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tomb] : [tomb]);
+    }
+
+    if (!isDerived && !isLocalTempSlip) {
+      const serverId = item.id || item._id || idOrAlt;
+      deleteSlipGaji(serverId);
+    } else {
+      setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => String(s.id) !== String(idOrAlt) && String(s._id || '') !== String(idOrAlt)) : []);
+    }
+
+    showToast("✗ Slip gaji berhasil dihapus!");
+  };
+
+  const handlePrint = (item) => {
+    const printWindow = window.open('', '', 'height=900,width=1200');
+    if (!printWindow) {
+      alert('Silakan izinkan popup agar dapat mencetak slip gaji.');
+      return;
+    }
+    const content = generateAdminPrintableSlip(item);
+    printWindow.document.write(content);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
+  const selectedSlipSummary = selectedData ? getSlipSummary(selectedData) : getSlipSummary();
+
+  return (
+    <main className="p-8 bg-white min-h-screen">
+      {/* Toast */}
+      {toastVisible && (
+        <div className="fixed top-4 right-4 bg-gray-800 text-white px-6 py-3 rounded shadow-lg z-50 text-sm font-medium">
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Slip Gaji</h1>
+          <p className="text-sm text-gray-600 mt-1">Data slip gaji otomatis dari menu Gaji</p>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        {[
+          { label: 'Total', value: stats.total },
+          { label: 'Draft', value: stats.draft },
+          { label: 'Proses', value: stats.proses },
+          { label: 'Selesai', value: stats.selesai }
+        ].map((stat, idx) => (
+          <div key={idx} className="bg-gray-50 border border-gray-200 rounded p-4">
+            <p className="text-xs font-semibold text-gray-600">{stat.label}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Main Card */}
+      <div className="bg-white border border-gray-200 rounded overflow-hidden">
+        {/* Filter */}
+        <div className="border-b border-gray-200 p-6 bg-gray-50">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Periode</label>
+              <select 
+                value={bulan}
+                onChange={(e) => setBulan(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+              >
+                {monthYearOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Karyawan</label>
+              <select
+                value={filterKaryawan}
+                onChange={(e) => setFilterKaryawan(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+              >
+                <option>Semua</option>
+                {Array.isArray(karyawanData) && karyawanData.map((k) => (
+                  <option key={k.id} value={k.nama}>{k.nama}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-2">Cari</label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Nama atau NIP..."
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-gray-600"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">No</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Nama</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">NIP</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Posisi</th>
+                <th className="px-6 py-3 text-right font-bold text-gray-700">Gaji Netto</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Status</th>
+                <th className="px-6 py-3 text-left font-bold text-gray-700">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.length > 0 ? (
+                filteredData.map((item, idx) => (
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-6 py-3 text-gray-700 font-medium">{idx + 1}</td>
+                    <td className="px-6 py-3 text-gray-900 font-medium">{item.nama}</td>
+                    <td className="px-6 py-3 text-gray-600 text-xs">{item.nip || "-"}</td>
+                    <td className="px-6 py-3 text-gray-700">{item.posisi}</td>
+                    <td className="px-6 py-3 text-right text-gray-900 font-semibold">{formatRupiah(item.gajiNetto)}</td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
+                        item.status === "Selesai" ? "bg-gray-200 text-gray-800" :
+                        item.status === "Proses" ? "bg-gray-300 text-gray-900" :
+                        "bg-gray-100 text-gray-700"
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 space-x-2">
+                      <button onClick={() => handleDetail(item)} className="text-gray-700 hover:text-gray-900 font-medium text-xs">Detail</button>
+                      <button onClick={() => handlePrint(item)} className="text-gray-700 hover:text-gray-900 font-medium text-xs">Cetak</button>
+                      <button onClick={() => handleDelete(item)} className="text-gray-600 hover:text-red-700 font-medium text-xs">Hapus</button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
+                    Belum ada slip gaji
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal Detail */}
+      {showDetail && selectedData && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded shadow-lg w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="border-b border-gray-200 p-6 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Detail Slip Gaji</h2>
+              <button onClick={() => setShowDetail(false)} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Data Karyawan</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Nama</span><span className="font-medium">{selectedData.nama}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">NIP</span><span className="font-medium">{selectedData.nip || "-"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Posisi</span><span className="font-medium">{selectedData.posisi || "-"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Departemen</span><span className="font-medium">{selectedData.departemen || "-"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Periode</span><span className="font-medium">{selectedData.periode || selectedData.date || "-"}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Status</span><span className="font-medium">{selectedData.status || "Selesai"}</span></div>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Komponen Penghasilan</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">Gaji Pokok</span><span className="font-medium">{formatRupiah(selectedSlipSummary.gajiPokok)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Tunjangan Transport</span><span className="font-medium">{formatRupiah(selectedSlipSummary.tunjanganTransport)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Fee Tindakan</span><span className="font-medium">{formatRupiah(selectedSlipSummary.feeTindakan)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Fee Paket</span><span className="font-medium">{formatRupiah(selectedSlipSummary.feePaket)}</span></div>
+                    <div className="border-t border-gray-200 pt-2 mt-2 font-bold text-gray-900"><span>Total Penghasilan</span><span>{formatRupiah(selectedSlipSummary.totalGross)}</span></div>
+                  </div>
+                </div>
+
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-3 pb-2 border-b">Potongan</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-gray-600">BPJS/TK</span><span className="font-medium">-{formatRupiah(selectedSlipSummary.potonganBPJS)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Pajak</span><span className="font-medium">-{formatRupiah(selectedSlipSummary.potonganPajak)}</span></div>
+                    <div className="border-t border-gray-200 pt-2 mt-2 font-bold text-red-900 bg-red-50 p-2 rounded"><span>Total Potongan</span><span>-{formatRupiah(selectedSlipSummary.totalPotongan)}</span></div>
+                    <div className="bg-green-50 rounded p-3 mt-3 text-center">
+                      <p className="text-xs font-semibold text-green-600 uppercase mb-1">Gaji Bersih</p>
+                      <p className="text-2xl font-bold text-green-900">{formatRupiah(selectedSlipSummary.gajiNetto)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transaction Details - Treatment List */}
+              {selectedData.transactionDetails && selectedData.transactionDetails.length > 0 && (
+                <div className="border border-gray-200 rounded p-4 bg-gray-50">
+                  <h3 className="font-bold text-sm text-gray-900 mb-4 pb-2 border-b">Detail Tindakan ({selectedData.transactionDetails.length})</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-300 bg-white">
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Tanggal</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Pasien</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Klinik</th>
+                          <th className="px-3 py-2 text-left font-semibold text-gray-700 text-xs">Tindakan</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 text-xs">Harga</th>
+                          <th className="px-3 py-2 text-right font-semibold text-gray-700 text-xs">Fee (15%)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedData.transactionDetails.map((td, idx) => (
+                          <tr key={idx} className="border-b border-gray-200 hover:bg-white">
+                            <td className="px-3 py-2 text-gray-700">{td.tanggal ? new Date(td.tanggal).toLocaleDateString('id-ID') : "-"}</td>
+                            <td className="px-3 py-2 text-gray-700">{td.namaPasien || "-"}</td>
+                            <td className="px-3 py-2 text-gray-700">{td.klinikHomeService || "-"}</td>
+                            <td className="px-3 py-2 text-gray-700">{td.tindakan || "-"}</td>
+                            <td className="px-3 py-2 text-right text-gray-700">{formatRupiah(td.harga || 0)}</td>
+                            <td className="px-3 py-2 text-right font-semibold text-gray-800">{formatRupiah(td.totalFee || 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 p-6 bg-gray-50 flex gap-3">
+              <button onClick={() => handlePrint(selectedData)} className="flex-1 bg-gray-800 text-white py-2 rounded font-medium hover:bg-gray-900">Cetak</button>
+              <button onClick={() => setShowDetail(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded font-medium hover:bg-gray-50">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </main>
+  );
+}
+
+        if (Array.isArray(slipRes)) {
+          const normalized = slipRes.map(s => ({ ...s, id: s.id || s._id }));
           setSlipGajiData(normalized);
+        }
+
+        if (Array.isArray(slipRes)) {
+          const normalizedServer = slipRes.map(s => ({ ...s, id: s.id || s._id }));
+          try {
+            const savedLocal = JSON.parse(localStorage.getItem('slipGajiData')) || [];
+            if (Array.isArray(savedLocal) && savedLocal.length > 0) {
+              const merged = normalizedServer.map(serverItem => {
+                const localMatch = savedLocal.find(l => String(l.id) === String(serverItem.id));
+                if (localMatch) {
+                  const filteredServer = Object.fromEntries(
+                    Object.entries(serverItem).filter(([k, v]) => v !== null && v !== undefined && v !== '')
+                  );
+                  return { ...localMatch, ...filteredServer, id: serverItem.id };
+                }
+                return serverItem;
+              });
+              // Pertahankan tombstone (TOMB-) dan slip lokal yg belum sync (SLIP-)
+              const localOnly = savedLocal.filter(l =>
+                (String(l.id || '').startsWith('TOMB-') || String(l.id || '').startsWith('SLIP-')) &&
+                !normalizedServer.some(s => String(s.id) === String(l.id))
+              );
+              setSlipGajiData([...merged, ...localOnly]);
+            } else {
+              setSlipGajiData(normalizedServer);
+            }
+          } catch (e) {
+            setSlipGajiData(normalizedServer);
+          }
         }
 
         if (Array.isArray(cutiRes)) {
@@ -403,84 +1132,45 @@ export const AppContextProvider = ({ children }) => {
         console.error('Failed to fetch additional datasets', e);
       }
     })();
-  }, [userProfile]);
+  }, [userProfile];
 
-  // Simpan karyawan data ke localStorage
-  useEffect(() => {
-    saveToLocalStorage('karyawanData', karyawanData);
-  }, [karyawanData]);
+  useEffect(() => { saveToLocalStorage('karyawanData', karyawanData); }, [karyawanData]);
+  useEffect(() => { saveToLocalStorage('absensiData', absensiData); }, [absensiData]);
+  useEffect(() => { saveToLocalStorage('gajiData', gajiData); }, [gajiData]);
+  useEffect(() => { saveToLocalStorage('treatmentData', treatmentData); }, [treatmentData]);
+  useEffect(() => { saveToLocalStorage('catatanTreatment', catatanTreatment); }, [catatanTreatment]);
+  useEffect(() => { saveToLocalStorage('slipGajiData', slipGajiData); }, [slipGajiData]);
+  useEffect(() => { saveToLocalStorage('cutiData', cutiData); }, [cutiData]);
 
-  // Simpan absensi data ke localStorage
-  useEffect(() => {
-    saveToLocalStorage('absensiData', absensiData);
-  }, [absensiData]);
-
-  // Simpan gaji data ke localStorage
-  useEffect(() => {
-    saveToLocalStorage('gajiData', gajiData);
-  }, [gajiData]);
-
-  // Simpan treatment data ke localStorage
-  useEffect(() => {
-    saveToLocalStorage('treatmentData', treatmentData);
-  }, [treatmentData]);
-
-  // Simpan catatan treatment ke localStorage
-useEffect(() => {
-  saveToLocalStorage(
-    'catatanTreatment',
-    catatanTreatment
-  );
-}, [catatanTreatment]);
-
-  // Simpan slip gaji data ke localStorage
-  useEffect(() => {
-    saveToLocalStorage('slipGajiData', slipGajiData);
-  }, [slipGajiData]);
-
-  // Simpan cuti data ke localStorage
-  useEffect(() => {
-    saveToLocalStorage('cutiData', cutiData);
-  }, [cutiData]);
-
-  // Sync cutiData across tabs/windows so admin view updates when karyawan submit di tab lain
   useEffect(() => {
     const handleStorage = (event) => {
       if (event.key !== 'cutiData') return;
       try {
         const updated = event.newValue ? JSON.parse(event.newValue) : [];
-        if (Array.isArray(updated)) {
-          setCutiData(updated);
-        }
+        if (Array.isArray(updated)) setCutiData(updated);
       } catch (e) {
         console.error('Failed to sync cutiData from storage event:', e);
       }
     };
-
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const value = {
-    // User Profile
     userProfile,
     setUserProfile,
     userLoading,
     userError,
     updateUserProfile: (updates) => setUserProfile(prev => ({ ...prev, ...updates })),
 
-    // Karyawan
     karyawanData,
     karyawanLoading,
     karyawanError,
     setKaryawanData,
     addKaryawan: async (karyawan) => {
-      // optimistic add locally
       const tempId = karyawan.id || `EMP${Date.now()}`;
       const tempItem = { ...karyawan, id: tempId };
       setKaryawanData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
-
-      // if authenticated, try to persist to server
       const token = localStorage.getItem('token');
       if (token) {
         try {
@@ -494,9 +1184,7 @@ useEffect(() => {
         }
       }
     },
-
     updateKaryawan: async (id, updates) => {
-      // optimistic update locally
       setKaryawanData(prev => Array.isArray(prev) ? prev.map(k => String(k.id) === String(id) ? { ...k, ...updates } : k) : []);
       const token = localStorage.getItem('token');
       if (token) {
@@ -511,14 +1199,10 @@ useEffect(() => {
         }
       }
     },
-
     deleteKaryawan: async (id) => {
-      const target = Array.isArray(karyawanData)
-        ? karyawanData.find(k => String(k?.id) === String(id))
-        : null;
+      const target = Array.isArray(karyawanData) ? karyawanData.find(k => String(k?.id) === String(id)) : null;
       const targetNama = (target?.nama || '').toString().trim().toLowerCase();
       const targetEmail = (target?.email || '').toString().trim().toLowerCase();
-
       const hasMatchByKaryawan = (item) => {
         if (!item || typeof item !== 'object') return false;
         const itemKaryawanId = item.karyawan_id ?? item.karyawanId ?? item.id_karyawan ?? item.user_id;
@@ -531,7 +1215,6 @@ useEffect(() => {
         );
       };
 
-      // optimistic delete locally + sync related admin datasets
       const prevSnapshot = {
         karyawanData: Array.isArray(karyawanData) ? karyawanData.slice() : [],
         absensiData: Array.isArray(absensiData) ? absensiData.slice() : [],
@@ -541,10 +1224,7 @@ useEffect(() => {
         cutiData: Array.isArray(cutiData) ? cutiData.slice() : []
       };
 
-      setKaryawanData(prev => Array.isArray(prev)
-        ? prev.filter(k => !(String(k.id) === String(id) || (target && isSameKaryawanRecord(k, target))))
-        : []
-      );
+      setKaryawanData(prev => Array.isArray(prev) ? prev.filter(k => !(String(k.id) === String(id) || (target && isSameKaryawanRecord(k, target)))) : []);
       setAbsensiData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
       setGajiData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
       setTreatmentData(prev => Array.isArray(prev) ? prev.filter(item => !hasMatchByKaryawan(item)) : []);
@@ -560,7 +1240,6 @@ useEffect(() => {
           const message = String(e?.message || '').toLowerCase();
           const isNotFound = message.includes('tidak ditemukan') || message.includes('not found');
           if (!isNotFound) {
-            // rollback only when server truly fails; keep local delete for stale/non-server records
             setKaryawanData(prevSnapshot.karyawanData);
             setAbsensiData(prevSnapshot.absensiData);
             setGajiData(prevSnapshot.gajiData);
@@ -573,7 +1252,6 @@ useEffect(() => {
     },
     getKaryawanById: (id) => karyawanData.find(k => String(k.id) === String(id)),
 
-    // Absensi
     absensiData,
     setAbsensiData,
     addAbsensi: async (absensi) => {
@@ -624,7 +1302,6 @@ useEffect(() => {
     },
     getAbsensiByNama: (nama) => Array.isArray(absensiData) ? absensiData.filter(a => a.nama === nama) : [],
 
-    // Gaji
     gajiData,
     setGajiData,
     addGaji: async (gaji) => {
@@ -633,85 +1310,28 @@ useEffect(() => {
       const prevGajiData = Array.isArray(gajiData) ? gajiData.slice() : [];
       setGajiData(prev => Array.isArray(prev) ? [...prev, tempItem] : [tempItem]);
 
-      let slipLocal = null;
-      const buildSlipFromGaji = (gajiObj, gajiIdForSlip) => {
-        const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
-        const nama = gajiObj.nama || gajiObj.karyawan || "";
-        const karyawan = Array.isArray(karyawanData)
-          ? karyawanData.find(k => String(k.id) === String(gajiObj.karyawanId) || k.nama === nama)
-          : null;
-
-        const periode = gajiObj.periode || (gajiObj.tanggal || gajiObj.date) || new Date().toISOString();
-
-        const gajiPokok = Number(gajiObj.gajiPokok || gajiObj.gaji || 0);
-        const tunjangan = Number(gajiObj.tunjangan || gajiObj.tunjanganTransport || 0);
-        const bonus = Number(gajiObj.bonus || 0);
-        const potonganAsuransiExisting = Number(gajiObj.potonganAsuransi || gajiObj.potonganBPJS || 0);
-        const potonganTax = Number(gajiObj.potonganTax || gajiObj.potonganPajak || 0);
-        const totalPenghasilan = Number(gajiObj.gajiKotor || (gajiPokok + tunjangan + bonus));
-        const totalPotongan = potonganAsuransiExisting + potonganTax + BPJSTK_DEDUCTION;
-        const gajiNetto = totalPenghasilan - totalPotongan;
-
-        return {
-          id: `SLIP-${(karyawan && (karyawan.id || karyawan.nama)) || nama}-${Date.now()}`,
-          karyawanId: karyawan?.id || gajiObj.karyawanId || nama,
-          gajiId: gajiIdForSlip || (gajiObj.id || tempId),
-          nama: nama,
-          periode: typeof periode === 'string' ? periode : new Date(periode).toISOString(),
-          nip: karyawan?.nip || "",
-          posisi: karyawan?.posisi || "",
-          departemen: karyawan?.departemen || "",
-          gajiPokok: gajiPokok,
-          tunjangan: tunjangan,
-          bonus: bonus,
-          potonganAsuransi: potonganAsuransiExisting + BPJSTK_DEDUCTION,
-          potonganTax: potonganTax,
-          totalPenghasilan: totalPenghasilan,
-          totalPotongan: totalPotongan,
-          gajiNetto: gajiNetto,
-          tanggalGajian: new Date().toISOString(),
-          status: gajiObj.status || 'Selesai'
-        };
-      };
-
-      // create local slip immediately
-      try {
-        slipLocal = buildSlipFromGaji(gaji, tempId);
-        setSlipGajiData(prev => Array.isArray(prev) ? [...prev, slipLocal] : [slipLocal]);
-      } catch (e) {
-        console.error('Failed to create local slip from gaji:', e);
-      }
-
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const res = await gajiApi.create(token, gaji);
-          const serverItem = res && res.data ? res.data : null;
+           const res = await gajiApi.create(token, gaji);
+          const serverItem = res?.data || (res && res.id ? res : null);
           if (serverItem) {
-            // replace temp gaji with server item
-            setGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? serverItem : p) : [serverItem]);
-
-            // build slip based on server item and persist to server slip API
-            const slipFromServerGaji = buildSlipFromGaji(serverItem, serverItem.id || serverItem._id || tempId);
-            const tempSlipId = slipFromServerGaji.id;
-            try {
-              const slipRes = await slipGajiApi.create(token, slipFromServerGaji);
-              const serverSlip = slipRes && slipRes.data ? slipRes.data : null;
-              if (serverSlip) {
-                setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === tempSlipId ? serverSlip : s) : [serverSlip]);
-              }
-            } catch (e) {
-              console.error('Failed to persist slip gaji to server:', e);
-            }
+            // PENTING: gabungkan payload lokal (gaji) + server response.
+            // Server hanya override field yang non-empty, biar field lengkap
+            // (karyawan, pasien, treatment, harga, tanggal, dll) tidak hilang.
+            const filteredServer = Object.fromEntries(
+              Object.entries(serverItem).filter(([k, v]) => v !== null && v !== undefined && v !== '')
+            );
+            const normalized = { ...gaji, ...filteredServer, id: serverItem.id || serverItem._id };
+            setGajiData(prev => Array.isArray(prev) ? prev.map(p => p.id === tempId ? normalized : p) : [normalized]);
           } else {
-            throw new Error('Server tidak mengembalikan data gaji');
+            // Server tidak balikin data, tapi item lokal udah ditambahkan tadi.
+            // Biarkan saja tetap di state agar UI tidak kosong.
+            console.warn('Server tidak balikin data gaji, pakai data lokal saja.');
           }
         } catch (e) {
           console.error('Failed to create gaji on server:', e);
           setGajiData(prevGajiData);
-          if (slipLocal) {
-            setSlipGajiData(prev => Array.isArray(prev) ? prev.filter(s => s.id !== slipLocal.id) : []);
-          }
           alert('Gagal menyimpan gaji ke server. Data gaji lokal telah dibatalkan.');
         }
       }
@@ -720,85 +1340,12 @@ useEffect(() => {
       const prevSnapshot = Array.isArray(gajiData) ? gajiData.slice() : [];
       setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? { ...g, ...updates } : g) : []);
       const token = localStorage.getItem('token');
-
-      // helper to build slip object from gaji
-      const buildSlipFromGaji = (gajiObj, gajiIdForSlip) => {
-        const BPJSTK_DEDUCTION = 75000; // Fixed BPJSTK deduction
-        const nama = gajiObj.nama || gajiObj.karyawan || "";
-        const karyawan = Array.isArray(karyawanData)
-          ? karyawanData.find(k => String(k.id) === String(gajiObj.karyawanId) || k.nama === nama)
-          : null;
-        const periode = gajiObj.periode || (gajiObj.tanggal || gajiObj.date) || new Date().toISOString();
-
-        const gajiPokok = Number(gajiObj.gajiPokok || gajiObj.gaji || 0);
-        const tunjangan = Number(gajiObj.tunjangan || gajiObj.tunjanganTransport || 0);
-        const bonus = Number(gajiObj.bonus || 0);
-        const potonganAsuransiExisting = Number(gajiObj.potonganAsuransi || gajiObj.potonganBPJS || 0);
-        const potonganTax = Number(gajiObj.potonganTax || gajiObj.potonganPajak || 0);
-        const totalPenghasilan = Number(gajiObj.gajiKotor || (gajiPokok + tunjangan + bonus));
-        const totalPotongan = potonganAsuransiExisting + potonganTax + BPJSTK_DEDUCTION;
-        const gajiNetto = totalPenghasilan - totalPotongan;
-
-        return {
-          id: `SLIP-${(karyawan && (karyawan.id || karyawan.nama)) || nama}-${Date.now()}`,
-          karyawanId: karyawan?.id || gajiObj.karyawanId || nama,
-          gajiId: gajiIdForSlip || (gajiObj.id || id),
-          nama: nama,
-          periode: typeof periode === 'string' ? periode : new Date(periode).toISOString(),
-          nip: karyawan?.nip || "",
-          posisi: karyawan?.posisi || "",
-          departemen: karyawan?.departemen || "",
-          gajiPokok: gajiPokok,
-          tunjangan: tunjangan,
-          bonus: bonus,
-          potonganAsuransi: potonganAsuransiExisting + BPJSTK_DEDUCTION,
-          potonganTax: potonganTax,
-          totalPenghasilan: totalPenghasilan,
-          totalPotongan: totalPotongan,
-          gajiNetto: gajiNetto,
-          tanggalGajian: new Date().toISOString(),
-          status: gajiObj.status || 'Selesai'
-        };
-      };
-
       if (token) {
         try {
           const res = await gajiApi.update(token, id, updates);
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
             setGajiData(prev => Array.isArray(prev) ? prev.map(g => g.id === id ? serverItem : g) : []);
-
-            // update or create slip corresponding to this gaji
-            try {
-              const slipObj = buildSlipFromGaji(serverItem, serverItem.id || serverItem._id || id);
-              // try to find existing slip by gajiId
-              const existing = Array.isArray(slipGajiData) ? slipGajiData.find(s => String(s.gajiId) === String(id) || String(s.gajiId) === String(serverItem.id) ) : null;
-              if (existing) {
-                // update local
-                setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => (String(s.id) === String(existing.id) ? { ...s, ...slipObj } : s)) : [slipObj]);
-                // persist update if server id exists
-                try {
-                  if (existing.id && existing.id.toString().startsWith('SLIP') === false) {
-                    await slipGajiApi.update(token, existing.id, slipObj);
-                  }
-                } catch (err) {
-                  console.error('Failed to update slip gaji on server:', err);
-                }
-              } else {
-                // add new slip locally and try to persist
-                const tempSlip = { ...slipObj };
-                setSlipGajiData(prev => Array.isArray(prev) ? [...prev, tempSlip] : [tempSlip]);
-                try {
-                  const slipRes = await slipGajiApi.create(token, slipObj);
-                  const serverSlip = slipRes && slipRes.data ? slipRes.data : null;
-                  if (serverSlip) setSlipGajiData(prev => Array.isArray(prev) ? prev.map(s => s.id === tempSlip.id ? serverSlip : s) : [serverSlip]);
-                } catch (err) {
-                  console.error('Failed to create slip gaji on server after gaji update:', err);
-                }
-              }
-            } catch (slipErr) {
-              console.error('Error building/updating slip from gaji update:', slipErr);
-            }
           }
         } catch (e) {
           console.error('Failed to update gaji on server:', e);
@@ -806,56 +1353,45 @@ useEffect(() => {
         }
       }
     },
+    // ✅ FIX UTAMA: deleteGaji - skip server kalau ID adalah temp ID lokal
     deleteGaji: async (id) => {
-      // Normalize ID untuk comparison
       const normalizedId = String(id).trim();
-      console.log('deleteGaji called with id:', normalizedId, 'Current gajiData count:', gajiData?.length || 0);
-      
+      const isTempId = /^(GAJI|TEMP-|SLIP)/i.test(normalizedId);
+      console.log('deleteGaji called with id:', normalizedId, 'isTempId:', isTempId);
+
       const prevSnapshot = Array.isArray(gajiData) ? gajiData.slice() : [];
-      
-      // Filter dengan logging
-      const filtered = Array.isArray(gajiData) ? gajiData.filter(g => {
-        const gId = String(g.id).trim();
-        const isMatching = gId !== normalizedId;
-        if (!isMatching) {
-          console.log('Found gaji to delete:', g);
-        }
-        return isMatching;
-      }) : [];
-      
-      console.log('After filter, remaining count:', filtered.length);
+
+      const filtered = Array.isArray(gajiData)
+        ? gajiData.filter(g => String(g.id).trim() !== normalizedId)
+        : [];
       setGajiData(filtered);
-      
+
+      if (isTempId) {
+        console.warn('Skipping server delete: ID lokal saja.');
+        return;
+      }
+
       const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const result = await gajiApi.delete(token, normalizedId);
-          console.log('Server delete response:', result);
-        } catch (e) {
-          console.error('Failed to delete gaji on server:', e);
-          const errorMsg = e.message || '';
-          const isTempId = /^GAJI|^TEMP-/.test(normalizedId);
+      if (!token) return;
 
-          if ((errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) && isTempId) {
-            console.warn('Delete failed because item was only local and not persisted. Treating as deleted.');
-            return;
-          }
+      try {
+        await gajiApi.delete(token, normalizedId);
+        console.log('Server delete sukses');
+      } catch (e) {
+        console.error('Failed to delete gaji on server:', e);
+        const errorMsg = (e?.message || '').toString();
 
-          // Restore if server delete fails for persisted items
-          setGajiData(prevSnapshot);
-          if (errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) {
-            alert(`Data gaji tidak ditemukan di server. Mungkin sudah dihapus sebelumnya.`);
-          } else {
-            alert(`Gagal menghapus data dari server: ${errorMsg}. Data telah dikembalikan.`);
-          }
+        if (errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) {
+          console.warn('Data sudah tidak ada di server, tetap hapus lokal.');
+          return;
         }
-      } else {
-        console.warn('No token found for server delete');
+
+        setGajiData(prevSnapshot);
+        alert(`Gagal menghapus data dari server: ${errorMsg}. Data telah dikembalikan.`);
       }
     },
     getGajiByKaryawan: (nama) => Array.isArray(gajiData) ? gajiData.find(g => g.nama === nama) : undefined,
 
-    // Treatment
     treatmentData,
     setTreatmentData,
     addTreatment: async (treatment) => {
@@ -903,7 +1439,6 @@ useEffect(() => {
     },
     getTreatmentById: (id) => Array.isArray(treatmentData) ? treatmentData.find(t => t.id === id) : undefined,
 
-    // Slip Gaji
     slipGajiData,
     setSlipGajiData,
     addSlipGaji: async (slip) => {
@@ -956,7 +1491,6 @@ useEffect(() => {
       }
     },
 
-    // Cuti
     cutiData,
     setCutiData,
     addCuti: async (cuti) => {
@@ -984,7 +1518,6 @@ useEffect(() => {
         console.error(err.message, { id, updates });
         throw err;
       }
-
       const isTempLocal = String(normalizedId).startsWith('CUTI');
       const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
       setCutiData(prev => Array.isArray(prev) ? prev.map(c => {
@@ -998,12 +1531,9 @@ useEffect(() => {
       }
 
       const token = localStorage.getItem('token');
-      console.log('AppContext.updateCuti called', { id: normalizedId, updates });
-      console.log('AppContext.updateCuti token present?', !!token);
       if (token) {
         try {
           const res = await cutiApi.update(token, normalizedId, updates);
-          console.log('AppContext.updateCuti server response:', res);
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
             const normalized = normalizeCutiItem({ ...serverItem, id: serverItem.id || serverItem._id || normalizedId });
