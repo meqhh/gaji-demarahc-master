@@ -922,12 +922,7 @@ function Gaji() {
     return selectedMonthYear !== "" && selectedMonthYear === currentMonthYear;
   }, [filterTanggal]);
 
-  const isAwalBulan = useMemo(() => {
-    const today = new Date();
-    return today.getDate() === 1;
-  }, []);
-
-  const canSaveSlipGaji = isCurrentMonthSelected && isAwalBulan;
+  const canSaveSlipGaji = true;
 
   const selectedAbsensi = useMemo(() => {
     if (!selectedKaryawan || !Array.isArray(absensiData)) return [];
@@ -1211,10 +1206,6 @@ function Gaji() {
                     alert("Silakan pilih karyawan terlebih dahulu");
                     return;
                   }
-                  if (!canSaveSlipGaji) {
-                    alert("Simpan Slip Gaji hanya dapat dilakukan pada awal bulan untuk periode bulan ini.");
-                    return;
-                  }
                   if (!filterTanggal) {
                     alert("Silakan pilih tanggal periode gaji terlebih dahulu sebelum menyimpan slip gaji.");
                     return;
@@ -1248,7 +1239,7 @@ function Gaji() {
                     totalPenghasilan: totalGross,
                     gajiKotor: totalGross,
                     gajiNetto: totalGajiBersih,
-                    status: "Selesai",
+                    status: "Draft",
                     tanggalGajian: new Date().toISOString(),
                     transactionDetails: filteredGajiData.map(g => ({
                       tanggal: g.tanggal || g.date || "",
@@ -1318,17 +1309,13 @@ function Gaji() {
 
                   // Tetap pertahankan nilai di form setelah simpan agar tidak hilang dari tampilan
                 }}
-                disabled={!canSaveSlipGaji}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${canSaveSlipGaji ? "bg-green-600 text-white hover:bg-green-700" : "bg-gray-300 text-gray-700 cursor-not-allowed"}`}
+                className="px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Simpan Slip Gaji
               </button>
-              {!canSaveSlipGaji && (
-                <p className="text-sm text-orange-600 mt-2">Simpan Slip Gaji hanya aktif pada awal bulan untuk periode bulan ini.</p>
-              )}
             </div>
           </div>
         </div>

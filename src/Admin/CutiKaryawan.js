@@ -125,6 +125,13 @@ function CutiKaryawan() {
       updatedAt: new Date().toISOString()
     };
 
+    const handleTambahCuti = (e) => {
+      e.preventDefault();
+      addCuti(formData);
+      setFormData({ nama: "", tanggal: "", lama: "", alasan: "", status: "Pending" });
+      setShowTambahModal(false);
+    };
+
     console.log('Updating cuti', targetId, updates);
     try {
       await updateCuti(targetId, updates);
@@ -181,6 +188,16 @@ function CutiKaryawan() {
     setRejectionReason("");
     setShowStatusConfirm(false);
   };
+
+  const handleDeleteCuti = (id) => {
+  if (!window.confirm("Yakin ingin menghapus data cuti ini?")) {
+    return;
+  }
+
+  setCutiData((prev) =>
+    prev.filter((item) => (item.id || item._id) !== id)
+  );
+};
 
   // tambah data cuti
   const handleTambahCuti = (e) => {
@@ -404,6 +421,12 @@ function CutiKaryawan() {
                             className="bg-gray-700 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-600 transition-all"
                           >
                             Detail
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCuti(itemId)}
+                            className="bg-red-600 text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-red-700 transition-all"
+                          >
+                            Hapus
                           </button>
                         </div>
                       </td>

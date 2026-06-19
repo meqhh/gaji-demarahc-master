@@ -203,6 +203,7 @@ function SlipGaji() {
 
     return {
       ...item,
+      status: "Selesai",
       periode: normalizeMonthLabel(item.periode || item.date || item.tanggal || item.createdAt) || item.periode,
       gajiPokok,
       tunjanganTransport,
