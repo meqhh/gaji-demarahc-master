@@ -195,7 +195,7 @@ function Login() {
               </label>
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); alert('Hubungi admin untuk reset password'); }}
+                onClick={() => navigate("/forgot-password")}
                 className="text-purple-500 hover:text-purple-600 font-semibold transition-colors"
               >
                 Lupa Password?

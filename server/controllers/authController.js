@@ -162,6 +162,52 @@ export const login = async (req, res) => {
   }
 };
 
+export const lupaPassword = async (req, res) => {
+  try {
+    const { email, password, konfirmasiPassword } = req.body;
+
+    if (!email || !password || !konfirmasiPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Semua data wajib diisi."
+      });
+    }
+
+    if (password !== konfirmasiPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Konfirmasi password tidak sama."
+      });
+    }
+
+    const user = await usersDB.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Email tidak ditemukan."
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await usersDB.updatePassword(email, hashedPassword);
+
+    return res.json({
+      success: true,
+      message: "Password berhasil diubah."
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan server."
+    });
+  }
+};
+
 // Get current user
 export const getCurrentUser = async (req, res) => {
   try {
@@ -247,6 +293,7 @@ export const updateUser = async (req, res) => {
 export default {
   register,
   login,
+  lupaPassword,
   getCurrentUser,
   getAllUsers,
   updateUser

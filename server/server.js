@@ -16,7 +16,7 @@ import slipGajiRoutes from './routes/slipGaji.js';
 import publicRoutes from './routes/public.js';
 
 // Load environment variables
-dotenv.config();
+dotenv.config();  
 
 // Provide safe default in development to avoid crashes on fresh clones.
 // In production, require JWT_SECRET to be set for security.

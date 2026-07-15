@@ -109,6 +109,23 @@ const usersDB = {
     }
   },
 
+  updatePassword: async (email, hashedPassword) => {
+  try {
+    const conn = await pool.getConnection();
+
+    await conn.query(
+      "UPDATE users SET password = ? WHERE email = ?",
+      [hashedPassword, email]
+    );
+
+    conn.release();
+    return true;
+  } catch (err) {
+    console.error("Error update password:", err);
+    throw err;
+  }
+},
+
   save: async (user) => {
     try {
       const conn = await pool.getConnection();

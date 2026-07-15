@@ -1,5 +1,12 @@
 import express from 'express';
-import { register, login, getCurrentUser, getAllUsers, updateUser } from '../controllers/authController.js';
+import {
+  register,
+  login,
+  getCurrentUser,
+  getAllUsers,
+  updateUser,
+  lupaPassword
+} from "../controllers/authController.js";
 import { auth, adminOnly } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -9,5 +16,6 @@ router.post('/login', login);
 router.get('/me', auth, getCurrentUser);
 router.get('/users', auth, adminOnly, getAllUsers);
 router.put('/profile', auth, updateUser);
+router.post("/lupa-password", lupaPassword);
 
 export default router;

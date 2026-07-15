@@ -3,6 +3,7 @@ import { AppContextProvider } from "./context/AppContext";
 
 import LayoutAdmin from "./Layout/LayoutAdmin";
 import LayoutKaryawan from "./Layout/LayoutKaryawan";
+import LupaPassword from "./Karyawan/LupaPassword";
 
 // LOGIN PAGE
 import Login from "./Karyawan/Login";
@@ -49,6 +50,7 @@ function App() {
           {/* Login Route */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<LupaPassword />} />
 
           {/* Redirect root "/" ke /login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
@@ -69,6 +71,7 @@ function App() {
             <Route path="profile" element={<AdminProfileSettings />} />
             <Route path="security" element={<AdminSecurity />} />
             <Route path="help" element={<AdminHelp />} />
+          
 
           </Route>
 
@@ -87,6 +90,7 @@ function App() {
             <Route path="profile" element={<KaryawanProfileSettings />} />
             <Route path="security" element={<KaryawanSecurity />} />
             <Route path="help" element={<KaryawanHelp />} />
+
 
           </Route>
 
