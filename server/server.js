@@ -39,8 +39,8 @@ const clientBuildPath = path.join(__dirname, '..', 'build');
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(clientBuildPath));
 
 // Initialize MySQL database
@@ -106,6 +106,12 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    return res.status(413).json({
+      success: false,
+      message: 'Ukuran gambar terlalu besar. Maksimal 20MB per request.'
+    });
+  }
   console.error(err.stack);
   res.status(500).json({ 
     success: false, 

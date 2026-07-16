@@ -239,7 +239,15 @@ export const AppContextProvider = ({ children }) => {
               if (!localItem) return;
               const index = findMatchIndex(localItem);
               if (index > -1) {
-                merged[index] = { ...merged[index], ...localItem };
+                const serverItem = merged[index];
+                const imageFields = ['foto', 'scan_kontrak', 'scan_ttd', 'scanKontrak', 'scanTtd', 'photo'];
+                const mergedItem = { ...serverItem, ...localItem };
+                for (const field of imageFields) {
+                  if (serverItem[field] && !localItem[field]) {
+                    mergedItem[field] = serverItem[field];
+                  }
+                }
+                merged[index] = mergedItem;
               } else {
                 merged.push(localItem);
               }

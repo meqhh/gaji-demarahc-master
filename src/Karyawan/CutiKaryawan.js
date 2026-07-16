@@ -70,9 +70,12 @@ export default function CutiKaryawan() {
       return;
     }
 
+    const getKaryawanId = () => userProfile?.id || userProfile?.user_id || userProfile?.karyawanId || '';
+
     const newCuti = {
       ...formData,
       nama: namaAkun,
+      karyawanId: getKaryawanId(),
       id: formData.id || `CUTI${Date.now()}`,
     };
 
@@ -86,6 +89,13 @@ export default function CutiKaryawan() {
       } catch (err) {
         newCuti.lama = formData.lama || 1;
       }
+    } else {
+      newCuti.lama = Number(formData.lama || 0);
+    }
+
+    if (newCuti.lama > 12) {
+      alert("Lama cuti tidak boleh lebih dari 12 hari.");
+      return;
     }
 
     if (addCuti) {
@@ -113,6 +123,25 @@ export default function CutiKaryawan() {
     setShowEditModal(true);
   };
 
+  const handleDateChange = (field, value) => {
+    const newFormData = { ...formData, [field]: value };
+    if (newFormData.tanggal && newFormData.tanggalAkhir) {
+      try {
+        const start = new Date(newFormData.tanggal);
+        const end = new Date(newFormData.tanggalAkhir);
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+          const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+          newFormData.lama = diff > 0 ? diff : 0;
+        }
+      } catch (err) {}
+    } else if (newFormData.tanggal && !newFormData.tanggalAkhir) {
+      newFormData.lama = 1;
+    } else {
+      newFormData.lama = "";
+    }
+    setFormData(newFormData);
+  };
+
   const handleUpdateCuti = (e) => {
     e.preventDefault();
     const namaAkun = String(formData.nama || "").trim();
@@ -121,9 +150,11 @@ export default function CutiKaryawan() {
       return;
     }
     if (selectedCuti) {
+      const getKaryawanId = () => userProfile?.id || userProfile?.user_id || userProfile?.karyawanId || '';
       const updates = {
         ...formData,
         nama: namaAkun,
+        karyawanId: getKaryawanId(),
       };
       if (formData.tanggal && formData.tanggalAkhir && (!formData.lama || String(formData.lama).trim() === '')) {
         try {
@@ -134,7 +165,15 @@ export default function CutiKaryawan() {
         } catch (err) {
           updates.lama = formData.lama || 1;
         }
+      } else {
+        updates.lama = Number(formData.lama || 0);
       }
+
+      if (updates.lama > 12) {
+        alert("Lama cuti tidak boleh lebih dari 12 hari.");
+        return;
+      }
+
       const targetId = selectedCuti.id || selectedCuti._id;
       updateCuti(targetId, updates);
       setFormData({ nama: "", tanggal: "", tanggalAkhir: "", lama: "", alasan: "", status: "Pending" });
@@ -267,12 +306,18 @@ export default function CutiKaryawan() {
             </select>
           </div>
           <div className="flex items-end">
+            {sisaCuti > 0 ? (
               <button
-              onClick={openTambahModal}
-              className="w-full bg-gray-800 text-white px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:bg-gray-700 transition-all"
-            >
-              + Ajukan Cuti
-            </button>
+                onClick={openTambahModal}
+                className="w-full bg-gray-800 text-white px-6 py-2.5 rounded-lg font-semibold shadow-lg hover:bg-gray-700 transition-all"
+              >
+                + Ajukan Cuti
+              </button>
+            ) : (
+              <div className="w-full bg-red-100 text-red-700 px-6 py-2.5 rounded-lg font-semibold shadow-sm text-center border border-red-200">
+                Jatah Cuti Habis
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -438,18 +483,19 @@ export default function CutiKaryawan() {
                 <input
                   type="date"
                   value={formData.tanggal}
-                  onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                  onChange={(e) => handleDateChange('tanggal', e.target.value)}
                   required
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Akhir (opsional)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Akhir</label>
                 <input
                   type="date"
                   value={formData.tanggalAkhir}
-                  onChange={(e) => setFormData({ ...formData, tanggalAkhir: e.target.value })}
+                  onChange={(e) => handleDateChange('tanggalAkhir', e.target.value)}
+                  required
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
               </div>
@@ -460,10 +506,10 @@ export default function CutiKaryawan() {
                   type="number"
                   min="1"
                   value={formData.lama}
-                  onChange={(e) => setFormData({ ...formData, lama: e.target.value })}
-                  placeholder="Masukkan jumlah hari (atau biarkan kosong untuk dihitung dari tanggal)"
+                  readOnly
+                  placeholder="Durasi Cuti"
                   required
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                  className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg focus:outline-none transition-all cursor-not-allowed"
                 />
               </div>
 
@@ -525,18 +571,19 @@ export default function CutiKaryawan() {
                 <input
                   type="date"
                   value={formData.tanggal}
-                  onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })}
+                  onChange={(e) => handleDateChange('tanggal', e.target.value)}
                   required
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Akhir (opsional)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Tanggal Akhir</label>
                 <input
                   type="date"
                   value={formData.tanggalAkhir}
-                  onChange={(e) => setFormData({ ...formData, tanggalAkhir: e.target.value })}
+                  onChange={(e) => handleDateChange('tanggalAkhir', e.target.value)}
+                  required
                   className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
                 />
               </div>
@@ -547,10 +594,10 @@ export default function CutiKaryawan() {
                   type="number"
                   min="1"
                   value={formData.lama}
-                  onChange={(e) => setFormData({ ...formData, lama: e.target.value })}
-                  placeholder="Masukkan jumlah hari (atau biarkan kosong untuk dihitung dari tanggal)"
+                  readOnly
+                  placeholder="Durasi Cuti"
                   required
-                  className="w-full border-2 border-gray-200 px-4 py-2 rounded-lg focus:border-gray-500 focus:ring-2 focus:ring-gray-200 outline-none transition-all"
+                  className="w-full bg-gray-100 border-2 border-gray-200 px-4 py-2 rounded-lg focus:outline-none transition-all cursor-not-allowed"
                 />
               </div>
 

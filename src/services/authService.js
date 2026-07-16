@@ -162,6 +162,16 @@ export const createKaryawan = async (token, karyawanData) => {
 // Update karyawan (admin only)
 export const updateKaryawan = async (token, karyawanId, karyawanData) => {
   try {
+    console.log('=== DEBUG UPDATE KARYAWAN ===');
+    console.log('URL:', `${API_BASE_URL}/karyawan/${karyawanId}`);
+    console.log('Token present:', !!token);
+    console.log('Token length:', token?.length);
+    console.log('User ID in token:', token?.includes('user_id'));
+    console.log('Data keys:', Object.keys(karyawanData));
+    console.log('Salary data:', karyawanData.salary ? 'ada' : 'kosong');
+    console.log('User data:', karyawanData.user ? 'ada' : 'kosong');
+    console.log('============================');
+
     const response = await fetch(`${API_BASE_URL}/karyawan/${karyawanId}`, {
       method: 'PUT',
       headers: {

@@ -144,7 +144,7 @@ export const updateKaryawanProfile = async (req, res) => {
 
     // For self-service profile update, always update the karyawan record linked by user_id.
     // This prevents stale/incorrect local karyawanId from silently blocking updates.
-    const allowedFields = ['nama', 'no_hp', 'alamat', 'email', 'jabatan', 'posisi', 'tempatLahir', 'tanggalLahir', 'tanggalMasuk', 'tanggalKontrak', 'lamaKontrak', 'foto', 'status'];
+    const allowedFields = ['nama', 'no_hp', 'alamat', 'email', 'jabatan', 'posisi', 'tempatLahir', 'tanggalLahir', 'lamaKontrak', 'foto', 'status', 'scanKontrak', 'scanTtd', 'scan_kontrak', 'scan_ttd'];
     const updates = {};
 
     // Hanya proses field yang diizinkan
@@ -168,14 +168,14 @@ export const updateKaryawanProfile = async (req, res) => {
     if (updates.tanggalLahir !== undefined && updates.tanggal_lahir === undefined) {
       updates.tanggal_lahir = updates.tanggalLahir;
     }
-    if (updates.tanggalMasuk !== undefined && updates.tgl_masuk === undefined) {
-      updates.tgl_masuk = updates.tanggalMasuk;
-    }
-    if (updates.tanggalKontrak !== undefined && updates.tgl_kontrak === undefined) {
-      updates.tgl_kontrak = updates.tanggalKontrak;
-    }
     if (updates.lamaKontrak !== undefined && updates.lama_kontrak === undefined) {
       updates.lama_kontrak = updates.lamaKontrak;
+    }
+    if (updates.scanKontrak !== undefined && updates.scan_kontrak === undefined) {
+      updates.scan_kontrak = updates.scanKontrak;
+    }
+    if (updates.scanTtd !== undefined && updates.scan_ttd === undefined) {
+      updates.scan_ttd = updates.scanTtd;
     }
 
     const updatedKaryawan = {
