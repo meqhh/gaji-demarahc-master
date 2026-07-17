@@ -232,8 +232,17 @@ const karyawanDB = {
       
       if (karyawan.id) {
         // Update existing
-        const fields = Object.keys(karyawan).filter(k => k !== 'id' && columns.has(k));
-        const values = fields.map(k => karyawan[k]);
+        const fields = Object.keys(karyawan).filter(k => k !== 'id' && k !== 'created_at' && k !== 'updated_at' && columns.has(k));
+        const values = fields.map(k => {
+          let val = karyawan[k];
+          if (val instanceof Date) {
+            return val.toISOString().slice(0, 19).replace('T', ' ');
+          }
+          if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+            return val.slice(0, 19).replace('T', ' ');
+          }
+          return val;
+        });
         values.push(karyawan.id);
 
         if (fields.length === 0) {
@@ -247,7 +256,16 @@ const karyawanDB = {
         // Create new - exclude created_at (use SQL DEFAULT)
         const keys = Object.keys(karyawan).filter(k => k !== 'created_at' && columns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
-        const values = keys.map(k => karyawan[k]);
+        const values = keys.map(k => {
+          let val = karyawan[k];
+          if (val instanceof Date) {
+            return val.toISOString().slice(0, 19).replace('T', ' ');
+          }
+          if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+            return val.slice(0, 19).replace('T', ' ');
+          }
+          return val;
+        });
 
         if (keys.length === 0) {
           conn.release();
@@ -485,7 +503,7 @@ const cutiDB = {
     try {
       const conn = await pool.getConnection();
       const tableColumns = await getTableColumns('cuti');
-      cuti.created_at = new Date();
+      cuti.created_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
       
       if (cuti.id) {
         const fields = Object.keys(cuti).filter((k) => k !== 'id' && tableColumns.has(k));

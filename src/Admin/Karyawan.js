@@ -146,18 +146,28 @@ function Karyawan() {
       nama: form.nama.value,
       posisi: form.posisi.value,
       status: form.status?.value || "",
-      nohp: form.nohp.value,
+      no_hp: form.nohp.value,
       email: form.email.value,
       alamat: form.alamat.value,
+      tempat_lahir: form.tempatLahir.value,
+      tanggal_lahir: form.tanggalLahir.value,
+      // tanggal_masuk: form.tglMasuk.value,
+      // tanggal_kontrak: form.tglKontrak.value,
+      lama_kontrak: form.lamaKontrak.value,
+      foto: fotoBase64,
+      gaji_pokok: Number(form.gajiPokok.value) || 0,
+      tunjangan: Number(form.tunjanganTransport.value) || 0,
+      bpjs: Number(form.bpjs.value) || 0,
+      
+      // Keep camelCase versions just for local state compatibility
+      nohp: form.nohp.value,
       tempatLahir: form.tempatLahir.value,
       tanggalLahir: form.tanggalLahir.value,
       tglMasuk: form.tglMasuk.value,
       tglKontrak: form.tglKontrak.value,
       lamaKontrak: form.lamaKontrak.value,
-      foto: fotoBase64,
       gajiPokok: Number(form.gajiPokok.value) || 0,
-      tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
-      bpjs: Number(form.bpjs.value) || 0,
+      tunjanganTransport: Number(form.tunjanganTransport.value) || 0
     };
 
     if (typeof addKaryawan === 'function') {
@@ -192,20 +202,32 @@ function Karyawan() {
       nama: form.nama.value,
       posisi: form.posisi.value,
       status: form.status?.value || "",
-      nohp: form.nohp.value,
+      no_hp: form.nohp.value,
       email: form.email.value,
       alamat: form.alamat.value,
+      tempat_lahir: form.tempatLahir.value,
+      tanggal_lahir: form.tanggalLahir.value,
+      // tanggal_masuk: form.tglMasuk.value,
+      // tanggal_kontrak: form.tglKontrak.value,
+      lama_kontrak: form.lamaKontrak.value,
+      foto: fotoBase64,
+      scan_kontrak: scanKontrakBase64,
+      scan_ttd: scanTtdBase64,
+      gaji_pokok: Number(form.gajiPokok.value) || 0,
+      tunjangan: Number(form.tunjanganTransport.value) || 0,
+      bpjs: Number(form.bpjs.value) || 0,
+      
+      // Keep camelCase versions just for local state compatibility
+      nohp: form.nohp.value,
       tempatLahir: form.tempatLahir.value,
       tanggalLahir: form.tanggalLahir.value,
-      tglMasuk: form.tglMasuk.value,
-      tglKontrak: form.tglKontrak.value,
+      // tglMasuk: form.tglMasuk.value,
+      // tglKontrak: form.tglKontrak.value,
       lamaKontrak: form.lamaKontrak.value,
-      foto: fotoBase64,
       scanKontrak: scanKontrakBase64,
       scanTtd: scanTtdBase64,
       gajiPokok: Number(form.gajiPokok.value) || 0,
-      tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
-      bpjs: Number(form.bpjs.value) || 0,
+      tunjanganTransport: Number(form.tunjanganTransport.value) || 0
     };
 
     if (typeof updateKaryawan === 'function') {
@@ -724,7 +746,7 @@ function Karyawan() {
                 </div>
 
                 {/* Row 4: Tanggal Masuk & Tanggal Kontrak */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Tanggal Masuk</label>
                     <input
@@ -743,7 +765,7 @@ function Karyawan() {
                       className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 focus:ring-1 focus:ring-gray-400 outline-none transition-colors"
                     />
                   </div>
-                </div>
+                </div> */}
 
                 {/* Lama Kontrak */}
                 <div>

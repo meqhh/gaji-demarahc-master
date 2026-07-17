@@ -76,6 +76,14 @@ export const createKaryawan = async (req, res) => {
       gajiPokok
     };
 
+    // Fix empty strings for datetime columns
+    const dateColumns = ['tanggal_lahir', 'tanggal_masuk', 'tanggal_kontrak', 'tgl_masuk', 'tgl_kontrak'];
+    for (const col of dateColumns) {
+      if (newKaryawan[col] === '') {
+        newKaryawan[col] = null;
+      }
+    }
+
     await karyawanDB.save(newKaryawan);
 
     res.status(201).json({
@@ -101,6 +109,14 @@ export const updateKaryawan = async (req, res) => {
       ...karyawan,
       ...req.body
     };
+
+    // Fix empty strings for datetime columns
+    const dateColumns = ['tanggal_lahir', 'tanggal_masuk', 'tanggal_kontrak', 'tgl_masuk', 'tgl_kontrak'];
+    for (const col of dateColumns) {
+      if (updatedKaryawan[col] === '') {
+        updatedKaryawan[col] = null;
+      }
+    }
 
     await karyawanDB.save(updatedKaryawan);
 

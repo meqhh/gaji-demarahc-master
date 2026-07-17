@@ -171,7 +171,7 @@ export const updateKaryawan = async (token, karyawanId, karyawanData) => {
     console.log('Salary data:', karyawanData.salary ? 'ada' : 'kosong');
     console.log('User data:', karyawanData.user ? 'ada' : 'kosong');
     console.log('============================');
-
+    delete karyawanData?.created_at 
     const response = await fetch(`${API_BASE_URL}/karyawan/${karyawanId}`, {
       method: 'PUT',
       headers: {
