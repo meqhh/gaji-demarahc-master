@@ -489,7 +489,18 @@ const cutiDB = {
       
       if (cuti.id) {
         const fields = Object.keys(cuti).filter((k) => k !== 'id' && tableColumns.has(k));
-        const values = fields.map((k) => cuti[k]);
+        const values = fields.map((k) => {
+          let val = cuti[k];
+          if (val instanceof Date) {
+            // Konversi native Date ke string format MySQL
+            return val.toISOString().slice(0, 19).replace('T', ' ');
+          }
+          // Jika frontend mengirim string ISO (ada 'T' dan 'Z'), kita bersihkan
+          if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+             return val.slice(0, 19).replace('T', ' ');
+          }
+          return val;
+        });
         values.push(cuti.id);
         
         const setClause = fields.map((f) => `${f} = ?`).join(', ');
@@ -497,7 +508,16 @@ const cutiDB = {
       } else {
         const keys = Object.keys(cuti).filter((k) => k !== 'created_at' && tableColumns.has(k));
         const placeholders = keys.map(() => '?').join(', ');
-        const values = keys.map((k) => cuti[k]);
+        const values = keys.map((k) => {
+          let val = cuti[k];
+          if (val instanceof Date) {
+            return val.toISOString().slice(0, 19).replace('T', ' ');
+          }
+          if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+             return val.slice(0, 19).replace('T', ' ');
+          }
+          return val;
+        });
         
         const [result] = await conn.query(
           `INSERT INTO cuti (${keys.join(', ')}) VALUES (${placeholders})`,

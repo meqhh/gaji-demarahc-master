@@ -10,6 +10,8 @@ function Karyawan() {
   const [detailData, setDetailData] = useState(null);
   const [editData, setEditData] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [previewKontrak, setPreviewKontrak] = useState(null);
+  const [previewTtd, setPreviewTtd] = useState(null);
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState({});
 
@@ -35,6 +37,8 @@ function Karyawan() {
       tanggalLahir: getFieldValue(item, "tanggalLahir", "tanggal_lahir"),
       tempatLahir: getFieldValue(item, "tempatLahir", "tempat_lahir", "tempatTanggalLahir", "tempat_tanggal_lahir"),
       foto: getFieldValue(item, "foto", "photo"),
+      scanKontrak: getFieldValue(item, "scanKontrak", "scan_kontrak"),
+      scanTtd: getFieldValue(item, "scanTtd", "scan_ttd"),
       email: getFieldValue(item, "email", "user_email", "userEmail"),
       alamat: getFieldValue(item, "alamat", "address"),
       status: getFieldValue(item, "status") || "",
@@ -110,6 +114,24 @@ function Karyawan() {
     }
   };
 
+  const handleKontrakChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const base64 = await toBase64(file);
+      setPreviewKontrak(base64);
+      setFormData({ ...formData, scanKontrak: base64 });
+    }
+  };
+
+  const handleTtdChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const base64 = await toBase64(file);
+      setPreviewTtd(base64);
+      setFormData({ ...formData, scanTtd: base64 });
+    }
+  };
+
   // Tambah data
   const handleTambah = async (e) => {
     e.preventDefault();
@@ -154,9 +176,16 @@ function Karyawan() {
     e.preventDefault();
     const form = e.target;
     const fotoFile = form.foto.files[0];
+    const scanKontrakFile = form.scanKontrak?.files[0];
+    const scanTtdFile = form.scanTtd?.files[0];
+
     let fotoBase64 = editData.foto;
+    let scanKontrakBase64 = editData.scanKontrak;
+    let scanTtdBase64 = editData.scanTtd;
 
     if (fotoFile) fotoBase64 = await toBase64(fotoFile);
+    if (scanKontrakFile) scanKontrakBase64 = await toBase64(scanKontrakFile);
+    if (scanTtdFile) scanTtdBase64 = await toBase64(scanTtdFile);
 
     const updated = {
       ...editData,
@@ -172,6 +201,8 @@ function Karyawan() {
       tglKontrak: form.tglKontrak.value,
       lamaKontrak: form.lamaKontrak.value,
       foto: fotoBase64,
+      scanKontrak: scanKontrakBase64,
+      scanTtd: scanTtdBase64,
       gajiPokok: Number(form.gajiPokok.value) || 0,
       tunjanganTransport: Number(form.tunjanganTransport.value) || 0,
       bpjs: Number(form.bpjs.value) || 0,
@@ -309,6 +340,8 @@ function Karyawan() {
                           const normalized = normalizeKaryawan(k);
                           setEditData(normalized);
                           setPreview(normalized.foto);
+                          setPreviewKontrak(normalized.scanKontrak);
+                          setPreviewTtd(normalized.scanTtd);
                           setShowEdit(true);
                         }}
                         className="text-orange-600 font-bold hover:text-orange-700 transition-colors text-sm"
@@ -544,6 +577,29 @@ function Karyawan() {
                   </div>
                 </div>
 
+                {/* Dokumen Tambahan */}
+                <div className="pt-4 border-t border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Dokumen Karyawan</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Scan / Foto Kontrak</label>
+                      {detailData.scanKontrak ? (
+                        <img src={detailData.scanKontrak} alt="Scan Kontrak" className="w-full max-w-[200px] rounded-lg border border-gray-200 shadow-sm object-cover" />
+                      ) : (
+                        <p className="text-gray-400 text-sm italic">Belum ada file</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Scan / Foto TTD</label>
+                      {detailData.scanTtd ? (
+                        <img src={detailData.scanTtd} alt="Scan TTD" className="w-full max-w-[200px] rounded-lg border border-gray-200 shadow-sm object-cover" />
+                      ) : (
+                        <p className="text-gray-400 text-sm italic">Belum ada file</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Action Button */}
                 <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                   <button
@@ -741,22 +797,58 @@ function Karyawan() {
                 </div>
                 </div>
 
-                {/* Upload Foto */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Foto Baru</label>
-                  <input
-                    name="foto"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 outline-none transition-colors cursor-pointer"
-                  />
-                  {preview && (
-                    <div className="mt-4">
-                      <p className="text-xs text-gray-600 mb-2">Preview Foto</p>
-                      <img src={preview} alt="preview" className="w-20 h-20 rounded-lg object-cover border border-gray-200" />
-                    </div>
-                  )}
+                {/* Upload Dokumen */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-gray-200 mt-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Foto Baru</label>
+                    <input
+                      name="foto"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 outline-none transition-colors cursor-pointer text-sm"
+                    />
+                    {preview && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-600 mb-2">Preview Foto</p>
+                        <img src={preview} alt="preview" className="w-20 h-20 rounded-lg object-cover border border-gray-200" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Scan Kontrak</label>
+                    <input
+                      name="scanKontrak"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleKontrakChange}
+                      className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 outline-none transition-colors cursor-pointer text-sm"
+                    />
+                    {previewKontrak && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-600 mb-2">Preview Kontrak</p>
+                        <img src={previewKontrak} alt="preview kontrak" className="w-full max-w-[120px] rounded-lg object-cover border border-gray-200 shadow-sm" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Scan TTD</label>
+                    <input
+                      name="scanTtd"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleTtdChange}
+                      className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:border-gray-400 outline-none transition-colors cursor-pointer text-sm"
+                    />
+                    {previewTtd && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-600 mb-2">Preview TTD</p>
+                        <img src={previewTtd} alt="preview ttd" className="w-full max-w-[120px] rounded-lg object-cover border border-gray-200 shadow-sm" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Action Buttons */}

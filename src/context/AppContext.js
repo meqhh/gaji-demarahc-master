@@ -38,6 +38,18 @@ const normalizeCutiItem = (item) => {
   if (normalized.tanggal === undefined && normalized.tanggal_mulai !== undefined) {
     normalized.tanggal = normalized.tanggal_mulai;
   }
+  if (normalized.tanggalAkhir === undefined && normalized.tanggal_akhir !== undefined) {
+    normalized.tanggalAkhir = normalized.tanggal_akhir;
+  }
+
+  // Format tanggal menjadi YYYY-MM-DD jika dari database berupa string ISO Date
+  const formatTanggal = (str) => {
+    if (typeof str === 'string' && str.includes('T')) return str.split('T')[0];
+    return str;
+  };
+  
+  if (normalized.tanggal) normalized.tanggal = formatTanggal(normalized.tanggal);
+  if (normalized.tanggalAkhir) normalized.tanggalAkhir = formatTanggal(normalized.tanggalAkhir);
   return normalized;
 };
 
@@ -272,8 +284,8 @@ export const AppContextProvider = ({ children }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const API_BASE = `${REACT_APP_API_URL.replace(/\/+$/, '')}/api`;
-
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const API_BASE = `${apiUrl}/api`;
     const endpoints = {
       absensi: `${API_BASE}/absensi`,
       gaji: `${API_BASE}/gaji`,
@@ -795,6 +807,26 @@ export const AppContextProvider = ({ children }) => {
 
     cutiData,
     setCutiData,
+    fetchCutiData: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      try {
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${apiUrl}/api/cuti`, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const serverCuti = json && json.data ? json.data : json;
+          if (Array.isArray(serverCuti)) {
+            // Gunakan data murni dari server agar perubahan dari Admin (Disetujui/Ditolak) langsung terlihat
+            setCutiData(serverCuti.map(normalizeCutiItem));
+          }
+        }
+      } catch(e) {
+        console.error('Failed to fetch latest cuti', e);
+      }
+    },
     addCuti: async (cuti) => {
       const tempId = cuti.id || `CUTI${Date.now()}`;
       const tempItem = { ...cuti, id: tempId, localTemp: true };
@@ -802,7 +834,12 @@ export const AppContextProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const res = await cutiApi.create(token, cuti);
+          // Buang ID dari payload yang akan dikirim ke backend
+          // agar backend / database sepenuhnya menggunakan auto-increment
+          // eslint-disable-next-line no-unused-vars
+          const { id: _ignoredId, ...cutiToBackend } = cuti;
+          
+          const res = await cutiApi.create(token, cutiToBackend);
           const serverItem = res && res.data ? res.data : null;
           if (serverItem) {
             const normalized = normalizeCutiItem({ ...serverItem, id: serverItem.id || serverItem._id || tempId });
@@ -820,6 +857,7 @@ export const AppContextProvider = ({ children }) => {
         console.error(err.message, { id, updates });
         throw err;
       }
+      console.log('updateCuti', normalizedId, updates);
       const isTempLocal = String(normalizedId).startsWith('CUTI');
       const prevSnapshot = Array.isArray(cutiData) ? cutiData.slice() : [];
       setCutiData(prev => Array.isArray(prev) ? prev.map(c => {

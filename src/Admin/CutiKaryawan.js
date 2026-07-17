@@ -2,7 +2,15 @@ import React, { useState, useContext, useEffect, useMemo } from "react";
 import { AppContext } from "../context/AppContext";
 
 function CutiKaryawan() {
-  const { userProfile, cutiData = [], setCutiData, addCuti, updateCuti, absensiData = [], karyawanData = [] } = useContext(AppContext);
+  const { userProfile, cutiData = [], setCutiData, addCuti, updateCuti, fetchCutiData, absensiData = [], karyawanData = [] } = useContext(AppContext);
+
+  // Otomatis tarik data terbaru dari server saat Admin membuka halaman ini
+  React.useEffect(() => {
+    if (typeof fetchCutiData === 'function') {
+      fetchCutiData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   const normalizeKaryawanDisplayName = (value) => {
     if (!value) return "";
@@ -122,18 +130,12 @@ function CutiKaryawan() {
     const updates = {
       status: newStatus,
       updatedBy: userProfile?.name || "Admin",
-      updatedAt: new Date().toISOString()
-    };
-
-    const handleTambahCuti = (e) => {
-      e.preventDefault();
-      addCuti(formData);
-      setFormData({ nama: "", tanggal: "", lama: "", alasan: "", status: "Pending" });
-      setShowTambahModal(false);
+      updatedAt: new Date().toISOString().slice(0, 19).replace('T', ' ')
     };
 
     console.log('Updating cuti', targetId, updates);
     try {
+      console.log('siniiiii');
       await updateCuti(targetId, updates);
       
       // Small delay to ensure state update is complete

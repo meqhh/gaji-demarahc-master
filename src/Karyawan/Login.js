@@ -53,6 +53,7 @@ function Login() {
         localStorage.removeItem("user");
 
         // Save token dan user info fresh
+        if (user && user.nama && !user.name) user.name = user.nama;
         localStorage.setItem("token", token);
         localStorage.setItem("user", JSON.stringify(user));
         localStorage.setItem("userProfile", JSON.stringify(user));
